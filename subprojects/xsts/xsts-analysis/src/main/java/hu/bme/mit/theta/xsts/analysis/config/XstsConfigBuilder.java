@@ -7,6 +7,7 @@ import hu.bme.mit.theta.analysis.algorithm.SafetyChecker;
 import hu.bme.mit.theta.analysis.algorithm.cegar.Abstractor;
 import hu.bme.mit.theta.analysis.algorithm.cegar.BasicAbstractor;
 import hu.bme.mit.theta.analysis.algorithm.cegar.CegarChecker;
+import hu.bme.mit.theta.analysis.algorithm.cegar.CegarCheckerAstar;
 import hu.bme.mit.theta.analysis.algorithm.cegar.Refiner;
 import hu.bme.mit.theta.analysis.algorithm.cegar.abstractor.StopCriterions;
 import hu.bme.mit.theta.analysis.expl.*;
@@ -33,6 +34,7 @@ import hu.bme.mit.theta.xsts.analysis.maxatomcount.XstsUnlimitedMaxAtomCountFact
 import hu.bme.mit.theta.xsts.analysis.maxatomcount.XstsMaxAtomCountFactory;
 
 import java.util.Set;
+import java.util.function.Function;
 import java.util.function.Predicate;
 
 import static hu.bme.mit.theta.core.type.booltype.BoolExprs.Not;
@@ -50,7 +52,10 @@ public class XstsConfigBuilder {
 	public enum Search {
 		BFS(ArgNodeComparators.combine(ArgNodeComparators.targetFirst(), ArgNodeComparators.bfs())),
 
-		DFS(ArgNodeComparators.combine(ArgNodeComparators.targetFirst(), ArgNodeComparators.dfs()));
+		DFS(ArgNodeComparators.combine(ArgNodeComparators.targetFirst(), ArgNodeComparators.dfs())),
+
+		// TODO this is ugly
+		ASTAR(ArgNodeComparators.combine(ArgNodeComparators.targetFirst(), ArgNodeComparators.dfs()));
 
 		public final ArgNodeComparators.ArgNodeComparator comparator;
 
@@ -169,6 +174,7 @@ public class XstsConfigBuilder {
 			final Analysis<XstsState<ExplState>, XstsAction, ExplPrec> analysis = XstsAnalysis.create(ExplStmtAnalysis.create(solver, xsts.getInitFormula(), maxEnum));
 			final ArgBuilder<XstsState<ExplState>, XstsAction, ExplPrec> argBuilder = ArgBuilder.create(lts, analysis, target,
 					true);
+			final Function<? super XstsState<ExplState>, ?> projection = s -> 0;
 			final Abstractor<XstsState<ExplState>, XstsAction, ExplPrec> abstractor = BasicAbstractor.builder(argBuilder)
 					.waitlist(PriorityWaitlist.create(search.comparator))
 					.stopCriterion(refinement == Refinement.MULTI_SEQ ? StopCriterions.fullExploration()
@@ -202,8 +208,15 @@ public class XstsConfigBuilder {
 					throw new UnsupportedOperationException(domain + " domain does not support " + refinement + " refinement.");
 			}
 
-			final SafetyChecker<XstsState<ExplState>, XstsAction, ExplPrec> checker = CegarChecker.create(abstractor, refiner,
-					logger);
+			SafetyChecker<XstsState<ExplState>, XstsAction, ExplPrec> checker;
+			switch (search) {
+				case ASTAR:
+					checker = CegarCheckerAstar.create(argBuilder, projection, refiner, analysis.getPartialOrd(), logger);
+					break;
+				default:
+					checker = CegarChecker.create(abstractor, refiner, logger);
+			}
+
 			final ExplPrec prec = initPrec.builder.createExpl(xsts);
 			return XstsConfig.create(checker, prec);
 
@@ -235,6 +248,7 @@ public class XstsConfigBuilder {
 					xsts.getInitFormula()));
 			final ArgBuilder<XstsState<PredState>, XstsAction, PredPrec> argBuilder = ArgBuilder.create(lts, analysis, target,
 					true);
+			final Function<? super XstsState<PredState>, ?> projection = s -> 0;
 			final Abstractor<XstsState<PredState>, XstsAction, PredPrec> abstractor = BasicAbstractor.builder(argBuilder)
 					.waitlist(PriorityWaitlist.create(search.comparator))
 					.stopCriterion(refinement == Refinement.MULTI_SEQ ? StopCriterions.fullExploration()
@@ -268,8 +282,14 @@ public class XstsConfigBuilder {
 						JoiningPrecRefiner.create(new ItpRefToPredPrec(predSplit.splitter)), pruneStrategy, logger);
 			}
 
-			final SafetyChecker<XstsState<PredState>, XstsAction, PredPrec> checker = CegarChecker.create(abstractor, refiner,
-					logger);
+			SafetyChecker<XstsState<PredState>, XstsAction, PredPrec> checker;
+			switch (search) {
+				case ASTAR:
+					checker = CegarCheckerAstar.create(argBuilder, projection, refiner, analysis.getPartialOrd(), logger);
+					break;
+				default:
+					checker = CegarChecker.create(abstractor, refiner, logger);
+			}
 
 			final PredPrec prec = initPrec.builder.createPred(xsts);
 			return XstsConfig.create(checker, prec);
@@ -318,6 +338,7 @@ public class XstsConfigBuilder {
 
 			final ArgBuilder<XstsState<Prod2State<ExplState, PredState>>, XstsAction, Prod2Prec<ExplPrec, PredPrec>> argBuilder = ArgBuilder.create(lts, analysis, target,
 					true);
+			final Function<? super XstsState<Prod2State<ExplState, PredState>>, ?> projection = s -> 0;
 			final Abstractor<XstsState<Prod2State<ExplState, PredState>>, XstsAction, Prod2Prec<ExplPrec, PredPrec>> abstractor = BasicAbstractor.builder(argBuilder)
 					.waitlist(PriorityWaitlist.create(search.comparator))
 					.stopCriterion(refinement == Refinement.MULTI_SEQ ? StopCriterions.fullExploration()
@@ -351,8 +372,15 @@ public class XstsConfigBuilder {
 							domain + " domain does not support " + refinement + " refinement.");
 			}
 
-			final SafetyChecker<XstsState<Prod2State<ExplState, PredState>>, XstsAction, Prod2Prec<ExplPrec, PredPrec>> checker = CegarChecker.create(abstractor, refiner,
-					logger);
+			final SafetyChecker<XstsState<Prod2State<ExplState, PredState>>, XstsAction, Prod2Prec<ExplPrec, PredPrec>> checker;
+			switch (search) {
+				case ASTAR:
+					checker = CegarCheckerAstar.create(argBuilder, projection, refiner, analysis.getPartialOrd(), logger);
+					break;
+				default:
+					checker = CegarChecker.create(abstractor, refiner, logger);
+			}
+
 			final Prod2Prec<ExplPrec, PredPrec> prec = initPrec.builder.createProd2ExplPred(xsts);
 			return XstsConfig.create(checker, prec);
 		} else {

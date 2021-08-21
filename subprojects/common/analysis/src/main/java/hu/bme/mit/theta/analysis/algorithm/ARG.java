@@ -21,14 +21,21 @@ import static com.google.common.base.Preconditions.checkState;
 import static java.util.stream.Collectors.toList;
 
 import java.util.Collection;
+
+import hu.bme.mit.theta.analysis.waitlist.FifoWaitlist;
+import hu.bme.mit.theta.analysis.waitlist.Waitlist;
 import hu.bme.mit.theta.common.container.Containers;
+
+import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalInt;
+import java.util.function.BiFunction;
 import java.util.stream.Stream;
 
 import hu.bme.mit.theta.analysis.Action;
 import hu.bme.mit.theta.analysis.PartialOrd;
 import hu.bme.mit.theta.analysis.State;
+import hu.bme.mit.theta.common.container.factory.HashContainerFactory;
 
 /**
  * Represents an abstract reachability graph (ARG). See the related class
@@ -180,6 +187,56 @@ public final class ARG<S extends State, A extends Action> {
 	 */
 	public Stream<ArgTrace<S, A>> getCexs() {
 		return getUnsafeNodes().map(ArgTrace::to);
+	}
+
+	/**
+	 * Distances for argNodes which reached target even through covering.
+	 */
+	public Map<ArgNode<S,A>, Integer> getDistances() {
+		final Map<ArgNode<S,A>, Integer> distances = new HashContainerFactory().createMap();
+
+		getUnsafeNodes().forEach((final ArgNode<S, A> target) -> {
+			class DistanceSearchResult<S extends State, A extends Action> {
+				final public ArgNode<S,A> argNode;
+				final public int distance;
+				DistanceSearchResult(final ArgNode<S,A> argNode, final int distance) {
+					this.argNode = argNode;
+					this.distance = distance;
+				}
+			}
+
+			// arg without covering edges are trees
+			//		we walk up the cex trace and all other covered traces which are closed with nodes in cex trace or in any other covered trace
+			// use BFS so size of waitlist won't be too large
+			final Waitlist<DistanceSearchResult<S,A>> waitlist = FifoWaitlist.create();
+			waitlist.add(new DistanceSearchResult(target, 0));
+			distances.put(target, 0);
+
+			while (!waitlist.isEmpty()) {
+				final DistanceSearchResult distanceSearchResult = waitlist.remove();
+				final ArgNode<S, A> argNode = distanceSearchResult.argNode;
+
+				BiFunction<ArgNode<S,A>, Integer, Void> expand = (succArgNode, distanceNext) -> {
+					// cex traces and covered traces can have common nodes with other cex or covered traces
+					if (distances.containsKey(succArgNode) && distanceNext >= distances.get(succArgNode)){
+						return null;
+					}
+					waitlist.add(new DistanceSearchResult(succArgNode, distanceNext));
+					distances.put(succArgNode, distanceNext);
+					return null;
+				};
+
+				if (argNode.getInEdge().isPresent()){
+					final ArgNode<S, A> succArgNode = argNode.getInEdge().get().getSource();
+					expand.apply(succArgNode, distanceSearchResult.distance + 1);
+				}
+				argNode.getCoveredNodes().forEach((succArgNode)->{
+					expand.apply(succArgNode, distanceSearchResult.distance);
+				});
+			}
+		});
+
+		return distances;
 	}
 
 	/**

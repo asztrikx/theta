@@ -17,6 +17,7 @@ package hu.bme.mit.theta.sts.analysis.config;
 
 import static hu.bme.mit.theta.core.type.booltype.BoolExprs.Not;
 
+import java.util.function.Function;
 import java.util.function.Predicate;
 
 import hu.bme.mit.theta.analysis.Action;
@@ -31,6 +32,7 @@ import hu.bme.mit.theta.analysis.algorithm.SafetyChecker;
 import hu.bme.mit.theta.analysis.algorithm.cegar.Abstractor;
 import hu.bme.mit.theta.analysis.algorithm.cegar.BasicAbstractor;
 import hu.bme.mit.theta.analysis.algorithm.cegar.CegarChecker;
+import hu.bme.mit.theta.analysis.algorithm.cegar.CegarCheckerAstar;
 import hu.bme.mit.theta.analysis.algorithm.cegar.Refiner;
 import hu.bme.mit.theta.analysis.algorithm.cegar.abstractor.StopCriterions;
 import hu.bme.mit.theta.analysis.expl.ExplAnalysis;
@@ -78,7 +80,10 @@ public final class StsConfigBuilder {
 	public enum Search {
 		BFS(ArgNodeComparators.combine(ArgNodeComparators.targetFirst(), ArgNodeComparators.bfs())),
 
-		DFS(ArgNodeComparators.combine(ArgNodeComparators.targetFirst(), ArgNodeComparators.dfs()));
+		DFS(ArgNodeComparators.combine(ArgNodeComparators.targetFirst(), ArgNodeComparators.dfs())),
+
+		// TODO this is ugly
+		ASTAR(ArgNodeComparators.combine(ArgNodeComparators.targetFirst(), ArgNodeComparators.dfs()));
 
 		public final ArgNodeComparator comparator;
 
@@ -164,6 +169,7 @@ public final class StsConfigBuilder {
 			final Analysis<ExplState, ExprAction, ExplPrec> analysis = ExplAnalysis.create(solver, init);
 			final ArgBuilder<ExplState, StsAction, ExplPrec> argBuilder = ArgBuilder.create(lts, analysis, target,
 					true);
+			final Function<? super ExplState, ?> projection = s -> 0;
 			final Abstractor<ExplState, StsAction, ExplPrec> abstractor = BasicAbstractor.builder(argBuilder)
 					.waitlist(PriorityWaitlist.create(search.comparator))
 					.stopCriterion(refinement == Refinement.MULTI_SEQ ? StopCriterions.fullExploration()
@@ -198,8 +204,16 @@ public final class StsConfigBuilder {
 							domain + " domain does not support " + refinement + " refinement.");
 			}
 
-			final SafetyChecker<ExplState, StsAction, ExplPrec> checker = CegarChecker.create(abstractor, refiner,
-					logger);
+			SafetyChecker<ExplState, StsAction, ExplPrec> checker;
+			switch (search) {
+				case ASTAR:
+					checker = CegarCheckerAstar
+							.create(argBuilder, projection, refiner, analysis.getPartialOrd(), logger);
+					break;
+				default:
+					checker = CegarChecker.create(abstractor, refiner, logger);
+			}
+
 			final ExplPrec prec = initPrec.builder.createExpl(sts);
 			return StsConfig.create(checker, prec);
 
@@ -223,6 +237,7 @@ public final class StsConfigBuilder {
 					init);
 			final ArgBuilder<PredState, StsAction, PredPrec> argBuilder = ArgBuilder.create(lts, analysis, target,
 					true);
+			final Function<? super PredState, ?> projection = s -> 0;
 			final Abstractor<PredState, StsAction, PredPrec> abstractor = BasicAbstractor.builder(argBuilder)
 					.waitlist(PriorityWaitlist.create(search.comparator))
 					.stopCriterion(refinement == Refinement.MULTI_SEQ ? StopCriterions.fullExploration()
@@ -256,8 +271,15 @@ public final class StsConfigBuilder {
 						JoiningPrecRefiner.create(new ItpRefToPredPrec(predSplit.splitter)), pruneStrategy, logger);
 			}
 
-			final SafetyChecker<PredState, StsAction, PredPrec> checker = CegarChecker.create(abstractor, refiner,
-					logger);
+			SafetyChecker<PredState, StsAction, PredPrec> checker;
+			switch (search) {
+				case ASTAR:
+					checker = CegarCheckerAstar
+							.create(argBuilder, projection, refiner, analysis.getPartialOrd(), logger);
+					break;
+				default:
+					checker = CegarChecker.create(abstractor, refiner, logger);
+			}
 
 			final PredPrec prec = initPrec.builder.createPred(sts);
 			return StsConfig.create(checker, prec);

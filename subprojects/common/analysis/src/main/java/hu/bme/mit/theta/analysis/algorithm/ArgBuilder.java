@@ -28,6 +28,7 @@ import hu.bme.mit.theta.analysis.LTS;
 import hu.bme.mit.theta.analysis.Prec;
 import hu.bme.mit.theta.analysis.State;
 import hu.bme.mit.theta.analysis.TransFunc;
+import hu.bme.mit.theta.analysis.PartialOrd;
 
 /**
  * Helper class for building the ARG with a given analysis and precision.

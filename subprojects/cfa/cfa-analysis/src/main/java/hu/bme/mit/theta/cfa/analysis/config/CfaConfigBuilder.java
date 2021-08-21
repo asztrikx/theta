@@ -28,6 +28,7 @@ import hu.bme.mit.theta.analysis.algorithm.SafetyChecker;
 import hu.bme.mit.theta.analysis.algorithm.cegar.Abstractor;
 import hu.bme.mit.theta.analysis.algorithm.cegar.BasicAbstractor;
 import hu.bme.mit.theta.analysis.algorithm.cegar.CegarChecker;
+import hu.bme.mit.theta.analysis.algorithm.cegar.CegarCheckerAstar;
 import hu.bme.mit.theta.analysis.algorithm.cegar.Refiner;
 import hu.bme.mit.theta.analysis.algorithm.cegar.abstractor.StopCriterions;
 import hu.bme.mit.theta.analysis.expl.ExplPrec;
@@ -61,6 +62,8 @@ import hu.bme.mit.theta.common.logging.NullLogger;
 import hu.bme.mit.theta.solver.ItpSolver;
 import hu.bme.mit.theta.solver.SolverFactory;
 
+import java.util.function.Function;
+
 public class CfaConfigBuilder {
 	public enum Domain {
 		EXPL, PRED_BOOL, PRED_CART, PRED_SPLIT
@@ -87,6 +90,14 @@ public class CfaConfigBuilder {
 		},
 
 		ERR {
+			@Override
+			public ArgNodeComparator getComp(final CFA cfa, final CFA.Loc errLoc) {
+				return new DistToErrComparator(cfa, errLoc);
+			}
+		},
+
+		ASTAR {
+			// TODO this is ugly
 			@Override
 			public ArgNodeComparator getComp(final CFA cfa, final CFA.Loc errLoc) {
 				return new DistToErrComparator(cfa, errLoc);
@@ -233,8 +244,9 @@ public class CfaConfigBuilder {
 					.create(cfa.getInitLoc(), ExplStmtAnalysis.create(solver, True(), maxEnum));
 			final ArgBuilder<CfaState<ExplState>, CfaAction, CfaPrec<ExplPrec>> argBuilder = ArgBuilder.create(lts,
 					analysis, s -> s.getLoc().equals(errLoc), true);
+			final Function<? super CfaState<ExplState>, ?> projection = CfaState::getLoc;
 			final Abstractor<CfaState<ExplState>, CfaAction, CfaPrec<ExplPrec>> abstractor = BasicAbstractor
-					.builder(argBuilder).projection(CfaState::getLoc)
+					.builder(argBuilder).projection(projection)
 					.waitlist(PriorityWaitlist.create(search.getComp(cfa, errLoc)))
 					.stopCriterion(refinement == Refinement.MULTI_SEQ ? StopCriterions.fullExploration()
 							: StopCriterions.firstCex()).logger(logger).build();
@@ -335,8 +347,16 @@ public class CfaConfigBuilder {
 							domain + " domain does not support " + refinement + " refinement.");
 			}
 
-			final SafetyChecker<CfaState<ExplState>, CfaAction, CfaPrec<ExplPrec>> checker = CegarChecker
-					.create(abstractor, refiner, logger);
+			SafetyChecker<CfaState<ExplState>, CfaAction, CfaPrec<ExplPrec>> checker;
+			switch (search) {
+				case ASTAR:
+					checker = CegarCheckerAstar
+							.create(argBuilder, projection, refiner, analysis.getPartialOrd(), logger);
+					break;
+				default:
+					checker = CegarChecker
+							.create(abstractor, refiner, logger);
+			}
 
 			CfaPrec<ExplPrec> prec;
 
@@ -373,8 +393,9 @@ public class CfaConfigBuilder {
 					.create(cfa.getInitLoc(), PredAnalysis.create(solver, predAbstractor, True()));
 			final ArgBuilder<CfaState<PredState>, CfaAction, CfaPrec<PredPrec>> argBuilder = ArgBuilder.create(lts,
 					analysis, s -> s.getLoc().equals(errLoc), true);
+			final Function<? super CfaState<PredState>, ?> projection = CfaState::getLoc;
 			final Abstractor<CfaState<PredState>, CfaAction, CfaPrec<PredPrec>> abstractor = BasicAbstractor
-					.builder(argBuilder).projection(CfaState::getLoc)
+					.builder(argBuilder).projection(projection)
 					.waitlist(PriorityWaitlist.create(search.getComp(cfa, errLoc)))
 					.stopCriterion(refinement == Refinement.MULTI_SEQ ? StopCriterions.fullExploration()
 							: StopCriterions.firstCex()).logger(logger).build();
@@ -435,8 +456,16 @@ public class CfaConfigBuilder {
 						precGranularity.createRefiner(refToPrec), pruneStrategy, logger);
 			}
 
-			final SafetyChecker<CfaState<PredState>, CfaAction, CfaPrec<PredPrec>> checker = CegarChecker
-					.create(abstractor, refiner, logger);
+			SafetyChecker<CfaState<PredState>, CfaAction, CfaPrec<PredPrec>> checker;
+			switch (search) {
+				case ASTAR:
+					checker = CegarCheckerAstar
+							.create(argBuilder, projection, refiner, analysis.getPartialOrd(), logger);
+					break;
+				default:
+					checker = CegarChecker
+							.create(abstractor, refiner, logger);
+			}
 
 			CfaPrec<PredPrec> prec;
 
