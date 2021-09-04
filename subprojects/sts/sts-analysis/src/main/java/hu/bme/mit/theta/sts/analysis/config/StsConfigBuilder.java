@@ -32,7 +32,7 @@ import hu.bme.mit.theta.analysis.algorithm.SafetyChecker;
 import hu.bme.mit.theta.analysis.algorithm.cegar.Abstractor;
 import hu.bme.mit.theta.analysis.algorithm.cegar.BasicAbstractor;
 import hu.bme.mit.theta.analysis.algorithm.cegar.CegarChecker;
-import hu.bme.mit.theta.analysis.algorithm.cegar.CegarCheckerAstar;
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarCegarChecker;
 import hu.bme.mit.theta.analysis.algorithm.cegar.Refiner;
 import hu.bme.mit.theta.analysis.algorithm.cegar.abstractor.StopCriterions;
 import hu.bme.mit.theta.analysis.expl.ExplAnalysis;
@@ -207,7 +207,7 @@ public final class StsConfigBuilder {
 			SafetyChecker<ExplState, StsAction, ExplPrec> checker;
 			switch (search) {
 				case ASTAR:
-					checker = CegarCheckerAstar
+					checker = AstarCegarChecker
 							.create(argBuilder, projection, refiner, analysis.getPartialOrd(), logger);
 					break;
 				default:
@@ -274,7 +274,7 @@ public final class StsConfigBuilder {
 			SafetyChecker<PredState, StsAction, PredPrec> checker;
 			switch (search) {
 				case ASTAR:
-					checker = CegarCheckerAstar
+					checker = AstarCegarChecker
 							.create(argBuilder, projection, refiner, analysis.getPartialOrd(), logger);
 					break;
 				default:

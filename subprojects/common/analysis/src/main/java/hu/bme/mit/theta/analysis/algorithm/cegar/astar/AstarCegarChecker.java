@@ -13,7 +13,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package hu.bme.mit.theta.analysis.algorithm.cegar;
+package hu.bme.mit.theta.analysis.algorithm.cegar.astar;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
@@ -30,8 +30,13 @@ import hu.bme.mit.theta.analysis.algorithm.ARG;
 import hu.bme.mit.theta.analysis.algorithm.SafetyChecker;
 import hu.bme.mit.theta.analysis.algorithm.SafetyResult;
 import hu.bme.mit.theta.analysis.algorithm.ArgBuilder;
+import hu.bme.mit.theta.analysis.algorithm.cegar.Abstractor;
+import hu.bme.mit.theta.analysis.algorithm.cegar.AbstractorResult;
+import hu.bme.mit.theta.analysis.algorithm.cegar.BasicAbstractor;
+import hu.bme.mit.theta.analysis.algorithm.cegar.Refiner;
+import hu.bme.mit.theta.analysis.algorithm.cegar.RefinerResult;
+import hu.bme.mit.theta.analysis.algorithm.cegar.CegarStatistics;
 import hu.bme.mit.theta.analysis.algorithm.cegar.abstractor.StopCriterions;
-import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarComparator;
 import hu.bme.mit.theta.analysis.waitlist.PriorityWaitlist;
 import hu.bme.mit.theta.common.Utils;
 import hu.bme.mit.theta.common.logging.Logger;
@@ -44,7 +49,7 @@ import hu.bme.mit.theta.common.logging.Logger.Level;
  * check counterexamples and refine them if needed. It also provides certain
  * statistics about its execution.
  */
-public final class CegarCheckerAstar<S extends State, A extends Action, P extends Prec> implements SafetyChecker<S, A, P> {
+public final class AstarCegarChecker<S extends State, A extends Action, P extends Prec> implements SafetyChecker<S, A, P> {
 	private final Abstractor<S, A, P> abstractor;
 	private final Refiner<S, A, P> refiner;
 	private final Logger logger;
@@ -55,7 +60,7 @@ public final class CegarCheckerAstar<S extends State, A extends Action, P extend
 	private final int depthWeight = 1;
 	private final int heuristicsWeight = 2;
 
-	private CegarCheckerAstar(
+	private AstarCegarChecker(
 			final ArgBuilder<S, A, P> argBuilder, final Function<? super S, ?> projection, final Refiner<S, A, P> refiner,
 			final PartialOrd<S> partialOrd, final Logger logger
 	) {
@@ -73,16 +78,16 @@ public final class CegarCheckerAstar<S extends State, A extends Action, P extend
 		this.logger = checkNotNull(logger);
 	}
 
-	public static <S extends State, A extends Action, P extends Prec> CegarCheckerAstar<S, A, P> create(
+	public static <S extends State, A extends Action, P extends Prec> AstarCegarChecker<S, A, P> create(
 			final ArgBuilder<S, A, P> argBuilder, final Function<? super S, ?> projection, final Refiner<S, A, P> refiner,
 			final PartialOrd<S> partialOrd) {
-		return new CegarCheckerAstar<>(argBuilder, projection, refiner, partialOrd, NullLogger.getInstance());
+		return new AstarCegarChecker<>(argBuilder, projection, refiner, partialOrd, NullLogger.getInstance());
 	}
 
-	public static <S extends State, A extends Action, P extends Prec> CegarCheckerAstar<S, A, P> create(
+	public static <S extends State, A extends Action, P extends Prec> AstarCegarChecker<S, A, P> create(
 			final ArgBuilder<S, A, P> argBuilder, final Function<? super S, ?> projection, final Refiner<S, A, P> refiner,
 			final PartialOrd<S> partialOrd, final Logger logger) {
-		return new CegarCheckerAstar<>(argBuilder, projection, refiner, partialOrd, logger);
+		return new AstarCegarChecker<>(argBuilder, projection, refiner, partialOrd, logger);
 	}
 
 	@Override

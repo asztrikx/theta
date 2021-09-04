@@ -5,6 +5,7 @@ import hu.bme.mit.theta.analysis.Action;
 import hu.bme.mit.theta.analysis.PartialOrd;
 import hu.bme.mit.theta.analysis.State;
 import hu.bme.mit.theta.analysis.algorithm.ArgNode;
+import hu.bme.mit.theta.analysis.algorithm.cegar.AstarNode;
 import hu.bme.mit.theta.analysis.reachedset.Partition;
 import hu.bme.mit.theta.common.container.factory.HashContainerFactory;
 
@@ -14,7 +15,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 
 public final class DistanceHeuristicStore<S extends State, A extends Action> {
-    private final Map<ArgNode<S, A>, Integer> distanceHeuristics = new HashContainerFactory().createMap();
+    private final Map<ArgNode<S, A>, AstarNode<S, A>> distanceHeuristics = new HashContainerFactory().createMap();
     Partition<ArgNode<S, A>, ?> indexer;
     final Function<? super S, ?> projection;
     private final PartialOrd<S> partialOrd;
@@ -30,19 +31,18 @@ public final class DistanceHeuristicStore<S extends State, A extends Action> {
     }
 
     // put saves argNode with specified distance to target
-    public void put(final ArgNode<S, A> argNode, final int distance) {
-        distanceHeuristics.put(argNode, distance);
+    public void put(final ArgNode<S, A> argNode, final AstarNode<S, A> astarNode) {
+        distanceHeuristics.put(argNode, astarNode);
         indexer.add(argNode);
     }
 
-    public void putAll(final Map<ArgNode<S, A>, Integer> distances) {
-        distanceHeuristics.putAll(distances);
-        indexer.addAll(distances.keySet());
+    public void putAll(final Map<ArgNode<S, A>, AstarNode<S, A>> astarNodeMap) {
+        distanceHeuristics.putAll(astarNodeMap);
+        indexer.addAll(astarNodeMap.keySet());
     }
 
-    // get searches for an ArgNode which is <= then argNode and returns its distance.
-    // If no ArgNode is suitable then -1 is returned.
-    public int get(final ArgNode<S, A> argNode) {
+    // get searches for an ArgNode which is <= then argNode and returns its AstarNode.
+    public AstarNode<S, A> get(final ArgNode<S, A> argNode) {
         // get keys which are <= then current key
         final AtomicInteger distance = new AtomicInteger(-1);
 

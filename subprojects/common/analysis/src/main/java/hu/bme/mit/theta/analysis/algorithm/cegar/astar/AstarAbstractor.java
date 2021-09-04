@@ -16,6 +16,7 @@
 package hu.bme.mit.theta.analysis.algorithm.cegar;
 
 import hu.bme.mit.theta.analysis.Action;
+import hu.bme.mit.theta.analysis.PartialOrd;
 import hu.bme.mit.theta.analysis.Prec;
 import hu.bme.mit.theta.analysis.State;
 import hu.bme.mit.theta.analysis.algorithm.ARG;
@@ -31,9 +32,13 @@ import hu.bme.mit.theta.common.logging.Logger;
 import hu.bme.mit.theta.common.logging.Logger.Level;
 import hu.bme.mit.theta.common.logging.NullLogger;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.List;
 import java.util.function.Function;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.base.Preconditions.checkState;
@@ -42,12 +47,12 @@ import static com.google.common.base.Preconditions.checkState;
  * Basic implementation for the abstractor, relying on an ArgBuilder.
  */
 public final class AstarAbstractor<S extends State, A extends Action, P extends Prec> implements Abstractor<S, A, P> {
-
 	private final ArgBuilder<S, A, P> argBuilder;
 	private final Function<? super S, ?> projection;
 	private final Waitlist<ArgNode<S, A>> waitlist;
 	private final StopCriterion<S, A> stopCriterion;
 	private final Logger logger;
+	private final PartialOrd<S> partialOrd;
 
 	private AstarAbstractor(final ArgBuilder<S, A, P> argBuilder, final Function<? super S, ?> projection,
                             final Waitlist<ArgNode<S, A>> waitlist, final StopCriterion<S, A> stopCriterion, final Logger logger) {
@@ -100,6 +105,19 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 				close(node, reachedSet.get(node));
 				if (!node.isSubsumed() && !node.isTarget()) {
 					newNodes = argBuilder.expand(node, prec);
+					List<AstarNode<S, A>> newAstarNodes = new ArrayList<>();
+
+					newNodes.forEach(newArgNode -> {
+						AstarNode<S, A> newAstarNode;
+
+						// find descendant
+						List<ArgNode<S, A>> descendantArgNodeCandidates = node.getSuccNodes().filter(descendantArgNodeCandidate -> partialOrd.isLeq(descendantArgNodeCandidate.getState(), newArgNode.getState())).collect(Collectors.toList());
+						assert descendantArgNodeCandidates.size() == 1;
+
+						newAstarNode = AstarNode.create(newArgNode, descendantArgNodeCandidates[0]);
+						newAstarNodes.add(newAstarNode);
+					});
+
 					reachedSet.addAll(newNodes);
 					waitlist.addAll(newNodes);
 				}

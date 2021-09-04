@@ -7,7 +7,7 @@ import hu.bme.mit.theta.analysis.algorithm.SafetyChecker;
 import hu.bme.mit.theta.analysis.algorithm.cegar.Abstractor;
 import hu.bme.mit.theta.analysis.algorithm.cegar.BasicAbstractor;
 import hu.bme.mit.theta.analysis.algorithm.cegar.CegarChecker;
-import hu.bme.mit.theta.analysis.algorithm.cegar.CegarCheckerAstar;
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarCegarChecker;
 import hu.bme.mit.theta.analysis.algorithm.cegar.Refiner;
 import hu.bme.mit.theta.analysis.algorithm.cegar.abstractor.StopCriterions;
 import hu.bme.mit.theta.analysis.expl.*;
@@ -211,7 +211,7 @@ public class XstsConfigBuilder {
 			SafetyChecker<XstsState<ExplState>, XstsAction, ExplPrec> checker;
 			switch (search) {
 				case ASTAR:
-					checker = CegarCheckerAstar.create(argBuilder, projection, refiner, analysis.getPartialOrd(), logger);
+					checker = AstarCegarChecker.create(argBuilder, projection, refiner, analysis.getPartialOrd(), logger);
 					break;
 				default:
 					checker = CegarChecker.create(abstractor, refiner, logger);
@@ -285,7 +285,7 @@ public class XstsConfigBuilder {
 			SafetyChecker<XstsState<PredState>, XstsAction, PredPrec> checker;
 			switch (search) {
 				case ASTAR:
-					checker = CegarCheckerAstar.create(argBuilder, projection, refiner, analysis.getPartialOrd(), logger);
+					checker = AstarCegarChecker.create(argBuilder, projection, refiner, analysis.getPartialOrd(), logger);
 					break;
 				default:
 					checker = CegarChecker.create(abstractor, refiner, logger);
@@ -375,7 +375,7 @@ public class XstsConfigBuilder {
 			final SafetyChecker<XstsState<Prod2State<ExplState, PredState>>, XstsAction, Prod2Prec<ExplPrec, PredPrec>> checker;
 			switch (search) {
 				case ASTAR:
-					checker = CegarCheckerAstar.create(argBuilder, projection, refiner, analysis.getPartialOrd(), logger);
+					checker = AstarCegarChecker.create(argBuilder, projection, refiner, analysis.getPartialOrd(), logger);
 					break;
 				default:
 					checker = CegarChecker.create(abstractor, refiner, logger);
