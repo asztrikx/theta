@@ -50,7 +50,7 @@ public final class AstarComparator<S extends State, A extends Action> implements
     public void store(final ARG<S, A> arg){
         // clear previous results as currents have better refinement so they are more accurate
         distanceHeuristicStore.clear();
-        final Map<ArgNode<S,A>, Integer> distances = arg.getDistances();
+        final Map<ArgNode<S, A>, Integer> distances = arg.getDistances();
         distanceHeuristicStore.putAll(distances);
     }
 }

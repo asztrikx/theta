@@ -14,7 +14,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 
 public final class DistanceHeuristicStore<S extends State, A extends Action> {
-    private final Map<ArgNode<S,A>, Integer> distanceHeuristics = new HashContainerFactory().createMap();
+    private final Map<ArgNode<S, A>, Integer> distanceHeuristics = new HashContainerFactory().createMap();
     Partition<ArgNode<S, A>, ?> indexer;
     final Function<? super S, ?> projection;
     private final PartialOrd<S> partialOrd;
@@ -35,7 +35,7 @@ public final class DistanceHeuristicStore<S extends State, A extends Action> {
         indexer.add(argNode);
     }
 
-    public void putAll(final Map<ArgNode<S,A>, Integer> distances) {
+    public void putAll(final Map<ArgNode<S, A>, Integer> distances) {
         distanceHeuristics.putAll(distances);
         indexer.addAll(distances.keySet());
     }
@@ -60,7 +60,7 @@ public final class DistanceHeuristicStore<S extends State, A extends Action> {
         return distance.get();
     }
 
-    public boolean contains(final ArgNode<S,A> argNode){
+    public boolean contains(final ArgNode<S, A> argNode){
         final List<ArgNode<S, A>> argNodeCandidates = indexer.get(argNode);
         return argNodeCandidates.size() != 0;
     }
