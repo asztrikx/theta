@@ -20,6 +20,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.base.Preconditions.checkState;
 import static java.util.stream.Collectors.toList;
 
+import java.io.Serializable;
 import java.util.Collection;
 
 import hu.bme.mit.theta.analysis.waitlist.FifoWaitlist;
@@ -41,7 +42,7 @@ import hu.bme.mit.theta.common.container.factory.HashContainerFactory;
  * Represents an abstract reachability graph (ARG). See the related class
  * ArgBuilder.
  */
-public final class ARG<S extends State, A extends Action> {
+public final class ARG<S extends State, A extends Action> implements Serializable {
 
 	private final Collection<ArgNode<S, A>> initNodes;
 	boolean initialized; // Set by ArgBuilder
@@ -192,7 +193,7 @@ public final class ARG<S extends State, A extends Action> {
 	/**
 	 * Distances for argNodes which reached target even through covering.
 	 */
-	public Map<ArgNode<S,A>, Integer> getDistances() {
+	public Map<ArgNode<S, A>, Integer> getDistances() {
 		final Map<ArgNode<S,A>, Integer> distances = new HashContainerFactory().createMap();
 
 		getUnsafeNodes().forEach((final ArgNode<S, A> target) -> {

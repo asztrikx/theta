@@ -17,6 +17,7 @@ package hu.bme.mit.theta.analysis.algorithm.cegar.astar;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
+import java.io.*;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
@@ -26,18 +27,13 @@ import hu.bme.mit.theta.analysis.Action;
 import hu.bme.mit.theta.analysis.Prec;
 import hu.bme.mit.theta.analysis.State;
 import hu.bme.mit.theta.analysis.PartialOrd;
-import hu.bme.mit.theta.analysis.algorithm.ARG;
-import hu.bme.mit.theta.analysis.algorithm.SafetyChecker;
-import hu.bme.mit.theta.analysis.algorithm.SafetyResult;
-import hu.bme.mit.theta.analysis.algorithm.ArgBuilder;
+import hu.bme.mit.theta.analysis.algorithm.*;
 import hu.bme.mit.theta.analysis.algorithm.cegar.Abstractor;
 import hu.bme.mit.theta.analysis.algorithm.cegar.AbstractorResult;
-import hu.bme.mit.theta.analysis.algorithm.cegar.BasicAbstractor;
 import hu.bme.mit.theta.analysis.algorithm.cegar.Refiner;
 import hu.bme.mit.theta.analysis.algorithm.cegar.RefinerResult;
 import hu.bme.mit.theta.analysis.algorithm.cegar.CegarStatistics;
 import hu.bme.mit.theta.analysis.algorithm.cegar.abstractor.StopCriterions;
-import hu.bme.mit.theta.analysis.waitlist.PriorityWaitlist;
 import hu.bme.mit.theta.common.Utils;
 import hu.bme.mit.theta.common.logging.Logger;
 import hu.bme.mit.theta.common.logging.NullLogger;
@@ -54,23 +50,37 @@ public final class AstarCegarChecker<S extends State, A extends Action, P extend
 	private final Refiner<S, A, P> refiner;
 	private final Logger logger;
 
-	// a* specific
-	// TODO should these change during run? or event should there be local versions
-	private final AstarComparator<S, A> astarComparator;
-	private final int depthWeight = 1;
-	private final int heuristicsWeight = 2;
+	// TODO parent inf use this information out
+	// TODO 	AstarArgStore X
+	// TODO 	AstarArg X
+	// TODO 	AstarComparator X
+	// TODO 	AstarNode X
+	// TODO 	AstarCegarChecker X
+	// TODO 	AstarAbstractor dont add to waitlist, comment break if only inf in waitlist (only init nodes can cause this?)
+
+	// Last checks
+	// TODO fix intellij yellow warnings
+	// TODO using streams instead of list when can
+	// TODO final for func arguments
+	// TODO checkNotNull for func arguments
+	// TODO use Collection (where no indexing required)
+	// TODO root log etc
+	// TODO waitlist as Waitlist<AstarNode>
+	// TODO create common store for argnodes until they modified (copy on write)
+	// TODO fix imports
 
 	private AstarCegarChecker(
 			final ArgBuilder<S, A, P> argBuilder, final Function<? super S, ?> projection, final Refiner<S, A, P> refiner,
 			final PartialOrd<S> partialOrd, final Logger logger
 	) {
-		astarComparator = new AstarComparator(partialOrd, projection, depthWeight, heuristicsWeight);
-		final Abstractor<S, A, P> abstractor = BasicAbstractor
+		final AstarArgStore<S, A, P> astarArgStore = AstarArgStore.create(partialOrd);
+
+		final Abstractor<S, A, P> abstractor = AstarAbstractor
 			.builder(argBuilder)
 			.projection(projection)
-			.waitlist(PriorityWaitlist.create(astarComparator))
 			.stopCriterion(StopCriterions.firstCex())
 			.logger(logger)
+			.AstarArgStore(astarArgStore)
 			.build();
 
 		this.abstractor = checkNotNull(abstractor);
@@ -98,7 +108,7 @@ public final class AstarCegarChecker<S extends State, A extends Action, P extend
 		long refinerTime = 0;
 		RefinerResult<S, A, P> refinerResult = null;
 		AbstractorResult abstractorResult = null;
-		final ARG<S, A> arg = abstractor.createArg();
+		ARG<S, A> arg = abstractor.createArg();
 		P prec = initPrec;
 		int iteration = 0;
 		do {
@@ -112,7 +122,22 @@ public final class AstarCegarChecker<S extends State, A extends Action, P extend
 			logger.write(Level.MAINSTEP, "| Checking abstraction done, result: %s%n", abstractorResult);
 
 			//System.out.println(GraphvizWriter.getInstance().writeString(ArgVisualizer.getDefault().visualize(arg)));
-			astarComparator.store(arg);
+
+			// TODO better way to deepcopy ARG
+			try {
+				// serialize
+				ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+				ObjectOutputStream objectOutputStream = new ObjectOutputStream(byteArrayOutputStream);
+				objectOutputStream.writeObject(this);
+
+				// deserialize
+				ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(byteArrayOutputStream.toByteArray());
+				ObjectInputStream objectInputStream = new ObjectInputStream(byteArrayInputStream);
+				arg = (ARG<S, A>) objectInputStream.readObject();
+			} catch (IOException | ClassNotFoundException e) {
+				// TODO we must catch it, is it good?
+				e.printStackTrace();
+			}
 
 			if (abstractorResult.isUnsafe()) {
 				logger.write(Level.MAINSTEP, "| Refining abstraction...%n");

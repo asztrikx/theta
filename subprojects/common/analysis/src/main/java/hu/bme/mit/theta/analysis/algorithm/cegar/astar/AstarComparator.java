@@ -1,57 +1,88 @@
 package hu.bme.mit.theta.analysis.algorithm.cegar.astar;
 
+import static com.google.common.base.Preconditions.checkNotNull;
+
 import hu.bme.mit.theta.analysis.Action;
-import hu.bme.mit.theta.analysis.PartialOrd;
+import hu.bme.mit.theta.analysis.Prec;
 import hu.bme.mit.theta.analysis.State;
-import hu.bme.mit.theta.analysis.algorithm.ARG;
 import hu.bme.mit.theta.analysis.algorithm.ArgNode;
 
 import java.util.Comparator;
-import java.util.Map;
-import java.util.function.Function;
 
-public final class AstarComparator<S extends State, A extends Action> implements Comparator<ArgNode<S, A>> {
-    protected final PartialOrd<S> partialOrd;
+public final class AstarComparator<S extends State, A extends Action, P extends Prec> implements Comparator<ArgNode<S, A>> {
     private final int depthWeight;
     private final int heuristicsWeight;
-    private final DistanceHeuristicStore distanceHeuristicStore;
+    private final AstarArg<S, A, P> astarArg;
 
-    public AstarComparator(final PartialOrd<S> partialOrd, final Function<? super S, ?> projection, final int depthWeight, final int heuristicsWeight){
-        this.partialOrd = partialOrd;
-        this.distanceHeuristicStore = DistanceHeuristicStore.create(projection, partialOrd);
+    private AstarComparator(final AstarArg<S, A, P> astarArg, final int depthWeight, final int heuristicsWeight){
+        this.astarArg = astarArg;
         this.depthWeight = depthWeight;
         this.heuristicsWeight = heuristicsWeight;
     }
 
-    public int compare(final ArgNode<S, A> argNode1, final ArgNode<S, A> argNode2) {
-        final boolean distance1Exists = distanceHeuristicStore.contains(argNode1);
-        final boolean distance2Exists = distanceHeuristicStore.contains(argNode2);
+    public static <S extends State, A extends Action, P extends Prec> AstarComparator<S, A, P> create(
+            final AstarArg<S, A, P> astarArg,
+            final int depthWeight,
+            final int heuristicsWeight
+    ) {
+        return new AstarComparator<>(astarArg, depthWeight, heuristicsWeight);
+    }
 
-        // not reachable in more abstract domain => won't be reachable in refined => give 'infinite' weight
-        if (!distance1Exists && !distance2Exists) {
+    @Override
+    public int compare(final ArgNode<S, A> argNode1, final ArgNode<S, A> argNode2) {
+        final AstarNode<S, A> astarNode1 = checkNotNull(astarArg.get(argNode1));
+        final AstarNode<S, A> astarNode2 = checkNotNull(astarArg.get(argNode2));
+
+        // one heuristic is not available <=> other heuristic is not available
+        assert astarNode1.state != AstarNode.State.DESCENDANT_HEURISTIC_UNAVAILABLE && astarNode2.state != AstarNode.State.DESCENDANT_HEURISTIC_UNAVAILABLE ||
+                astarNode1.state == AstarNode.State.DESCENDANT_HEURISTIC_UNAVAILABLE && astarNode2.state == AstarNode.State.DESCENDANT_HEURISTIC_UNAVAILABLE;
+
+        // no heuristic from previous arg as no previous arg exists
+        //  because of previous assert we only need to check one AstarNode's state
+        if (astarNode1.state == AstarNode.State.DESCENDANT_HEURISTIC_UNAVAILABLE) {
+            // calculate bfs weights
+            final int weight1 = depthWeight * argNode1.getDepth();
+            final int weight2 = depthWeight * argNode2.getDepth();
+
+            return weight1 - weight2;
+        }
+
+        // descendant's heuristics should be known
+        // TODO getheuristics for descendant should be called here (for later not exact heuristics)
+        assert astarNode1.state != AstarNode.State.DESCENDANT_HEURISTIC_UNKNOWN;
+        assert astarNode2.state != AstarNode.State.DESCENDANT_HEURISTIC_UNKNOWN;
+
+        // use descendants to get heuristics
+        final AstarNode<S, A> descendant1 = astarNode1.descendant;
+        final AstarNode<S, A> descendant2 = astarNode2.descendant;
+
+        // not reachable in more abstract domain => won't be reachable in refined => treat as 'infinite' weight
+        final boolean unreachable1 = descendant1.state == AstarNode.State.HEURISTIC_INFINITE;
+        final boolean unreachable2 = descendant2.state == AstarNode.State.HEURISTIC_INFINITE;
+        if (unreachable1 && unreachable2) {
             return 0;
-        } else if (!distance1Exists) {
+        } else if (unreachable1) {
             return 1;
-        } else if (!distance2Exists) {
+        } else if (unreachable2) {
             return -1;
         }
 
-        final int distance1 = distanceHeuristicStore.get(argNode1);
-        final int distance2 = distanceHeuristicStore.get(argNode2);
+        // catch missing State handle for later developments
+        if (descendant1.state != AstarNode.State.HEURISTIC_EXACT) {
+            throw new IllegalArgumentException(AstarNode.IllegalState);
+        }
+        if (descendant2.state != AstarNode.State.HEURISTIC_EXACT) {
+            throw new IllegalArgumentException(AstarNode.IllegalState);
+        }
+
+        final int distanceToError1 = checkNotNull(descendant1.distanceToError);
+        final int distanceToError2 = checkNotNull(descendant2.distanceToError);
 
         // calculate a* heuristics
-        final int weight1 = depthWeight * argNode1.getDepth() + heuristicsWeight * distance1;
-        final int weight2 = depthWeight * argNode2.getDepth() + heuristicsWeight * distance2;
+        final int weight1 = depthWeight * argNode1.getDepth() + heuristicsWeight * distanceToError1;
+        final int weight2 = depthWeight * argNode2.getDepth() + heuristicsWeight * distanceToError2;
 
         return weight1 - weight2;
-    }
-
-    // Keeps track of previous states to use heuristics in next arg creation
-    public void store(final ARG<S, A> arg){
-        // clear previous results as currents have better refinement so they are more accurate
-        distanceHeuristicStore.clear();
-        final Map<ArgNode<S, A>, Integer> distances = arg.getDistances();
-        distanceHeuristicStore.putAll(distances);
     }
 }
 

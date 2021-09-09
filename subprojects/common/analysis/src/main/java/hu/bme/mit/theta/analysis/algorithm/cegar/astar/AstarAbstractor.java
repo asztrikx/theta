@@ -13,32 +13,32 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package hu.bme.mit.theta.analysis.algorithm.cegar;
+package hu.bme.mit.theta.analysis.algorithm.cegar.astar;
 
 import hu.bme.mit.theta.analysis.Action;
-import hu.bme.mit.theta.analysis.PartialOrd;
 import hu.bme.mit.theta.analysis.Prec;
 import hu.bme.mit.theta.analysis.State;
 import hu.bme.mit.theta.analysis.algorithm.ARG;
 import hu.bme.mit.theta.analysis.algorithm.ArgBuilder;
+import hu.bme.mit.theta.analysis.algorithm.ArgEdge;
 import hu.bme.mit.theta.analysis.algorithm.ArgNode;
+import hu.bme.mit.theta.analysis.algorithm.cegar.Abstractor;
+import hu.bme.mit.theta.analysis.algorithm.cegar.AbstractorResult;
 import hu.bme.mit.theta.analysis.algorithm.cegar.abstractor.StopCriterion;
 import hu.bme.mit.theta.analysis.algorithm.cegar.abstractor.StopCriterions;
 import hu.bme.mit.theta.analysis.reachedset.Partition;
-import hu.bme.mit.theta.analysis.waitlist.FifoWaitlist;
+import hu.bme.mit.theta.analysis.waitlist.PriorityWaitlist;
 import hu.bme.mit.theta.analysis.waitlist.Waitlist;
-import hu.bme.mit.theta.common.Utils;
 import hu.bme.mit.theta.common.logging.Logger;
 import hu.bme.mit.theta.common.logging.Logger.Level;
 import hu.bme.mit.theta.common.logging.NullLogger;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.base.Preconditions.checkState;
@@ -49,18 +49,26 @@ import static com.google.common.base.Preconditions.checkState;
 public final class AstarAbstractor<S extends State, A extends Action, P extends Prec> implements Abstractor<S, A, P> {
 	private final ArgBuilder<S, A, P> argBuilder;
 	private final Function<? super S, ?> projection;
-	private final Waitlist<ArgNode<S, A>> waitlist;
+	// can't have waitlist common in AstarAbstractor instance as checkFromNode is recursively called
 	private final StopCriterion<S, A> stopCriterion;
 	private final Logger logger;
-	private final PartialOrd<S> partialOrd;
+	private final AstarArgStore<S, A, P> astarArgStore;
 
-	private AstarAbstractor(final ArgBuilder<S, A, P> argBuilder, final Function<? super S, ?> projection,
-                            final Waitlist<ArgNode<S, A>> waitlist, final StopCriterion<S, A> stopCriterion, final Logger logger) {
+	// a* specific
+	// TODO should these change during run? or event should there be local versions
+	private final int depthWeight = 1;
+	private final int heuristicsWeight = 2;
+
+	private AstarAbstractor(final ArgBuilder<S, A, P> argBuilder,
+							final Function<? super S, ?> projection,
+							final StopCriterion<S, A> stopCriterion,
+							final Logger logger,
+							final AstarArgStore<S, A, P> astarArgStore) {
 		this.argBuilder = checkNotNull(argBuilder);
 		this.projection = checkNotNull(projection);
-		this.waitlist = checkNotNull(waitlist);
 		this.stopCriterion = checkNotNull(stopCriterion);
 		this.logger = checkNotNull(logger);
+		this.astarArgStore = checkNotNull(astarArgStore);
 	}
 
 	public static <S extends State, A extends Action, P extends Prec> Builder<S, A, P> builder(
@@ -73,15 +81,30 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		return argBuilder.createArg();
 	}
 
-	@Override
-	public AbstractorResult check(final ARG<S, A> arg, final P prec) {
-		checkNotNull(arg);
+	// checkFromNode
+	//	if root is null then new arg will be created
+	public AbstractorResult checkFromNode(final AstarArg<S, A, P> astarArg, final P prec, final ArgNode<S, A> root) {
+		ARG<S, A> arg = astarArg.arg;
 		checkNotNull(prec);
 		logger.write(Level.DETAIL, "|  |  Precision: %s%n", prec);
 
-		if (!arg.isInitialized()) {
+		// TODO what if prune deletes an init node, is it possible?
+		// TODO 	handle partial (pruned) arg given to here for new AstarArg
+		assert root == null || arg.isInitialized();
+		if (root == null && !arg.isInitialized()) {
 			logger.write(Level.SUBSTEP, "|  |  (Re)initializing ARG...");
 			argBuilder.init(arg, prec);
+
+			// create AstarNodes for init ArgNodes
+			//	output of argBuilder.init is not used for clarity TODO ?
+			List<ArgNode<S, A>> initArgNodes = arg.getInitNodes().collect(Collectors.toList());
+			// on first arg it will be empty
+			//	putAllFromCandidates sets descendant null
+			//	and sets state to DESCENDANT_HEURISTIC_UNAVAILABLE
+			Collection<AstarNode<S, A>> initAstarNodeCandidates = astarArg.descendant.getAllInitNode();
+			Collection<AstarNode<S, A>> initAstarNodes = astarArg.putAllFromCandidates(initArgNodes, initAstarNodeCandidates, true);
+			initAstarNodes.forEach(astarNode -> calculateHeuristic(astarNode.descendant, astarArg.descendant));
+
 			logger.write(Level.SUBSTEP, "done%n");
 		}
 
@@ -92,30 +115,54 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		logger.write(Level.SUBSTEP, "|  |  Building ARG...");
 
 		final Partition<ArgNode<S, A>, ?> reachedSet = Partition.of(n -> projection.apply(n.getState()));
-		waitlist.clear();
+		final AstarComparator<S, A, P> astarComparator = AstarComparator.create(astarArg, depthWeight, heuristicsWeight);
+		final Waitlist<ArgNode<S, A>> waitlist = PriorityWaitlist.create(astarComparator);
 
 		reachedSet.addAll(arg.getNodes());
-		waitlist.addAll(arg.getIncompleteNodes());
+		if (root != null) {
+			waitlist.add(root);
+		} else {
+			waitlist.addAll(arg.getIncompleteNodes()); //TODO what does it add?
+		}
 
 		if (!stopCriterion.canStop(arg)) {
 			while (!waitlist.isEmpty()) {
 				final ArgNode<S, A> node = waitlist.remove();
+				final AstarNode<S, A> astarNode = astarArg.get(node);
+
+				// if only those nodes are left in waitlist which can't reach error then stop
+				if (astarNode.state != AstarNode.State.DESCENDANT_HEURISTIC_UNAVAILABLE) {
+					if (astarNode.descendant.state == AstarNode.State.HEURISTIC_INFINITE) {
+						break;
+					}
+				}
+
+				// when walking from an already expanded node just add outedges to waitlist
+				if (node.isExpanded()) {
+					Collection<ArgNode<S, A>> succNodes = node.getOutEdges().map(ArgEdge::getTarget).collect(Collectors.toList());
+					// astarArgStore already contains them
+					// reached set already contains them
+					waitlist.addAll(succNodes);
+
+					if (stopCriterion.canStop(arg, succNodes)) {
+						break;
+					}
+					continue;
+				}
 
 				Collection<ArgNode<S, A>> newNodes = Collections.emptyList();
 				close(node, reachedSet.get(node));
 				if (!node.isSubsumed() && !node.isTarget()) {
 					newNodes = argBuilder.expand(node, prec);
-					List<AstarNode<S, A>> newAstarNodes = new ArrayList<>();
 
+					// map nodes to previous ARG's nodes
 					newNodes.forEach(newArgNode -> {
-						AstarNode<S, A> newAstarNode;
+						Collection<ArgNode<S, A>> succArgNodeCandidates = astarNode.descendant.argNode.getSuccNodes().collect(Collectors.toList());
+						Collection<AstarNode<S, A>> succAstarNodeCandidates = succArgNodeCandidates
+								.stream().map(astarArg::get).collect(Collectors.toList());
 
-						// find descendant
-						List<ArgNode<S, A>> descendantArgNodeCandidates = node.getSuccNodes().filter(descendantArgNodeCandidate -> partialOrd.isLeq(descendantArgNodeCandidate.getState(), newArgNode.getState())).collect(Collectors.toList());
-						assert descendantArgNodeCandidates.size() == 1;
-
-						newAstarNode = AstarNode.create(newArgNode, descendantArgNodeCandidates[0]);
-						newAstarNodes.add(newAstarNode);
+						AstarNode<S, A> newAstarNode = astarArg.putFromCandidates(newArgNode, succAstarNodeCandidates, false);
+						calculateHeuristic(newAstarNode.descendant, astarArg.descendant);
 					});
 
 					reachedSet.addAll(newNodes);
@@ -131,11 +178,68 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 
 		waitlist.clear(); // Optimization
 
+		// Apply now available distance to found error to all nodes reaching error not only root
+		//	if not searched from init nodes then descendant nodes will also get updated
+		// TODO give infinite State!!
+		// TODO 	if a loop is detected == closed to it's descendant
+		// TODO 	if couldn't reach error => root == null => all nodes; root != null => only from root do bfs
+		final Map<ArgNode<S, A>, Integer> distances = arg.getDistances(); // TODO from specific target <= what is this?
+		distances.forEach((argNode, distance) -> {
+			AstarNode<S, A> astarNode = astarArg.get(argNode);
+			astarNode.state = AstarNode.State.HEURISTIC_EXACT;
+			astarNode.distanceToError = distance;
+		});
+
 		if (arg.isSafe()) {
 			checkState(arg.isComplete(), "Returning incomplete ARG as safe");
 			return AbstractorResult.safe();
 		} else {
 			return AbstractorResult.unsafe();
+		}
+	}
+
+	@Override
+	// creates new AstarArg then calls checkFromNode with root=null
+	public AbstractorResult check(final ARG<S, A> arg, final P prec) {
+		AstarArg<S, A, P> astarArg = AstarArg.create(arg, prec, astarArgStore);
+		astarArgStore.add(astarArg);
+
+		return checkFromNode(astarArg, prec, null);
+	}
+
+	// calculate distance to error node for it to be used as heuristic for next arg
+	public void calculateHeuristic(final AstarNode<S, A> astarNode, final AstarArg<S, A, P> astarArg) {
+		if (astarNode == null) {
+			assert astarArg == null;
+			return;
+		}
+		checkNotNull(astarArg);
+
+		// check for correct State value beforehand to be concise
+		if (astarNode.state == AstarNode.State.DESCENDANT_HEURISTIC_UNAVAILABLE) {
+			assert astarNode.descendant == null;
+		} else {
+			assert astarNode.descendant != null;
+		}
+
+		switch (astarNode.state) {
+			case HEURISTIC_EXACT:
+			case HEURISTIC_INFINITE:
+				return;
+			case DESCENDANT_HEURISTIC_UNKNOWN:
+				calculateHeuristic(astarNode.descendant, astarArg.descendant);
+				assert astarNode.descendant.state == AstarNode.State.HEURISTIC_EXACT || astarNode.descendant.state == AstarNode.State.HEURISTIC_INFINITE;
+
+				astarNode.state = AstarNode.State.HEURISTIC_UNKNOWN;
+				// no break as we want to calculate as we needed heuristic to walk in descendant's arg from which we get heuristic for current arg
+			case HEURISTIC_UNKNOWN:
+			case DESCENDANT_HEURISTIC_UNAVAILABLE:
+				// descendant has heuristics to walk from astarNode in astarArg
+				checkFromNode(astarArg, astarArg.prec, astarNode.argNode);
+				assert astarNode.state == AstarNode.State.HEURISTIC_EXACT || astarNode.state == AstarNode.State.HEURISTIC_INFINITE;
+				break;
+			default:
+				throw new IllegalArgumentException(AstarNode.IllegalState);
 		}
 	}
 
@@ -151,33 +255,28 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		}
 	}
 
-	@Override
+	/*@Override
 	public String toString() {
 		return Utils.lispStringBuilder(getClass().getSimpleName()).add(waitlist).toString();
-	}
+	}*/
 
 	public static final class Builder<S extends State, A extends Action, P extends Prec> {
 		private final ArgBuilder<S, A, P> argBuilder;
 		private Function<? super S, ?> projection;
-		private Waitlist<ArgNode<S, A>> waitlist;
 		private StopCriterion<S, A> stopCriterion;
 		private Logger logger;
+		private AstarArgStore<S, A, P> astarArgStore;
 
 		private Builder(final ArgBuilder<S, A, P> argBuilder) {
 			this.argBuilder = argBuilder;
 			this.projection = s -> 0;
-			this.waitlist = FifoWaitlist.create();
 			this.stopCriterion = StopCriterions.firstCex();
 			this.logger = NullLogger.getInstance();
+			this.astarArgStore = null; // TODO
 		}
 
 		public Builder<S, A, P> projection(final Function<? super S, ?> projection) {
 			this.projection = projection;
-			return this;
-		}
-
-		public Builder<S, A, P> waitlist(final Waitlist<ArgNode<S, A>> waitlist) {
-			this.waitlist = waitlist;
 			return this;
 		}
 
@@ -191,8 +290,13 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 			return this;
 		}
 
+		public Builder<S, A, P> AstarArgStore(final AstarArgStore<S, A, P> astarArgStore) {
+			this.astarArgStore = astarArgStore;
+			return this;
+		}
+
 		public AstarAbstractor<S, A, P> build() {
-			return new AstarAbstractor<>(argBuilder, projection, waitlist, stopCriterion, logger);
+			return new AstarAbstractor<>(argBuilder, projection, stopCriterion, logger, astarArgStore);
 		}
 	}
 
