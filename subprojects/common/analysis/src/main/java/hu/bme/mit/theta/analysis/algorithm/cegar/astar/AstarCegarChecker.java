@@ -50,14 +50,6 @@ public final class AstarCegarChecker<S extends State, A extends Action, P extend
 	private final Refiner<S, A, P> refiner;
 	private final Logger logger;
 
-	// TODO parent inf use this information out
-	// TODO 	AstarArgStore X
-	// TODO 	AstarArg X
-	// TODO 	AstarComparator X
-	// TODO 	AstarNode X
-	// TODO 	AstarCegarChecker X
-	// TODO 	AstarAbstractor dont add to waitlist, comment break if only inf in waitlist (only init nodes can cause this?)
-
 	// Last checks
 	// TODO fix intellij yellow warnings
 	// TODO using streams instead of list when can
@@ -65,9 +57,10 @@ public final class AstarCegarChecker<S extends State, A extends Action, P extend
 	// TODO checkNotNull for func arguments
 	// TODO use Collection (where no indexing required)
 	// TODO root log etc
-	// TODO waitlist as Waitlist<AstarNode>
 	// TODO create common store for argnodes until they modified (copy on write)
 	// TODO fix imports
+	// TODO what if prune deletes an init node, is it possible?
+	// TODO covering edges to descendants: when can we give inf heur
 
 	private AstarCegarChecker(
 			final ArgBuilder<S, A, P> argBuilder, final Function<? super S, ?> projection, final Refiner<S, A, P> refiner,

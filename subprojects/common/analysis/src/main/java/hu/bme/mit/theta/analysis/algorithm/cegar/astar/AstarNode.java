@@ -11,6 +11,8 @@ public final class AstarNode<S extends hu.bme.mit.theta.analysis.State, A extend
     public final AstarNode<S, A> descendant;
     // TODO rename this & enum <= import is dead
     public State state;
+    // TODO use optional
+    // Has to be integer in order to know when its not set
     public Integer distanceToError;
     public static String IllegalState = "unknown AstarNode.State";
 

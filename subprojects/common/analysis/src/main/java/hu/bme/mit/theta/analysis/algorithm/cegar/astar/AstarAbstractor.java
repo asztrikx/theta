@@ -88,15 +88,13 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		checkNotNull(prec);
 		logger.write(Level.DETAIL, "|  |  Precision: %s%n", prec);
 
-		// TODO what if prune deletes an init node, is it possible?
-		// TODO 	handle partial (pruned) arg given to here for new AstarArg
 		assert root == null || arg.isInitialized();
 		if (root == null && !arg.isInitialized()) {
 			logger.write(Level.SUBSTEP, "|  |  (Re)initializing ARG...");
 			argBuilder.init(arg, prec);
 
 			// create AstarNodes for init ArgNodes
-			//	output of argBuilder.init is not used for clarity TODO ?
+			//	output of argBuilder.init(...) is not used for clarity
 			List<ArgNode<S, A>> initArgNodes = arg.getInitNodes().collect(Collectors.toList());
 			// on first arg it will be empty
 			//	putAllFromCandidates sets descendant null
@@ -122,15 +120,18 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		if (root != null) {
 			waitlist.add(root);
 		} else {
-			waitlist.addAll(arg.getIncompleteNodes()); //TODO what does it add?
+			waitlist.addAll(arg.getIncompleteNodes());
 		}
 
+		// TODO this is only needed if root != null
+		boolean targetReached = false;
 		if (!stopCriterion.canStop(arg)) {
 			while (!waitlist.isEmpty()) {
 				final ArgNode<S, A> node = waitlist.remove();
 				final AstarNode<S, A> astarNode = astarArg.get(node);
 
 				// if only those nodes are left in waitlist which can't reach error then stop
+				//	by not adding infinite state nodes only init nodes can cause this
 				if (astarNode.state != AstarNode.State.DESCENDANT_HEURISTIC_UNAVAILABLE) {
 					if (astarNode.descendant.state == AstarNode.State.HEURISTIC_INFINITE) {
 						break;
@@ -139,12 +140,21 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 
 				// when walking from an already expanded node just add outedges to waitlist
 				if (node.isExpanded()) {
-					Collection<ArgNode<S, A>> succNodes = node.getOutEdges().map(ArgEdge::getTarget).collect(Collectors.toList());
+					// do not add nodes with already known infinite distance
+					Collection<ArgNode<S, A>> succNodes = node.getOutEdges().map(ArgEdge::getTarget)
+							.filter(succNode -> {
+								AstarNode<S, A> succAstarNode = astarArg.get(succNode);
+								return succAstarNode.state != AstarNode.State.HEURISTIC_INFINITE;
+							})
+							.collect(Collectors.toList());
 					// astarArgStore already contains them
 					// reached set already contains them
 					waitlist.addAll(succNodes);
 
+					// if target was (as it is expanded) reached from this node => we should already have heuristics
+					// 	but this function is not specific to heuristic search so don't assert this
 					if (stopCriterion.canStop(arg, succNodes)) {
+						targetReached = true;
 						break;
 					}
 					continue;
@@ -165,11 +175,22 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 						calculateHeuristic(newAstarNode.descendant, astarArg.descendant);
 					});
 
+					// do not add nodes with already known infinite distance
+					newNodes = newNodes.stream().filter(newNode -> {
+						AstarNode<S, A> newAstarNode = astarArg.get(newNode);
+						return newAstarNode.state != AstarNode.State.HEURISTIC_INFINITE;
+					}).collect(Collectors.toList());
+
 					reachedSet.addAll(newNodes);
 					waitlist.addAll(newNodes);
 				}
-				if (stopCriterion.canStop(arg, newNodes)) break;
+				if (stopCriterion.canStop(arg, newNodes)) {
+					targetReached = true;
+					break;
+				}
 			}
+		} else {
+			targetReached = true;
 		}
 
 		logger.write(Level.SUBSTEP, "done%n");
@@ -178,22 +199,50 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 
 		waitlist.clear(); // Optimization
 
-		// Apply now available distance to found error to all nodes reaching error not only root
-		//	if not searched from init nodes then descendant nodes will also get updated
-		// TODO give infinite State!!
-		// TODO 	if a loop is detected == closed to it's descendant
-		// TODO 	if couldn't reach error => root == null => all nodes; root != null => only from root do bfs
-		final Map<ArgNode<S, A>, Integer> distances = arg.getDistances(); // TODO from specific target <= what is this?
-		distances.forEach((argNode, distance) -> {
-			AstarNode<S, A> astarNode = astarArg.get(argNode);
-			astarNode.state = AstarNode.State.HEURISTIC_EXACT;
-			astarNode.distanceToError = distance;
-		});
-
 		if (arg.isSafe()) {
 			checkState(arg.isComplete(), "Returning incomplete ARG as safe");
 			return AbstractorResult.safe();
 		} else {
+			// arg unsafe can because
+			// - we just expanded the arg until error is reached
+			// - we went back to a previous arg (this) and expanded other part of it
+			// in the latter case arg must be unsafe otherwise algorithm would have ended there
+
+			if (root == null) {
+				final Map<ArgNode<S, A>, Integer> distances = arg.getDistances();
+				distances.forEach((argNode, distance) -> {
+					AstarNode<S, A> astarNode = astarArg.get(argNode);
+					astarNode.state = AstarNode.State.HEURISTIC_EXACT;
+					astarNode.distanceToError = distance;
+				});
+
+				return AbstractorResult.unsafe();
+			}
+
+			// Apply now available distance to found error to all nodes reaching error, not only root
+			//	if not searched from init nodes then descendant nodes will also get updated
+			// TODO if a loop is detected during run == closed to it's descendant => give infinite weight
+
+			if (targetReached) {
+				final Map<ArgNode<S, A>, Integer> distances = arg.getDistances();
+				distances.forEach((argNode, distance) -> {
+					AstarNode<S, A> astarNode = astarArg.get(argNode);
+					astarNode.state = AstarNode.State.HEURISTIC_EXACT;
+					astarNode.distanceToError = distance;
+				});
+			} else {
+				arg.walk(root, (argNode, integer) -> {
+					AstarNode<S, A> astarNode = astarArg.get(argNode);
+
+					// if we reach a part where target is reachable then root shouldn't be unreachable
+					assert(astarNode.state != AstarNode.State.HEURISTIC_EXACT);
+
+					astarNode.state = AstarNode.State.HEURISTIC_INFINITE;
+
+					return false;
+				});
+			}
+
 			return AbstractorResult.unsafe();
 		}
 	}
