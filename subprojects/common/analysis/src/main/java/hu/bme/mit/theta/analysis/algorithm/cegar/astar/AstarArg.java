@@ -20,8 +20,10 @@ import static com.google.common.base.Preconditions.checkNotNull;
 public final class AstarArg<S extends State, A extends Action, P extends Prec> {
     public final ARG<S, A> arg;
     public final P prec;
+    // contains init nodes as well (it is used out somewhere)
+    //  TODO use partition
     private final Map<ArgNode<S, A>, AstarNode<S, A>> astarNodes = new HashContainerFactory().createMap();
-    private final Collection<AstarNode<S, A>> astarInitNodes = new ArrayList<>();
+    private final Map<ArgNode<S, A>, AstarNode<S, A>> astarInitNodes = new HashContainerFactory().createMap();
     public final AstarArg<S, A, P> descendant;
     // TODO make it available only through function parameter
     private final PartialOrd<S> partialOrd;
@@ -43,7 +45,8 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
     }
 
     public static <S extends State, A extends Action, P extends Prec> AstarArg<S, A, P> create(
-            final ARG<S, A> arg, final P prec,
+            final ARG<S, A> arg,
+            final P prec,
             final AstarArgStore<S, A, P> astarArgStore
     ) {
         AstarArg<S, A, P> descendant;
@@ -57,9 +60,30 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
         return new AstarArg<>(arg, prec, descendant, astarArgStore.partialOrd);
     }
 
+    public static <P extends Prec, A extends Action, S extends State> AstarArg<S, A, P> createFromPrevious(AstarArg<S, A, P> astarArg) {
+        // TODO cut out pruned ArgNodes (copy map as it is shared)
+        //  maybe go through each node which survived prune? how?
+        AstarArg<S, A, P> astarArgNew =  new AstarArg<>(astarArg.arg, astarArg.prec, astarArg, astarArg.partialOrd);
+        astarArgNew.putAll(astarArg.getAll());
+
+        // set descendant
+        // TODO prev arg is used: is it a problem for now?
+        //  can this be a feature after waitlist's type is changed?
+        for (AstarNode<S, A> astarNode : astarArg.getAll().values()) {
+            AstarNode<S, A> astarNodeNew = AstarNode.create(astarNode.argNode, astarNode);
+            astarArgNew.put(astarNodeNew);
+        }
+        for (AstarNode<S, A> initAstarNode : astarArg.getAllInitNode().values()) {
+            AstarNode<S, A> initAstarNodeNew = AstarNode.create(initAstarNode.argNode, initAstarNode);
+            astarArgNew.put(initAstarNodeNew);
+        }
+
+        return astarArgNew;
+    }
+
     // put saves the AstarNode for ArgNode
-    public void put(final ArgNode<S, A> argNode, final AstarNode<S, A> astarNode) {
-        astarNodes.put(argNode, astarNode);
+    public void put(final AstarNode<S, A> astarNode) {
+        astarNodes.put(astarNode.argNode, astarNode);
     }
 
     public boolean contains(final ArgNode<S, A> argNode) {
@@ -76,16 +100,22 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
         astarNodes.putAll(astarNodeMap);
     }
 
-    public Collection<AstarNode<S, A>> getAllInitNode() {
+    public Map<ArgNode<S, A>, AstarNode<S, A>> getAll() {
+        return astarNodes;
+    }
+
+    public Map<ArgNode<S, A>, AstarNode<S, A>> getAllInitNode() {
         return astarInitNodes;
     }
 
-    public void putAllInitNode(final Collection<AstarNode<S, A>> astarInitNodes) {
-        this.astarInitNodes.addAll(astarInitNodes);
+    public void putAllInitNode(final Map<ArgNode<S, A>, AstarNode<S, A>> mapping) {
+        astarInitNodes.putAll(mapping);
+        astarNodes.putAll(mapping);
     }
 
     public void putInitNode(final AstarNode<S, A> astarInitNode) {
-        astarInitNodes.add(astarInitNode);
+        astarInitNodes.put(astarInitNode.argNode, astarInitNode);
+        astarNodes.put(astarInitNode.argNode, astarInitNode);
     }
 
     // putAllFromCandidates
@@ -108,7 +138,7 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
         // create list with the same items to use already written general funcion
         List<Collection<AstarNode<S, A>>> list = new ArrayList<>(argNodes.size());
         for (int i = 0; i < argNodes.size(); i++) {
-            list.set(i, descendantAstarNodeCandidates);
+            list.add(descendantAstarNodeCandidates);
         }
 
         return putAllFromCandidates(argNodes, list, init);
@@ -136,7 +166,7 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
         if (init) {
             putInitNode(astarNode); // TODO atomicity from foreach? (putAllFromCandidates)
         } else {
-            put(argNode, astarNode); // TODO atomicity from foreach? (putAllFromCandidates)
+            put(astarNode); // TODO atomicity from foreach? (putAllFromCandidates)
         }
 
         return astarNode;

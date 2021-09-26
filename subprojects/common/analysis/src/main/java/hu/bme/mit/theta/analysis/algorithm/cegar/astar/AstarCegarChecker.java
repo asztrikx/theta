@@ -61,6 +61,8 @@ public final class AstarCegarChecker<S extends State, A extends Action, P extend
 	// TODO fix imports
 	// TODO what if prune deletes an init node, is it possible?
 	// TODO covering edges to descendants: when can we give inf heur
+	// TODO should we check descendant != null (intellij helps) or state != DESCENDANT_UNAVAILABLE
+	// TODO Collections.Emptylist instead of new Arr.. ?
 
 	private AstarCegarChecker(
 			final ArgBuilder<S, A, P> argBuilder, final Function<? super S, ?> projection, final Refiner<S, A, P> refiner,

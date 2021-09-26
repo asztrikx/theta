@@ -33,10 +33,7 @@ import hu.bme.mit.theta.common.logging.Logger;
 import hu.bme.mit.theta.common.logging.Logger.Level;
 import hu.bme.mit.theta.common.logging.NullLogger;
 
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -88,6 +85,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		checkNotNull(prec);
 		logger.write(Level.DETAIL, "|  |  Precision: %s%n", prec);
 
+		// initialize Arg
 		assert root == null || arg.isInitialized();
 		if (root == null && !arg.isInitialized()) {
 			logger.write(Level.SUBSTEP, "|  |  (Re)initializing ARG...");
@@ -99,13 +97,15 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 			// on first arg it will be empty
 			//	putAllFromCandidates sets descendant null
 			//	and sets state to DESCENDANT_HEURISTIC_UNAVAILABLE
-			Collection<AstarNode<S, A>> initAstarNodeCandidates = astarArg.descendant.getAllInitNode();
+			Collection<AstarNode<S, A>> initAstarNodeCandidates = new ArrayList<>();
+			if (astarArg.descendant != null) {
+				initAstarNodeCandidates.addAll(astarArg.descendant.getAllInitNode().values());
+			}
 			Collection<AstarNode<S, A>> initAstarNodes = astarArg.putAllFromCandidates(initArgNodes, initAstarNodeCandidates, true);
 			initAstarNodes.forEach(astarNode -> calculateHeuristic(astarNode.descendant, astarArg.descendant));
 
 			logger.write(Level.SUBSTEP, "done%n");
 		}
-
 		assert arg.isInitialized();
 
 		logger.write(Level.INFO, "|  |  Starting ARG: %d nodes, %d incomplete, %d unsafe%n", arg.getNodes().count(),
@@ -123,14 +123,14 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 			waitlist.addAll(arg.getIncompleteNodes());
 		}
 
-		// TODO this is only needed if root != null
 		boolean targetReached = false;
 		if (!stopCriterion.canStop(arg)) {
 			while (!waitlist.isEmpty()) {
 				final ArgNode<S, A> node = waitlist.remove();
 				final AstarNode<S, A> astarNode = astarArg.get(node);
 
-				// if only those nodes are left in waitlist which can't reach error then stop
+				// only infinite AstarNodes
+				//	if only those nodes are left in waitlist which can't reach error then stop
 				//	by not adding infinite state nodes only init nodes can cause this
 				if (astarNode.state != AstarNode.State.DESCENDANT_HEURISTIC_UNAVAILABLE) {
 					if (astarNode.descendant.state == AstarNode.State.HEURISTIC_INFINITE) {
@@ -138,8 +138,11 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 					}
 				}
 
-				// when walking from an already expanded node just add outedges to waitlist
+				// in already expanded Arg part
+				//	can happen if root != null
+				//	when walking from an already expanded node just add outedges to waitlist
 				if (node.isExpanded()) {
+					assert root != null;
 					// do not add nodes with already known infinite distance
 					Collection<ArgNode<S, A>> succNodes = node.getOutEdges().map(ArgEdge::getTarget)
 							.filter(succNode -> {
@@ -160,16 +163,24 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 					continue;
 				}
 
+				// expand
 				Collection<ArgNode<S, A>> newNodes = Collections.emptyList();
 				close(node, reachedSet.get(node));
 				if (!node.isSubsumed() && !node.isTarget()) {
 					newNodes = argBuilder.expand(node, prec);
 
-					// map nodes to previous ARG's nodes
+					// descendant AstarNode map
+					// descendant heurisitcs calculate to be used in waitlist
 					newNodes.forEach(newArgNode -> {
-						Collection<ArgNode<S, A>> succArgNodeCandidates = astarNode.descendant.argNode.getSuccNodes().collect(Collectors.toList());
-						Collection<AstarNode<S, A>> succAstarNodeCandidates = succArgNodeCandidates
-								.stream().map(astarArg::get).collect(Collectors.toList());
+						Collection<AstarNode<S, A>> succAstarNodeCandidates = new ArrayList<>();
+						if (astarNode.descendant != null) {
+							Collection<ArgNode<S, A>> succArgNodeCandidates = astarNode.descendant.argNode.getSuccNodes().collect(Collectors.toList());
+							succAstarNodeCandidates = succArgNodeCandidates
+									.stream().map(astarArg::get).collect(Collectors.toList());
+							for (AstarNode<S, A> succAstarNodeCandidate: succAstarNodeCandidates) {
+								assert succAstarNodeCandidate != null;
+							}
+						}
 
 						AstarNode<S, A> newAstarNode = astarArg.putFromCandidates(newArgNode, succAstarNodeCandidates, false);
 						calculateHeuristic(newAstarNode.descendant, astarArg.descendant);
@@ -250,9 +261,14 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 	@Override
 	// creates new AstarArg then calls checkFromNode with root=null
 	public AbstractorResult check(final ARG<S, A> arg, final P prec) {
-		AstarArg<S, A, P> astarArg = AstarArg.create(arg, prec, astarArgStore);
-		astarArgStore.add(astarArg);
+		AstarArg<S, A, P> astarArg;
+		if (astarArgStore.size() == 0) {
+			 astarArg = AstarArg.create(arg, prec, astarArgStore);
+		} else {
+			astarArg = AstarArg.createFromPrevious(astarArgStore.get(astarArgStore.size() - 1));
+		}
 
+		astarArgStore.add(astarArg);
 		return checkFromNode(astarArg, prec, null);
 	}
 
