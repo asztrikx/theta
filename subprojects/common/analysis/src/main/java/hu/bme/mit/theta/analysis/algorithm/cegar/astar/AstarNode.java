@@ -6,10 +6,11 @@ import hu.bme.mit.theta.analysis.algorithm.ArgNode;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
+// TODO rename to AstarArgNode
 public final class AstarNode<S extends hu.bme.mit.theta.analysis.State, A extends Action> {
     public final ArgNode<S, A> argNode;
     public final AstarNode<S, A> descendant;
-    // TODO rename this & enum <= import is dead
+    // TODO rename this & enum <= import is dead for State
     public State state;
     // TODO use optional
     // Has to be integer in order to know when its not set

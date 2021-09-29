@@ -53,8 +53,6 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 
 	// a* specific
 	// TODO should these change during run? or event should there be local versions
-	private final int depthWeight = 1;
-	private final int heuristicsWeight = 2;
 
 	private AstarAbstractor(final ArgBuilder<S, A, P> argBuilder,
 							final Function<? super S, ?> projection,
@@ -94,6 +92,10 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 			// create AstarNodes for init ArgNodes
 			//	output of argBuilder.init(...) is not used for clarity
 			List<ArgNode<S, A>> initArgNodes = arg.getInitNodes().collect(Collectors.toList());
+			// init nodes shouldn't be covered
+			for (ArgNode<S, A> initArgNode : initArgNodes) {
+				assert !initArgNode.isCovered();
+			}
 			// on first arg it will be empty
 			//	putAllFromCandidates sets descendant null
 			//	and sets state to DESCENDANT_HEURISTIC_UNAVAILABLE
@@ -113,7 +115,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		logger.write(Level.SUBSTEP, "|  |  Building ARG...");
 
 		final Partition<ArgNode<S, A>, ?> reachedSet = Partition.of(n -> projection.apply(n.getState()));
-		final AstarComparator<S, A, P> astarComparator = AstarComparator.create(astarArg, depthWeight, heuristicsWeight);
+		final AstarComparator<S, A> astarComparator = AstarComparator.create(astarArg);
 		final Waitlist<ArgNode<S, A>> waitlist = PriorityWaitlist.create(astarComparator);
 
 		reachedSet.addAll(arg.getNodes());
@@ -174,9 +176,18 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 					newNodes.forEach(newArgNode -> {
 						Collection<AstarNode<S, A>> succAstarNodeCandidates = new ArrayList<>();
 						if (astarNode.descendant != null) {
-							Collection<ArgNode<S, A>> succArgNodeCandidates = astarNode.descendant.argNode.getSuccNodes().collect(Collectors.toList());
-							succAstarNodeCandidates = succArgNodeCandidates
-									.stream().map(astarArg::get).collect(Collectors.toList());
+							// covered nodes are expanded in their covering nodes
+							ArgNode<S, A> descendantArgNode = astarNode.descendant.argNode;
+							if (descendantArgNode.isCovered()) {
+								assert descendantArgNode.getCoveringNode().isPresent();
+								descendantArgNode = descendantArgNode.getCoveringNode().get();
+							}
+
+							Collection<ArgNode<S, A>> succArgNodeCandidates = descendantArgNode.getSuccNodes().collect(Collectors.toList());
+							succAstarNodeCandidates = succArgNodeCandidates.stream()
+									.map(astarArg.descendant::get).collect(Collectors.toList());
+
+							// check if ::get was successful
 							for (AstarNode<S, A> succAstarNodeCandidate: succAstarNodeCandidates) {
 								assert succAstarNodeCandidate != null;
 							}
@@ -210,6 +221,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 
 		waitlist.clear(); // Optimization
 
+		// distance to error as new heuristic
 		if (arg.isSafe()) {
 			checkState(arg.isComplete(), "Returning incomplete ARG as safe");
 			return AbstractorResult.safe();
@@ -259,16 +271,17 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 	}
 
 	@Override
-	// creates new AstarArg then calls checkFromNode with root=null
+	// uses previous AstarArg then calls checkFromNode with root=null
+	// it is assumed that last AstarArg in astarArgStore should be used if exists
 	public AbstractorResult check(final ARG<S, A> arg, final P prec) {
 		AstarArg<S, A, P> astarArg;
 		if (astarArgStore.size() == 0) {
-			 astarArg = AstarArg.create(arg, prec, astarArgStore);
+			astarArg = AstarArg.create(arg, prec, null, astarArgStore.partialOrd);
+			astarArgStore.add(astarArg);
 		} else {
-			astarArg = AstarArg.createFromPrevious(astarArgStore.get(astarArgStore.size() - 1));
+			astarArg = astarArgStore.getLast();
 		}
 
-		astarArgStore.add(astarArg);
 		return checkFromNode(astarArg, prec, null);
 	}
 

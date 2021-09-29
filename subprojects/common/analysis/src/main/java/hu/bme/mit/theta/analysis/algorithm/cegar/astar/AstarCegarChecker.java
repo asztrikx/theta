@@ -17,7 +17,6 @@ package hu.bme.mit.theta.analysis.algorithm.cegar.astar;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
-import java.io.*;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
@@ -27,7 +26,10 @@ import hu.bme.mit.theta.analysis.Action;
 import hu.bme.mit.theta.analysis.Prec;
 import hu.bme.mit.theta.analysis.State;
 import hu.bme.mit.theta.analysis.PartialOrd;
-import hu.bme.mit.theta.analysis.algorithm.*;
+import hu.bme.mit.theta.analysis.algorithm.ARG;
+import hu.bme.mit.theta.analysis.algorithm.ArgBuilder;
+import hu.bme.mit.theta.analysis.algorithm.SafetyChecker;
+import hu.bme.mit.theta.analysis.algorithm.SafetyResult;
 import hu.bme.mit.theta.analysis.algorithm.cegar.Abstractor;
 import hu.bme.mit.theta.analysis.algorithm.cegar.AbstractorResult;
 import hu.bme.mit.theta.analysis.algorithm.cegar.Refiner;
@@ -50,6 +52,9 @@ public final class AstarCegarChecker<S extends State, A extends Action, P extend
 	private final Refiner<S, A, P> refiner;
 	private final Logger logger;
 
+	// Blocking
+	// TODO prec is needed
+
 	// Last checks
 	// TODO fix intellij yellow warnings
 	// TODO using streams instead of list when can
@@ -63,13 +68,19 @@ public final class AstarCegarChecker<S extends State, A extends Action, P extend
 	// TODO covering edges to descendants: when can we give inf heur
 	// TODO should we check descendant != null (intellij helps) or state != DESCENDANT_UNAVAILABLE
 	// TODO Collections.Emptylist instead of new Arr.. ?
+	// TODO create testing env with some test cases
+	// TODO comment one parent abstract should be
+	// TODO use javadocs
+	// TODO use new HashContainerFactory().createMap()
+	// TODO check if covered => has to check coverer
+
+	final AstarArgStore<S, A, P> astarArgStore;
 
 	private AstarCegarChecker(
 			final ArgBuilder<S, A, P> argBuilder, final Function<? super S, ?> projection, final Refiner<S, A, P> refiner,
 			final PartialOrd<S> partialOrd, final Logger logger
 	) {
-		final AstarArgStore<S, A, P> astarArgStore = AstarArgStore.create(partialOrd);
-
+		this.astarArgStore = AstarArgStore.create(partialOrd);
 		final Abstractor<S, A, P> abstractor = AstarAbstractor
 			.builder(argBuilder)
 			.projection(projection)
@@ -118,21 +129,10 @@ public final class AstarCegarChecker<S extends State, A extends Action, P extend
 
 			//System.out.println(GraphvizWriter.getInstance().writeString(ArgVisualizer.getDefault().visualize(arg)));
 
-			// TODO better way to deepcopy ARG
-			try {
-				// serialize
-				ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-				ObjectOutputStream objectOutputStream = new ObjectOutputStream(byteArrayOutputStream);
-				objectOutputStream.writeObject(this);
-
-				// deserialize
-				ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(byteArrayOutputStream.toByteArray());
-				ObjectInputStream objectInputStream = new ObjectInputStream(byteArrayInputStream);
-				arg = (ARG<S, A>) objectInputStream.readObject();
-			} catch (IOException | ClassNotFoundException e) {
-				// TODO we must catch it, is it good?
-				e.printStackTrace();
-			}
+			// copy state of arg and last AstarArg in astarArgStore to be able to go back ondemand for heuristics
+			// 	always has last as check will create if there isn't
+			astarArgStore.addLastCopied();
+			arg = astarArgStore.getLast().arg;
 
 			if (abstractorResult.isUnsafe()) {
 				logger.write(Level.MAINSTEP, "| Refining abstraction...%n");
@@ -143,6 +143,7 @@ public final class AstarCegarChecker<S extends State, A extends Action, P extend
 
 				if (refinerResult.isSpurious()) {
 					prec = refinerResult.asSpurious().getRefinedPrec();
+					astarArgStore.getLast().prec = prec;
 				}
 			}
 		} while (!abstractorResult.isSafe() && !refinerResult.isUnsafe());

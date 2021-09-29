@@ -9,23 +9,17 @@ import hu.bme.mit.theta.analysis.algorithm.ArgNode;
 
 import java.util.Comparator;
 
-public final class AstarComparator<S extends State, A extends Action, P extends Prec> implements Comparator<ArgNode<S, A>> {
-    private final int depthWeight;
-    private final int heuristicsWeight;
-    private final AstarArg<S, A, P> astarArg;
+public final class AstarComparator<S extends State, A extends Action> implements Comparator<ArgNode<S, A>> {
+    private final AstarArg<S, A> astarArg;
 
-    private AstarComparator(final AstarArg<S, A, P> astarArg, final int depthWeight, final int heuristicsWeight){
+    private AstarComparator(final AstarArg<S, A> astarArg){
         this.astarArg = astarArg;
-        this.depthWeight = depthWeight;
-        this.heuristicsWeight = heuristicsWeight;
     }
 
-    public static <S extends State, A extends Action, P extends Prec> AstarComparator<S, A, P> create(
-            final AstarArg<S, A, P> astarArg,
-            final int depthWeight,
-            final int heuristicsWeight
+    public static <S extends State, A extends Action, P extends Prec> AstarComparator<S, A> create(
+            final AstarArg<S, A> astarArg
     ) {
-        return new AstarComparator<>(astarArg, depthWeight, heuristicsWeight);
+        return new AstarComparator<>(astarArg);
     }
 
     @Override
@@ -41,8 +35,8 @@ public final class AstarComparator<S extends State, A extends Action, P extends 
         //  because of previous assert we only need to check one AstarNode's state
         if (astarNode1.state == AstarNode.State.DESCENDANT_HEURISTIC_UNAVAILABLE) {
             // calculate bfs weights
-            final int weight1 = depthWeight * argNode1.getDepth();
-            final int weight2 = depthWeight * argNode2.getDepth();
+            final int weight1 = argNode1.getDepth();
+            final int weight2 = argNode2.getDepth();
 
             return weight1 - weight2;
         }
@@ -79,8 +73,8 @@ public final class AstarComparator<S extends State, A extends Action, P extends 
         final int distanceToError2 = checkNotNull(descendant2.distanceToError);
 
         // calculate a* heuristics
-        final int weight1 = depthWeight * argNode1.getDepth() + heuristicsWeight * distanceToError1;
-        final int weight2 = depthWeight * argNode2.getDepth() + heuristicsWeight * distanceToError2;
+        final int weight1 = argNode1.getDepth() + distanceToError1;
+        final int weight2 = argNode2.getDepth() + distanceToError2;
 
         return weight1 - weight2;
     }

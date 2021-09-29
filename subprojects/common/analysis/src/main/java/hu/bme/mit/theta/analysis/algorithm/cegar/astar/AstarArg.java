@@ -2,8 +2,8 @@ package hu.bme.mit.theta.analysis.algorithm.cegar.astar;
 
 import hu.bme.mit.theta.analysis.Action;
 import hu.bme.mit.theta.analysis.PartialOrd;
-import hu.bme.mit.theta.analysis.Prec;
 import hu.bme.mit.theta.analysis.State;
+import hu.bme.mit.theta.analysis.Prec;
 import hu.bme.mit.theta.analysis.algorithm.ARG;
 import hu.bme.mit.theta.analysis.algorithm.ArgNode;
 import hu.bme.mit.theta.common.container.factory.HashContainerFactory;
@@ -19,20 +19,19 @@ import static com.google.common.base.Preconditions.checkNotNull;
 // TODO create factory class?
 public final class AstarArg<S extends State, A extends Action, P extends Prec> {
     public final ARG<S, A> arg;
-    public final P prec;
+    public P prec;
     // contains init nodes as well (it is used out somewhere)
     //  TODO use partition
     private final Map<ArgNode<S, A>, AstarNode<S, A>> astarNodes = new HashContainerFactory().createMap();
     private final Map<ArgNode<S, A>, AstarNode<S, A>> astarInitNodes = new HashContainerFactory().createMap();
-    public final AstarArg<S, A, P> descendant;
+    public AstarArg<S, A, P> descendant;
     // TODO make it available only through function parameter
     private final PartialOrd<S> partialOrd;
 
-    private AstarArg(final ARG<S, A> arg, final P prec, final AstarArg<S, A, P> descendant, final PartialOrd<S> partialOrd) {
+    private AstarArg(final ARG<S, A> arg, final AstarArg<S, A, P> descendant, final PartialOrd<S> partialOrd) {
         this.arg = checkNotNull(arg);
-        this.prec = checkNotNull(prec);
         this.descendant = descendant;
-        this.partialOrd = partialOrd;
+        this.partialOrd = checkNotNull(partialOrd);
     }
 
     public static <S extends State, A extends Action, P extends Prec> AstarArg<S, A, P> create(
@@ -41,44 +40,7 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
             final AstarArg<S, A, P> descendant,
             final PartialOrd<S> partialOrd
     ) {
-        return new AstarArg<>(arg, prec, descendant, partialOrd);
-    }
-
-    public static <S extends State, A extends Action, P extends Prec> AstarArg<S, A, P> create(
-            final ARG<S, A> arg,
-            final P prec,
-            final AstarArgStore<S, A, P> astarArgStore
-    ) {
-        AstarArg<S, A, P> descendant;
-        // set descendant
-        if (astarArgStore.size() == 0) {
-            descendant = null;
-        } else {
-            descendant = astarArgStore.get(astarArgStore.size() - 1);
-        }
-
-        return new AstarArg<>(arg, prec, descendant, astarArgStore.partialOrd);
-    }
-
-    public static <P extends Prec, A extends Action, S extends State> AstarArg<S, A, P> createFromPrevious(AstarArg<S, A, P> astarArg) {
-        // TODO cut out pruned ArgNodes (copy map as it is shared)
-        //  maybe go through each node which survived prune? how?
-        AstarArg<S, A, P> astarArgNew =  new AstarArg<>(astarArg.arg, astarArg.prec, astarArg, astarArg.partialOrd);
-        astarArgNew.putAll(astarArg.getAll());
-
-        // set descendant
-        // TODO prev arg is used: is it a problem for now?
-        //  can this be a feature after waitlist's type is changed?
-        for (AstarNode<S, A> astarNode : astarArg.getAll().values()) {
-            AstarNode<S, A> astarNodeNew = AstarNode.create(astarNode.argNode, astarNode);
-            astarArgNew.put(astarNodeNew);
-        }
-        for (AstarNode<S, A> initAstarNode : astarArg.getAllInitNode().values()) {
-            AstarNode<S, A> initAstarNodeNew = AstarNode.create(initAstarNode.argNode, initAstarNode);
-            astarArgNew.put(initAstarNodeNew);
-        }
-
-        return astarArgNew;
+        return new AstarArg<>(arg, descendant, partialOrd);
     }
 
     // put saves the AstarNode for ArgNode
@@ -146,6 +108,7 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
 
     // putFromCandidates
     //  when descendantAstarNodeCandidates is empty descendant will be null
+    //  if descendant parent is covered get descendantAstarNodeCandidates from covering node's successor nodes
     public AstarNode<S, A> putFromCandidates(final ArgNode<S, A> argNode, Collection<AstarNode<S, A>> descendantAstarNodeCandidates, boolean init) {
         // find descendant
         //  null means no descendant

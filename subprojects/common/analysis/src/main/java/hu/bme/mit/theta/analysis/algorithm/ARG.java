@@ -20,7 +20,6 @@ import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.base.Preconditions.checkState;
 import static java.util.stream.Collectors.toList;
 
-import java.io.Serializable;
 import java.util.Collection;
 
 import hu.bme.mit.theta.analysis.waitlist.FifoWaitlist;
@@ -31,7 +30,11 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalInt;
 import java.util.function.BiFunction;
+import java.util.function.BiConsumer;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import java.util.ArrayList;
+import java.util.HashMap;
 
 import hu.bme.mit.theta.analysis.Action;
 import hu.bme.mit.theta.analysis.PartialOrd;
@@ -42,10 +45,10 @@ import hu.bme.mit.theta.common.container.factory.HashContainerFactory;
  * Represents an abstract reachability graph (ARG). See the related class
  * ArgBuilder.
  */
-public final class ARG<S extends State, A extends Action> implements Serializable {
+public final class ARG<S extends State, A extends Action> implements Cloneable {
 
 	private final Collection<ArgNode<S, A>> initNodes;
-	boolean initialized; // Set by ArgBuilder
+	protected boolean initialized; // Set by ArgBuilder
 	private int nextId = 0;
 	final PartialOrd<S> partialOrd;
 
@@ -60,6 +63,64 @@ public final class ARG<S extends State, A extends Action> implements Serializabl
 	}
 
 	////
+
+	/**
+	 * copies ARG and their ArgNode shallowly (keeping action, state)
+	 * this should be checked every time ARG or ArgNode changes
+	 */
+	@Override
+	public Object clone() {
+		return cloneWithResult().argCopied;
+	}
+
+	public static final class ARGCopyResult<S extends State, A extends Action> {
+		public final ARG<S, A> argCopied;
+		public final Map<ArgNode<S, A>, ArgNode<S, A>> oldToNew;
+
+		public ARGCopyResult(final ARG<S, A> argCopied, final Map<ArgNode<S, A>, ArgNode<S, A>> oldToNew) {
+			this.argCopied = argCopied;
+			this.oldToNew = oldToNew;
+		}
+	}
+
+	public ARGCopyResult<S, A> cloneWithResult() {
+		ARG<S, A> arg = new ARG<>(partialOrd);
+		arg.initialized = initialized;
+		if (!arg.initialized) {
+			return new ARGCopyResult<>(arg, new HashMap<>());
+		}
+
+		// clone ArgNodes and their connection
+		//	don't copy state as it can be large
+		//	don't use ArgBuilder as we already know the partially expanded state of ARG
+		Map<ArgNode<S, A>, ArgNode<S, A>> oldToNew = new HashMap<>();
+		for (ArgNode<S, A> currentInitArgNode: arg.initNodes) {
+			ArgNode<S, A> newInitArgNode = arg.createInitNode(currentInitArgNode.getState(), currentInitArgNode.isTarget());
+			assert !newInitArgNode.isCovered();
+
+			oldToNew.put(currentInitArgNode, newInitArgNode);
+		}
+
+		walk(oldToNew.values(), (ArgNode<S, A> currentArgNode, Integer distance) -> {
+			ArgNode<S, A> newArgNode = oldToNew.get(currentArgNode);
+			assert newArgNode != null;
+
+			// create new children from old node
+			currentArgNode.getOutEdges().forEach((ArgEdge<S, A> argEdge) -> {
+				ArgNode<S, A> currentSuccArgNode = argEdge.getTarget();
+				ArgNode<S, A> newSuccArgNode = arg.createSuccNode(newArgNode, argEdge.getAction(), currentSuccArgNode.getState(), currentSuccArgNode.isTarget());
+				if (currentSuccArgNode.isCovered()) {
+					assert currentArgNode.coveringNode.isPresent();
+					newSuccArgNode.setCoveringNode(currentArgNode.coveringNode.get());
+				}
+
+				oldToNew.put(currentSuccArgNode, newSuccArgNode);
+			});
+			return false;
+		});
+
+		return new ARGCopyResult<>(arg, oldToNew);
+	}
 
 	public Stream<ArgNode<S, A>> getInitNodes() {
 		return initNodes.stream();
@@ -195,49 +256,137 @@ public final class ARG<S extends State, A extends Action> implements Serializabl
 	 */
 	public Map<ArgNode<S, A>, Integer> getDistances() {
 		final Map<ArgNode<S,A>, Integer> distances = new HashContainerFactory().createMap();
+		class DistanceSearchResult<S extends State, A extends Action> {
+			final public ArgNode<S,A> argNode;
+			final public int distance;
+			DistanceSearchResult(final ArgNode<S,A> argNode, final int distance) {
+				this.argNode = argNode;
+				this.distance = distance;
+			}
+		}
 
+		// have to go from all unsafe nodes at once to get shortest path for nodes reaching 2+ unsafe nodes
+		final Waitlist<DistanceSearchResult<S,A>> waitlist = FifoWaitlist.create();
 		getUnsafeNodes().forEach((final ArgNode<S, A> target) -> {
-			class DistanceSearchResult<S extends State, A extends Action> {
-				final public ArgNode<S,A> argNode;
-				final public int distance;
-				DistanceSearchResult(final ArgNode<S,A> argNode, final int distance) {
-					this.argNode = argNode;
-					this.distance = distance;
-				}
-			}
-
-			// arg without covering edges are trees
-			//		we walk up the cex trace and all other covered traces which are closed with nodes in cex trace or in any other covered trace
-			// use BFS so size of waitlist won't be too large
-			final Waitlist<DistanceSearchResult<S,A>> waitlist = FifoWaitlist.create();
-			waitlist.add(new DistanceSearchResult(target, 0));
+			waitlist.add(new DistanceSearchResult<S, A>(target, 0));
 			distances.put(target, 0);
-
-			while (!waitlist.isEmpty()) {
-				final DistanceSearchResult distanceSearchResult = waitlist.remove();
-				final ArgNode<S, A> argNode = distanceSearchResult.argNode;
-
-				BiFunction<ArgNode<S,A>, Integer, Void> expand = (succArgNode, distanceNext) -> {
-					// cex traces and covered traces can have common nodes with other cex or covered traces
-					if (distances.containsKey(succArgNode) && distanceNext >= distances.get(succArgNode)){
-						return null;
-					}
-					waitlist.add(new DistanceSearchResult(succArgNode, distanceNext));
-					distances.put(succArgNode, distanceNext);
-					return null;
-				};
-
-				if (argNode.getInEdge().isPresent()){
-					final ArgNode<S, A> succArgNode = argNode.getInEdge().get().getSource();
-					expand.apply(succArgNode, distanceSearchResult.distance + 1);
-				}
-				argNode.getCoveredNodes().forEach((succArgNode)->{
-					expand.apply(succArgNode, distanceSearchResult.distance);
-				});
-			}
 		});
 
+		// arg without covering edges are trees
+		// 	we walk up the cex trace and all other covered traces which are closed with nodes in cex trace or in any other covered trace
+		// use BFS so size of waitlist won't be too large
+		while (!waitlist.isEmpty()) {
+			final DistanceSearchResult<S, A> distanceSearchResult = waitlist.remove();
+			final ArgNode<S, A> argNode = distanceSearchResult.argNode;
+
+			BiFunction<ArgNode<S,A>, Integer, Void> expand = (succArgNode, distanceNext) -> {
+				// cex traces and covered traces can have common nodes with other cex or covered traces
+				if (distances.containsKey(succArgNode) && distanceNext >= distances.get(succArgNode)){
+					return null;
+				}
+				waitlist.add(new DistanceSearchResult<S, A>(succArgNode, distanceNext));
+				distances.put(succArgNode, distanceNext);
+				return null;
+			};
+
+			if (argNode.getInEdge().isPresent()){
+				final ArgNode<S, A> succArgNode = argNode.getInEdge().get().getSource();
+				expand.apply(succArgNode, distanceSearchResult.distance + 1);
+			}
+			argNode.getCoveredNodes().forEach((succArgNode)->{
+				expand.apply(succArgNode, distanceSearchResult.distance);
+			});
+		}
+
 		return distances;
+	}
+
+	/**
+	 * See walk with multiple roots
+	 */
+	public void walk(ArgNode<S, A> root, BiFunction<ArgNode<S, A>, Integer, Boolean> skip) {
+		Collection<ArgNode<S, A>> roots = new ArrayList<>();
+		roots.add(root);
+		walk(roots, skip);
+	}
+
+	/**
+	 * Calls skip on all nodes reachable from root even through coverings.
+	 * If skip returns true then the children of the ArgNode is not added to waitlist
+	 * ArgNode and it's distance from root is given to consumer.
+	 */
+	public void walk(Collection<ArgNode<S, A>> roots, BiFunction<ArgNode<S, A>, Integer, Boolean> skip) {
+		for (ArgNode<S, A> root : roots) {
+			checkNotNull(root);
+		}
+		checkNotNull(skip);
+
+		class DistanceSearchResult<S extends State, A extends Action> {
+			final public ArgNode<S,A> argNode;
+			final public int distance;
+			DistanceSearchResult(final ArgNode<S,A> argNode, final int distance) {
+				this.argNode = argNode;
+				this.distance = distance;
+			}
+		}
+
+		// arg without covering edges are trees
+		// 	we walk down the tree and also follow covering edges
+		// use BFS so size of waitlist won't be too large
+		final Map<ArgNode<S,A>, Integer> distances = new HashContainerFactory().createMap();
+		Collection<DistanceSearchResult<S, A>> distanceSearchResults = new ArrayList<>();
+		for (ArgNode<S, A> root : roots) {
+			distances.put(root, 0);
+			distanceSearchResults.add(new DistanceSearchResult<>(root, 0));
+		}
+
+		final Waitlist<DistanceSearchResult<S,A>> waitlist = FifoWaitlist.create();
+		waitlist.addAll(distanceSearchResults);
+
+		while (!waitlist.isEmpty()) {
+			final DistanceSearchResult<S, A> distanceSearchResult = waitlist.remove();
+			final ArgNode<S, A> argNode = distanceSearchResult.argNode;
+
+			if (skip.apply(argNode, distanceSearchResult.distance)) {
+				continue;
+			}
+
+			BiConsumer<ArgNode<S,A>, Integer> expand = (succArgNode, distanceNext) -> {
+				// cex traces and covered traces can have common nodes with other cex or covered traces
+				if (distances.containsKey(succArgNode) && distanceNext >= distances.get(succArgNode)){
+					return;
+				}
+				waitlist.add(new DistanceSearchResult<>(succArgNode, distanceNext));
+				distances.put(succArgNode, distanceNext);
+			};
+
+			argNode.getOutEdges().map(ArgEdge::getTarget).forEach(argNodeSuccessor -> {
+				expand.accept(argNodeSuccessor, distanceSearchResult.distance + 1);
+			});
+			// TODO inf loop detecting here??
+			if (argNode.getCoveringNode().isPresent()) {
+				expand.accept(argNode.getCoveringNode().get(), distanceSearchResult.distance);
+			}
+		}
+	}
+
+	public void walkUpParents(ArgNode<S, A> root, BiFunction<ArgNode, Integer, Boolean> skip) {
+		checkNotNull(root);
+		checkNotNull(skip);
+
+		ArgNode<S, A> current = root;
+		int pseudoDistance = 0;
+		while (true) {
+			if (skip.apply(current, pseudoDistance)) {
+				break;
+			}
+			if (current.getParent().isEmpty()){
+				break;
+			}
+
+			pseudoDistance++;
+			current = current.getParent().get();
+		}
 	}
 
 	/**
