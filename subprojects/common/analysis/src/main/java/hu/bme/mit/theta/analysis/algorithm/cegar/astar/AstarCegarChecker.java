@@ -54,14 +54,14 @@ public final class AstarCegarChecker<S extends State, A extends Action, P extend
 	private final Logger logger;
 
 	// Blocking
+	// TODO uncomplete arg stopped => exception did this happen because heur inf?
 
 	// Last checks
 	// TODO fix intellij yellow warnings
-	// TODO using streams instead of list when can
 	// TODO final for func arguments
 	// TODO checkNotNull for func arguments
 	// TODO use Collection (where no indexing required)
-	// TODO root log etc
+	// TODO log: root,etc
 	// TODO create common store for argnodes until they modified (copy on write)
 	// TODO fix imports
 	// TODO what if prune deletes an init node, is it possible?
@@ -139,6 +139,8 @@ public final class AstarCegarChecker<S extends State, A extends Action, P extend
 				logger.write(Level.MAINSTEP, "| Refining abstraction...%n");
 				final long refinerStartTime = stopwatch.elapsed(TimeUnit.MILLISECONDS);
 				refinerResult = refiner.refine(arg, prec);
+				// throw out pruned ArgNode's AstarNodes
+				astarArgStore.getLast().prune();
 				refinerTime += stopwatch.elapsed(TimeUnit.MILLISECONDS) - refinerStartTime;
 				logger.write(Level.MAINSTEP, "Refining abstraction done, result: %s%n", refinerResult);
 

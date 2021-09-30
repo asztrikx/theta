@@ -20,16 +20,17 @@ import static com.google.common.base.Preconditions.checkNotNull;
 public final class AstarArg<S extends State, A extends Action, P extends Prec> {
     public final ARG<S, A> arg;
     public P prec;
-    // contains init nodes as well (it is used out somewhere)
+    // contains init nodes as well
     //  TODO use partition
-    private final Map<ArgNode<S, A>, AstarNode<S, A>> astarNodes = new HashContainerFactory().createMap();
-    private final Map<ArgNode<S, A>, AstarNode<S, A>> astarInitNodes = new HashContainerFactory().createMap();
+    private Map<ArgNode<S, A>, AstarNode<S, A>> astarNodes = new HashContainerFactory().createMap();
+    private Map<ArgNode<S, A>, AstarNode<S, A>> astarInitNodes = new HashContainerFactory().createMap();
     public AstarArg<S, A, P> descendant;
     // TODO make it available only through function parameter
     private final PartialOrd<S> partialOrd;
 
-    private AstarArg(final ARG<S, A> arg, final AstarArg<S, A, P> descendant, final PartialOrd<S> partialOrd) {
+    private AstarArg(final ARG<S, A> arg, P prec, final AstarArg<S, A, P> descendant, final PartialOrd<S> partialOrd) {
         this.arg = checkNotNull(arg);
+        this.prec = prec;
         this.descendant = descendant;
         this.partialOrd = checkNotNull(partialOrd);
     }
@@ -40,7 +41,7 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
             final AstarArg<S, A, P> descendant,
             final PartialOrd<S> partialOrd
     ) {
-        return new AstarArg<>(arg, descendant, partialOrd);
+        return new AstarArg<>(arg, prec, descendant, partialOrd);
     }
 
     // put saves the AstarNode for ArgNode
@@ -80,8 +81,36 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
         astarNodes.put(astarInitNode.argNode, astarInitNode);
     }
 
-    // putAllFromCandidates
-    //  when descendantAstarNodeCandidates is empty descendant will be null
+
+    public void prune() {
+        // prune init nodes
+        Map<ArgNode<S, A>, AstarNode<S, A>> astarInitNodesNew = new HashContainerFactory().createMap();
+        arg.getInitNodes().forEach(argInitNode -> {
+            if (astarInitNodes.containsKey(argInitNode)) {
+                AstarNode<S, A> astarInitNode = astarInitNodes.get(argInitNode);
+                astarInitNodesNew.put(argInitNode, astarInitNode);
+                // it will also get added to astarNodesNew
+            }
+        });
+        astarInitNodes = astarInitNodesNew;
+
+        // prune all nodes
+        Map<ArgNode<S, A>, AstarNode<S, A>> astarNodesNew = new HashContainerFactory().createMap();
+        arg.walk(arg.getInitNodes().collect(Collectors.toList()), (argNode, distance) -> {
+            if(astarNodes.containsKey(argNode)) {
+                AstarNode<S, A> astarNode = astarNodes.get(argNode);
+                astarNodesNew.put(argNode, astarNode);
+                return false;
+            } else {
+                return true;
+            }
+        });
+        astarNodes = astarNodesNew;
+    }
+
+    /**
+     * when descendantAstarNodeCandidates is empty descendant will be null
+     */
     public Collection<AstarNode<S, A>> putAllFromCandidates(final List<ArgNode<S, A>> argNodes, List<Collection<AstarNode<S, A>>> descendantAstarNodeCandidates, boolean init) {
         assert argNodes.size() == descendantAstarNodeCandidates.size();
 
@@ -93,9 +122,10 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
         return astarNodes;
     }
 
-    // putAllFromCandidates
-    //  the same descendantAstarNodeCandidates will be used for all argNodes
-    //  when descendantAstarNodeCandidates is empty descendant will be null
+    /**
+     * the same descendantAstarNodeCandidates will be used for all argNodes
+     * when descendantAstarNodeCandidates is empty descendant will be null
+     */
     public Collection<AstarNode<S, A>> putAllFromCandidates(final List<ArgNode<S, A>> argNodes, Collection<AstarNode<S, A>> descendantAstarNodeCandidates, boolean init) {
         // create list with the same items to use already written general funcion
         List<Collection<AstarNode<S, A>>> list = new ArrayList<>(argNodes.size());
@@ -106,9 +136,10 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
         return putAllFromCandidates(argNodes, list, init);
     }
 
-    // putFromCandidates
-    //  when descendantAstarNodeCandidates is empty descendant will be null
-    //  if descendant parent is covered get descendantAstarNodeCandidates from covering node's successor nodes
+    /**
+     * when descendantAstarNodeCandidates is empty descendant will be null
+     * if descendant parent is covered get descendantAstarNodeCandidates from covering node's successor nodes
+     */
     public AstarNode<S, A> putFromCandidates(final ArgNode<S, A> argNode, Collection<AstarNode<S, A>> descendantAstarNodeCandidates, boolean init) {
         // find descendant
         //  null means no descendant
@@ -117,7 +148,7 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
         // when empty candidate given interpret it as no descendant
         if (descendantAstarNodeCandidates.size() != 0) {
             List<AstarNode<S, A>> descendantAstarNodes = descendantAstarNodeCandidates.stream()
-                    .filter(descendantAstarNodeCandidate -> partialOrd.isLeq(descendantAstarNodeCandidate.argNode.getState(), argNode.getState()))
+                    .filter(descendantAstarNodeCandidate -> partialOrd.isLeq(argNode.getState(), descendantAstarNodeCandidate.argNode.getState()))
                     .collect(Collectors.toList());
             assert descendantAstarNodes.size() == 1;
 

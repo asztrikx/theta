@@ -86,8 +86,6 @@ public final class ARG<S extends State, A extends Action> implements Cloneable {
 	public ARGCopyResult<S, A> cloneWithResult() {
 		ARG<S, A> arg = new ARG<>(partialOrd);
 		arg.initialized = initialized;
-		// do not reset nextId for debug purposes
-		// 	arg.nextId = 0;
 		if (!initialized) {
 			return new ARGCopyResult<>(arg, new HashMap<>());
 		}
@@ -296,13 +294,14 @@ public final class ARG<S extends State, A extends Action> implements Cloneable {
 				return null;
 			};
 
+			// covered nodes will have the same distance => has to be before regular nodes (+1 distance) (bfs)
+			argNode.getCoveredNodes().forEach((succArgNode)->{
+				expand.apply(succArgNode, distanceSearchResult.distance);
+			});
 			if (argNode.getInEdge().isPresent()){
 				final ArgNode<S, A> succArgNode = argNode.getInEdge().get().getSource();
 				expand.apply(succArgNode, distanceSearchResult.distance + 1);
 			}
-			argNode.getCoveredNodes().forEach((succArgNode)->{
-				expand.apply(succArgNode, distanceSearchResult.distance);
-			});
 		}
 
 		return distances;
@@ -367,13 +366,14 @@ public final class ARG<S extends State, A extends Action> implements Cloneable {
 				distances.put(succArgNode, distanceNext);
 			};
 
-			argNode.getOutEdges().map(ArgEdge::getTarget).forEach(argNodeSuccessor -> {
-				expand.accept(argNodeSuccessor, distanceSearchResult.distance + 1);
-			});
 			// TODO inf loop detecting here??
+			// covering nodes will have the same distance => has to be before regular nodes (+1 distance) (bfs)
 			if (argNode.getCoveringNode().isPresent()) {
 				expand.accept(argNode.getCoveringNode().get(), distanceSearchResult.distance);
 			}
+			argNode.getOutEdges().map(ArgEdge::getTarget).forEach(argNodeSuccessor -> {
+				expand.accept(argNodeSuccessor, distanceSearchResult.distance + 1);
+			});
 		}
 	}
 

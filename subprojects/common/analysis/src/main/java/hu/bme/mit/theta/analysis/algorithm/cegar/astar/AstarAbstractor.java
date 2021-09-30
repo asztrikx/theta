@@ -118,6 +118,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		final AstarComparator<S, A, P> astarComparator = AstarComparator.create(astarArg);
 		final Waitlist<ArgNode<S, A>> waitlist = PriorityWaitlist.create(astarComparator);
 
+		// if it will be used for more than findig covering node then recheck
 		reachedSet.addAll(arg.getNodes());
 		if (root != null) {
 			waitlist.add(root);
@@ -125,8 +126,13 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 			waitlist.addAll(arg.getIncompleteNodes());
 		}
 
-		boolean targetReached = false;
-		if (!stopCriterion.canStop(arg)) {
+		// if root == null go until target reached
+		// if root != null go until from node target is reached again
+		boolean targetReachedAgain = false;
+		if (root != null) {
+			assert stopCriterion.canStop(arg);
+		}
+		if (!stopCriterion.canStop(arg) || root != null) {
 			while (!waitlist.isEmpty()) {
 				final ArgNode<S, A> node = waitlist.remove();
 				final AstarNode<S, A> astarNode = astarArg.get(node);
@@ -159,8 +165,9 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 
 					// if target was (as it is expanded) reached from this node => we should already have heuristics
 					// 	but this function is not specific to heuristic search so don't assert this
+					// succNodes is subset of all nodes => must have reached target already
 					if (stopCriterion.canStop(arg, succNodes)) {
-						targetReached = true;
+						targetReachedAgain = true;
 						break;
 					}
 					continue;
@@ -208,12 +215,12 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 					waitlist.addAll(newNodes);
 				}
 				if (stopCriterion.canStop(arg, newNodes)) {
-					targetReached = true;
+					targetReachedAgain = true;
 					break;
 				}
 			}
 		} else {
-			targetReached = true;
+			targetReachedAgain = true;
 		}
 
 		logger.write(Level.SUBSTEP, "done%n");
@@ -247,7 +254,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 			//	if not searched from init nodes then descendant nodes will also get updated
 			// TODO if a loop is detected during run == closed to it's descendant => give infinite weight
 
-			if (targetReached) {
+			if (targetReachedAgain) {
 				final Map<ArgNode<S, A>, Integer> distances = arg.getDistances();
 				distances.forEach((argNode, distance) -> {
 					AstarNode<S, A> astarNode = astarArg.get(argNode);
@@ -255,6 +262,9 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 					astarNode.distanceToError = distance;
 				});
 			} else {
+				// if a cover edge pointed to a node reaching target then root would also have reached target in the first arg expand
+				// 	=> we wouldn't have gone back to this arg from this root
+
 				arg.walk(root, (argNode, integer) -> {
 					AstarNode<S, A> astarNode = astarArg.get(argNode);
 
