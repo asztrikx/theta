@@ -86,7 +86,9 @@ public final class ARG<S extends State, A extends Action> implements Cloneable {
 	public ARGCopyResult<S, A> cloneWithResult() {
 		ARG<S, A> arg = new ARG<>(partialOrd);
 		arg.initialized = initialized;
-		if (!arg.initialized) {
+		// do not reset nextId for debug purposes
+		// 	arg.nextId = 0;
+		if (!initialized) {
 			return new ARGCopyResult<>(arg, new HashMap<>());
 		}
 
@@ -94,14 +96,14 @@ public final class ARG<S extends State, A extends Action> implements Cloneable {
 		//	don't copy state as it can be large
 		//	don't use ArgBuilder as we already know the partially expanded state of ARG
 		Map<ArgNode<S, A>, ArgNode<S, A>> oldToNew = new HashMap<>();
-		for (ArgNode<S, A> currentInitArgNode: arg.initNodes) {
+		for (ArgNode<S, A> currentInitArgNode: initNodes) {
 			ArgNode<S, A> newInitArgNode = arg.createInitNode(currentInitArgNode.getState(), currentInitArgNode.isTarget());
 			assert !newInitArgNode.isCovered();
 
 			oldToNew.put(currentInitArgNode, newInitArgNode);
 		}
 
-		walk(oldToNew.values(), (ArgNode<S, A> currentArgNode, Integer distance) -> {
+		walk(oldToNew.keySet(), (ArgNode<S, A> currentArgNode, Integer distance) -> {
 			ArgNode<S, A> newArgNode = oldToNew.get(currentArgNode);
 			assert newArgNode != null;
 
@@ -110,10 +112,15 @@ public final class ARG<S extends State, A extends Action> implements Cloneable {
 				ArgNode<S, A> currentSuccArgNode = argEdge.getTarget();
 				ArgNode<S, A> newSuccArgNode = arg.createSuccNode(newArgNode, argEdge.getAction(), currentSuccArgNode.getState(), currentSuccArgNode.isTarget());
 				if (currentSuccArgNode.isCovered()) {
-					assert currentArgNode.coveringNode.isPresent();
-					newSuccArgNode.setCoveringNode(currentArgNode.coveringNode.get());
+					assert currentSuccArgNode.coveringNode.isPresent();
+					ArgNode<S, A> currentCoveringNode = currentSuccArgNode.coveringNode.get();
+					ArgNode<S, A> newCoveringNode = oldToNew.get(currentCoveringNode);
+					// covering node should already have been visited
+					assert newCoveringNode != null;
+					newSuccArgNode.setCoveringNode(newCoveringNode);
 				}
 
+				assert !oldToNew.containsKey(currentSuccArgNode);
 				oldToNew.put(currentSuccArgNode, newSuccArgNode);
 			});
 			return false;

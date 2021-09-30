@@ -9,15 +9,15 @@ import hu.bme.mit.theta.analysis.algorithm.ArgNode;
 
 import java.util.Comparator;
 
-public final class AstarComparator<S extends State, A extends Action> implements Comparator<ArgNode<S, A>> {
-    private final AstarArg<S, A> astarArg;
+public final class AstarComparator<S extends State, A extends Action, P extends Prec> implements Comparator<ArgNode<S, A>> {
+    private final AstarArg<S, A, P> astarArg;
 
-    private AstarComparator(final AstarArg<S, A> astarArg){
+    private AstarComparator(final AstarArg<S, A, P> astarArg){
         this.astarArg = astarArg;
     }
 
-    public static <S extends State, A extends Action, P extends Prec> AstarComparator<S, A> create(
-            final AstarArg<S, A> astarArg
+    public static <S extends State, A extends Action, P extends Prec> AstarComparator<S, A, P> create(
+            final AstarArg<S, A, P> astarArg
     ) {
         return new AstarComparator<>(astarArg);
     }

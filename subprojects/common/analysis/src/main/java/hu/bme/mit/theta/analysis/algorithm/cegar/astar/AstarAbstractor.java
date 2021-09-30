@@ -115,7 +115,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		logger.write(Level.SUBSTEP, "|  |  Building ARG...");
 
 		final Partition<ArgNode<S, A>, ?> reachedSet = Partition.of(n -> projection.apply(n.getState()));
-		final AstarComparator<S, A> astarComparator = AstarComparator.create(astarArg);
+		final AstarComparator<S, A, P> astarComparator = AstarComparator.create(astarArg);
 		final Waitlist<ArgNode<S, A>> waitlist = PriorityWaitlist.create(astarComparator);
 
 		reachedSet.addAll(arg.getNodes());
@@ -136,6 +136,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 				//	by not adding infinite state nodes only init nodes can cause this
 				if (astarNode.state != AstarNode.State.DESCENDANT_HEURISTIC_UNAVAILABLE) {
 					if (astarNode.descendant.state == AstarNode.State.HEURISTIC_INFINITE) {
+						assert arg.getInitNodes().collect(Collectors.toList()).contains(node);
 						break;
 					}
 				}
@@ -173,7 +174,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 
 					// descendant AstarNode map
 					// descendant heurisitcs calculate to be used in waitlist
-					newNodes.forEach(newArgNode -> {
+					for (ArgNode<S, A> newArgNode : newNodes) {
 						Collection<AstarNode<S, A>> succAstarNodeCandidates = new ArrayList<>();
 						if (astarNode.descendant != null) {
 							// covered nodes are expanded in their covering nodes
@@ -195,7 +196,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 
 						AstarNode<S, A> newAstarNode = astarArg.putFromCandidates(newArgNode, succAstarNodeCandidates, false);
 						calculateHeuristic(newAstarNode.descendant, astarArg.descendant);
-					});
+					};
 
 					// do not add nodes with already known infinite distance
 					newNodes = newNodes.stream().filter(newNode -> {

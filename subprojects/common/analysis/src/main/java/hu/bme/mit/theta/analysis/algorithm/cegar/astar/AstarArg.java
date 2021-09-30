@@ -117,7 +117,7 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
         // when empty candidate given interpret it as no descendant
         if (descendantAstarNodeCandidates.size() != 0) {
             List<AstarNode<S, A>> descendantAstarNodes = descendantAstarNodeCandidates.stream()
-                    .filter(descendantArgNodeCandidate -> partialOrd.isLeq(descendantArgNodeCandidate.argNode.getState(), argNode.getState()))
+                    .filter(descendantAstarNodeCandidate -> partialOrd.isLeq(descendantAstarNodeCandidate.argNode.getState(), argNode.getState()))
                     .collect(Collectors.toList());
             assert descendantAstarNodes.size() == 1;
 

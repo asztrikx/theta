@@ -19,6 +19,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
 
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import com.google.common.base.Stopwatch;
 
@@ -53,7 +54,6 @@ public final class AstarCegarChecker<S extends State, A extends Action, P extend
 	private final Logger logger;
 
 	// Blocking
-	// TODO prec is needed
 
 	// Last checks
 	// TODO fix intellij yellow warnings
@@ -73,6 +73,7 @@ public final class AstarCegarChecker<S extends State, A extends Action, P extend
 	// TODO use javadocs
 	// TODO use new HashContainerFactory().createMap()
 	// TODO check if covered => has to check coverer
+	// TODO rename Last Current to unified name
 
 	final AstarArgStore<S, A, P> astarArgStore;
 

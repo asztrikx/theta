@@ -52,16 +52,15 @@ public final class AstarArgStore<S extends State, A extends Action, P extends Pr
     }
 
     public void addLastCopied() {
-        final AstarArg<S, A, P> argLast = getLast();
         final AstarArg<S, A, P> astarArgLast = getLast();
 
         // copy ARG
-        final ARG.ARGCopyResult<S, A> argCopyResult = argLast.arg.cloneWithResult();
+        final ARG.ARGCopyResult<S, A> argCopyResult = astarArgLast.arg.cloneWithResult();
         final ARG<S, A> argNew = argCopyResult.argCopied;
         final Map<ArgNode<S, A>, ArgNode<S, A>> oldToNew = argCopyResult.oldToNew;
 
         // new AstarArg
-        final AstarArg<S, A, P> astarArgNew = AstarArg.create(argNew, argLast.prec, argLast, partialOrd);
+        final AstarArg<S, A, P> astarArgNew = AstarArg.create(argNew, astarArgLast.prec, astarArgLast, partialOrd);
 
         // do not copy heuristics as we will reach error in new arg
         //  which will give more accurate heuristics for next arg
