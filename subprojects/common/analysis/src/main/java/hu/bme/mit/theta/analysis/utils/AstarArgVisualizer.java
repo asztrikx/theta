@@ -24,6 +24,9 @@ import hu.bme.mit.theta.analysis.Prec;
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarArg;
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarNode;
 import hu.bme.mit.theta.common.container.Containers;
+
+import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -52,35 +55,32 @@ public final class AstarArgVisualizer<S extends State, A extends Action, P exten
 
     private final Function<S, String> stateToString;
     private final Function<A, String> actionToString;
-    private final Function<AstarNode<S, A>, String> descendantAstarNodeToString;
-    private final Function<AstarNode<S, A>, String> astarNodeToString;
+    private final Function<? super AstarNode<? extends S, ? extends A>, String> astarNodeToString;
 
     private static class LazyHolderDefault {
-        static final AstarArgVisualizer<State, Action, Prec> INSTANCE = new AstarArgVisualizer<>(s -> s.toString(), a -> a.toString(), n -> n.toString(), n -> n.toString());
+        static final AstarArgVisualizer<State, Action, Prec> INSTANCE = new AstarArgVisualizer<>(s -> s.toString(), a -> a.toString(), n -> n.toString());
     }
 
     private static class LazyHolderStructureOnly {
-        static final AstarArgVisualizer<State, Action, Prec> INSTANCE = new AstarArgVisualizer<>(s -> "", a -> "", n -> "", n -> "");
+        static final AstarArgVisualizer<State, Action, Prec> INSTANCE = new AstarArgVisualizer<>(s -> "", a -> "", n -> "");
     }
 
     public AstarArgVisualizer(
             final Function<S, String> stateToString,
             final Function<A, String> actionToString,
-            final Function<AstarNode<S, A>, String> astarNodeToString,
-            final Function<AstarNode<S, A>, String> descendantAstarNodeToString
+            final Function<? super AstarNode<? extends S, ? extends A>, String> astarNodeToString
     ) {
         this.stateToString = stateToString;
         this.actionToString = actionToString;
         this.astarNodeToString = astarNodeToString;
-        this.descendantAstarNodeToString = descendantAstarNodeToString;
     }
 
     public static <S extends State, A extends Action, P extends Prec> AstarArgVisualizer<S, A, P> create(
             final Function<S, String> stateToString,
             final Function<A, String> actionToString,
-            final Function<AstarNode<S, A>, String> astarNodeToString,
-            final Function<AstarNode<S, A>, String> descendantAstarNodeToString) {
-        return new AstarArgVisualizer<>(stateToString, actionToString, astarNodeToString, descendantAstarNodeToString);
+            final Function<? super AstarNode<? extends S, ? extends A>, String> astarNodeToString,
+            final Function<? super AstarNode<? extends S, ? extends A>, String> descendantAstarNodeToString) {
+        return new AstarArgVisualizer<>(stateToString, actionToString, astarNodeToString);
     }
 
     public static AstarArgVisualizer<State, Action, Prec> getDefault() {
@@ -91,13 +91,20 @@ public final class AstarArgVisualizer<S extends State, A extends Action, P exten
         return LazyHolderStructureOnly.INSTANCE;
     }
 
-    public Graph visualize(final AstarArg<? extends S, ? extends A, ? extends P> astarArg) {
-        ARG<? extends S, ? extends A> arg = astarArg.arg;
-        final Graph graph = new Graph(ARG_ID, ARG_LABEL);
+    public <S1 extends S, A1 extends A, P1 extends P>  Graph visualize(final AstarArg<S1, A1, P1> astarArg, String state, int iteration) {
+        ARG<S1, A1> arg = astarArg.arg;
 
-        final Set<ArgNode<? extends S, ? extends A>> traversed = Containers.createSet();
+        // title
+        StringBuilder title = new StringBuilder();
+        for (int i = iteration; i >= astarArg.iteration; i--) {
+            title.append(String.format("%d.", i));
+        }
+        title.append(String.format(" %s", state));
+        final Graph graph = new Graph(ARG_ID, title.toString());
 
-        for (final ArgNode<? extends S, ? extends A> initNode : arg.getInitNodes().collect(Collectors.toSet())) {
+        final Set<ArgNode<S1, A1>> traversed = Containers.createSet();
+
+        for (final ArgNode<S1, A1> initNode : arg.getInitNodes().collect(Collectors.toSet())) {
             traverse(graph, initNode, traversed, astarArg);
             final NodeAttributes nAttributes = NodeAttributes.builder().label("").fillColor(FILL_COLOR)
                     .lineColor(FILL_COLOR).lineStyle(SUCC_EDGE_STYLE).peripheries(1).build();
@@ -110,11 +117,11 @@ public final class AstarArgVisualizer<S extends State, A extends Action, P exten
         return graph;
     }
 
-    private void traverse(
+    private <S1 extends S, A1 extends A, P1 extends P> void traverse(
             final Graph graph,
-            final ArgNode<? extends S, ? extends A> node,
-            final Set<ArgNode<? extends S, ? extends A>> traversed,
-            AstarArg<? extends S, ? extends A, ? extends P> astarArg
+            final ArgNode<S1, A1> node,
+            final Set<ArgNode<S1, A1>> traversed,
+            AstarArg<S1, A1, P1> astarArg
     ) {
         if (traversed.contains(node)) {
             return;
@@ -125,10 +132,10 @@ public final class AstarArgVisualizer<S extends State, A extends Action, P exten
         final LineStyle lineStyle = SUCC_EDGE_STYLE;
         final int peripheries = node.isTarget() ? 2 : 1;
 
-        AstarNode<? extends S, ? extends A> astarNode = astarArg.get(node);
-        String descendantLabel = "";
+        AstarNode<S1, A1> astarNode = astarArg.get(node);
+        String descendantLabel = "Descendant: -";
         if (astarNode.descendant != null) {
-            descendantLabel = descendantAstarNodeToString.apply(astarNode);
+            descendantLabel = astarNodeToString.apply(astarNode.descendant);
         }
         String label = String.format("%s\\l%s\\l%s",
                 stateToString.apply(node.getState()),
@@ -142,7 +149,7 @@ public final class AstarArgVisualizer<S extends State, A extends Action, P exten
 
         graph.addNode(nodeId, nAttributes);
 
-        for (final ArgEdge<? extends S, ? extends A> edge : node.getOutEdges().collect(Collectors.toSet())) {
+        for (final ArgEdge<S1, A1> edge : node.getOutEdges().collect(Collectors.toSet())) {
             traverse(graph, edge.getTarget(), traversed, astarArg);
             final String sourceId = NODE_ID_PREFIX + edge.getSource().getId();
             final String targetId = NODE_ID_PREFIX + edge.getTarget().getId();
