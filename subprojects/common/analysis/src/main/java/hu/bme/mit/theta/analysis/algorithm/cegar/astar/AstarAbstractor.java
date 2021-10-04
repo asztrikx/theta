@@ -107,7 +107,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 			// create AstarNodes for init ArgNodes
 			//	output of argBuilder.init(...) is not used for clarity
 			List<ArgNode<S, A>> initArgNodes = arg.getInitNodes().collect(Collectors.toList());
-			// init nodes shouldn't be covered
+			// TODO init nodes shouldn't be covered?
 			for (ArgNode<S, A> initArgNode : initArgNodes) {
 				assert !initArgNode.isCovered();
 			}
@@ -118,8 +118,16 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 			if (astarArg.descendant != null) {
 				initAstarNodeCandidates.addAll(astarArg.descendant.getAllInitNode().values());
 			}
-			Collection<AstarNode<S, A>> initAstarNodes = astarArg.putAllFromCandidates(initArgNodes, initAstarNodeCandidates, true);
-			initAstarNodes.forEach(astarNode -> calculateHeuristic(astarNode.descendant, astarArg.descendant, astarArg));
+
+			for (int i = 0; i < initArgNodes.size(); i++) {
+				AstarNode<S, A> initAstarNodeDescendant = null;
+				if (astarArg.descendant != null) {
+					initAstarNodeDescendant = astarArg.getDescendantFromCandidates(initArgNodes.get(i), initAstarNodeCandidates);
+					calculateHeuristic(initAstarNodeDescendant, astarArg.descendant, astarArg);
+				}
+				AstarNode<S, A> newAstarNode = AstarNode.create(initArgNodes.get(i), initAstarNodeDescendant);
+				astarArg.putInitNode(newAstarNode);
+			}
 
 			logger.write(Level.SUBSTEP, "done%n");
 		}
@@ -216,8 +224,13 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 							}
 						}
 
-						AstarNode<S, A> newAstarNode = astarArg.putFromCandidates(newArgNode, succAstarNodeCandidates, false);
-						calculateHeuristic(newAstarNode.descendant, astarArg.descendant, astarArg);
+						AstarNode<S, A> newAstarNodeDescendant = null;
+						if (astarArg.descendant != null) {
+							newAstarNodeDescendant = astarArg.getDescendantFromCandidates(newArgNode, succAstarNodeCandidates);
+							calculateHeuristic(newAstarNodeDescendant, astarArg.descendant, astarArg);
+						}
+						AstarNode<S, A> newAstarNode = AstarNode.create(newArgNode, newAstarNodeDescendant);
+						astarArg.put(newAstarNode);
 					}
 
 					// do not add nodes with already known infinite distance
@@ -232,6 +245,20 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 				if (stopCriterion.canStop(arg, newNodes)) {
 					targetReachedAgain = true;
 					break;
+				}
+				// when walking in previous arg we can only reach error from
+				// 	- expanding to target
+				//	- getting a covering edge to a node already reaching target
+				if (root != null) {
+					if (node.getCoveringNode().isPresent()) {
+						ArgNode<S, A> coveringArgNode = node.getCoveringNode().get();
+						AstarNode<S, A> coveringAstarNode = astarArg.get(coveringArgNode);
+						assert coveringAstarNode != null;
+						if (coveringAstarNode.state == AstarNode.State.HEURISTIC_EXACT) {
+							targetReachedAgain = true;
+							break;
+						}
+					}
 				}
 			}
 		} else {
@@ -273,6 +300,8 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 			// TODO if a loop is detected during run == closed to it's descendant => give infinite weight?
 
 			if (targetReachedAgain) {
+				// TODO maybe we can be more efficient: when coming from covering node just go from there
+				// 	when coming from target just go straigth up to root somehow
 				final Map<ArgNode<S, A>, Integer> distances = arg.getDistances();
 				distances.forEach((argNode, distance) -> {
 					AstarNode<S, A> astarNode = astarArg.get(argNode);
@@ -317,13 +346,9 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 
 	// calculate distance to error node for it to be used as heuristic for next arg
 	public void calculateHeuristic(final AstarNode<S, A> astarNode, final AstarArg<S, A, P> astarArg, final AstarArg<S, A, P> parentAstarArg) {
-		if (astarNode == null) {
-			assert astarArg == null;
-			assert parentAstarArg == null;
-			return;
-		}
-		checkNotNull(parentAstarArg);
+		checkNotNull(astarNode);
 		checkNotNull(astarArg);
+		checkNotNull(parentAstarArg);
 
 		boolean backPrinted = false;
 		switch (astarNode.state) {

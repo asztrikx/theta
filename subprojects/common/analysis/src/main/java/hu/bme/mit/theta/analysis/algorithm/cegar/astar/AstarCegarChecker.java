@@ -57,10 +57,12 @@ public final class AstarCegarChecker<S extends State, A extends Action, P extend
 	// TODO uncomplete arg stopped => exception did this happen because heur inf?
 	// TODO fix test failing
 	// TODO fix astarviz (+ add title)
-	// TODO parallel run when going back
-	// TODO measure without debug!!!
+	// TODO fix 3.2. end N8
+	// TODO assert doesnt throw exception: see telegram photo (in compare when checking descendant heur unknown)
 
 	// Last checks
+	// TODO parallel run when going back
+	// TODO measure without debug!!!
 	// TODO fix intellij yellow warnings
 	// TODO final for func arguments
 	// TODO checkNotNull for func arguments
@@ -78,6 +80,7 @@ public final class AstarCegarChecker<S extends State, A extends Action, P extend
 	// TODO use new HashContainerFactory().createMap()
 	// TODO check if covered => has to check coverer
 	// TODO rename Last Current to unified name
+	// TODO eliminate hashmap, create edges etc?
 
 	final AstarArgStore<S, A, P> astarArgStore;
 

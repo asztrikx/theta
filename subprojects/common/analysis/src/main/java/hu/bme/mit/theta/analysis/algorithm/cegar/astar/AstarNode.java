@@ -48,7 +48,6 @@ public final class AstarNode<S extends hu.bme.mit.theta.analysis.State, A extend
                     state = State.HEURISTIC_UNKNOWN;
                     break;
                 case HEURISTIC_INFINITE:
-                    // TODO does this work? counter5 iteration 2
                     state = State.HEURISTIC_INFINITE;
                     break;
                 default:

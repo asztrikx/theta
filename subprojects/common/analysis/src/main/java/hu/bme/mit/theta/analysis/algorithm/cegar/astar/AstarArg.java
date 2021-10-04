@@ -77,6 +77,7 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
         astarNodes.putAll(mapping);
     }
 
+    // TODO rename to putInit
     public void putInitNode(final AstarNode<S, A> astarInitNode) {
         astarInitNodes.put(astarInitNode.argNode, astarInitNode);
         astarNodes.put(astarInitNode.argNode, astarInitNode);
@@ -109,15 +110,16 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
         astarNodes = astarNodesNew;
     }
 
+    // TODO where to put these functions
     /**
      * when descendantAstarNodeCandidates is empty descendant will be null
      */
-    public Collection<AstarNode<S, A>> putAllFromCandidates(final List<ArgNode<S, A>> argNodes, List<Collection<AstarNode<S, A>>> descendantAstarNodeCandidates, boolean init) {
+    public Collection<AstarNode<S, A>> getAllDescendantFromCandidates(final List<ArgNode<S, A>> argNodes, List<Collection<AstarNode<S, A>>> descendantAstarNodeCandidates) {
         assert argNodes.size() == descendantAstarNodeCandidates.size();
 
         List<AstarNode<S, A>> astarNodes = new ArrayList<>();
         for (int i = 0; i < argNodes.size(); i++) {
-            AstarNode<S, A> astarNode = putFromCandidates(argNodes.get(i), descendantAstarNodeCandidates.get(i), init);
+            AstarNode<S, A> astarNode = getDescendantFromCandidates(argNodes.get(i), descendantAstarNodeCandidates.get(i));
             astarNodes.add(astarNode);
         }
         return astarNodes;
@@ -127,43 +129,27 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
      * the same descendantAstarNodeCandidates will be used for all argNodes
      * when descendantAstarNodeCandidates is empty descendant will be null
      */
-    public Collection<AstarNode<S, A>> putAllFromCandidates(final List<ArgNode<S, A>> argNodes, Collection<AstarNode<S, A>> descendantAstarNodeCandidates, boolean init) {
+    public Collection<AstarNode<S, A>> getAllDescendantFromCandidates(final List<ArgNode<S, A>> argNodes, Collection<AstarNode<S, A>> descendantAstarNodeCandidates) {
         // create list with the same items to use already written general funcion
         List<Collection<AstarNode<S, A>>> list = new ArrayList<>(argNodes.size());
         for (int i = 0; i < argNodes.size(); i++) {
             list.add(descendantAstarNodeCandidates);
         }
 
-        return putAllFromCandidates(argNodes, list, init);
+        return getAllDescendantFromCandidates(argNodes, list);
     }
 
     /**
-     * when descendantAstarNodeCandidates is empty descendant will be null
      * if descendant parent is covered get descendantAstarNodeCandidates from covering node's successor nodes
      */
-    public AstarNode<S, A> putFromCandidates(final ArgNode<S, A> argNode, Collection<AstarNode<S, A>> descendantAstarNodeCandidates, boolean init) {
-        // find descendant
-        //  null means no descendant
-        AstarNode<S, A> descendantAstarNode = null;
+    public AstarNode<S, A> getDescendantFromCandidates(final ArgNode<S, A> argNode, Collection<AstarNode<S, A>> descendantAstarNodeCandidates) {
+        assert descendantAstarNodeCandidates.size() != 0;
 
-        // when empty candidate given interpret it as no descendant
-        if (descendantAstarNodeCandidates.size() != 0) {
-            List<AstarNode<S, A>> descendantAstarNodes = descendantAstarNodeCandidates.stream()
-                    .filter(descendantAstarNodeCandidate -> partialOrd.isLeq(argNode.getState(), descendantAstarNodeCandidate.argNode.getState()))
-                    .collect(Collectors.toList());
-            assert descendantAstarNodes.size() == 1;
+        List<AstarNode<S, A>> descendantAstarNodes = descendantAstarNodeCandidates.stream()
+                .filter(descendantAstarNodeCandidate -> partialOrd.isLeq(argNode.getState(), descendantAstarNodeCandidate.argNode.getState()))
+                .collect(Collectors.toList());
+        assert descendantAstarNodes.size() == 1;
 
-            descendantAstarNode = descendantAstarNodes.get(0);
-        }
-
-        // create, store astarNode
-        AstarNode<S, A> astarNode = AstarNode.create(argNode, descendantAstarNode);
-        if (init) {
-            putInitNode(astarNode); // TODO atomicity from foreach? (putAllFromCandidates)
-        } else {
-            put(astarNode); // TODO atomicity from foreach? (putAllFromCandidates)
-        }
-
-        return astarNode;
+        return descendantAstarNodes.get(0);
     }
 }
