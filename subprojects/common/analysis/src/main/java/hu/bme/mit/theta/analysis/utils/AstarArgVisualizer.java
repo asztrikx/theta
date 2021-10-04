@@ -94,7 +94,7 @@ public final class AstarArgVisualizer<S extends State, A extends Action, P exten
     public <S1 extends S, A1 extends A, P1 extends P>  Graph visualize(final AstarArg<S1, A1, P1> astarArg, String title) {
         ARG<S1, A1> arg = astarArg.arg;
 
-        final Graph graph = new Graph(ARG_ID, title.toString());
+        final Graph graph = new Graph(ARG_ID, title);
 
         final Set<ArgNode<S1, A1>> traversed = Containers.createSet();
 

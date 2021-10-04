@@ -91,13 +91,13 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		checkNotNull(prec);
 		logger.write(Level.DETAIL, "|  |  Precision: %s%n", prec);
 
-		String visualizerTitle = "start ";
+		String visualizerState = "";
 		if (root != null) {
-			visualizerTitle += String.format("N%d", root.getId());
+			visualizerState += String.format("N%d", root.getId());
 		} else {
-			visualizerTitle += "root";
+			visualizerState += "root";
 		}
-		visualize(astarArgStore, visualizerTitle,  astarArg.iteration);
+		visualize(astarArgStore, String.format("start %s", visualizerState),  astarArg.iteration);
 
 		// initialize Arg
 		assert root == null || arg.isInitialized();
@@ -249,7 +249,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		if (arg.isSafe()) {
 			// TODO check whether arg is really safe
 			// checkState(arg.isComplete(), "Returning incomplete ARG as safe");
-			visualize(astarArgStore, "end", astarArg.iteration);
+			visualize(astarArgStore, String.format("end %s", visualizerState),  astarArg.iteration);
 			return AbstractorResult.safe();
 		} else {
 			// arg unsafe can because
@@ -265,7 +265,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 					astarNode.distanceToError = distance;
 				});
 
-				visualize(astarArgStore, "end", astarArg.iteration);
+				visualize(astarArgStore, String.format("end %s", visualizerState),  astarArg.iteration);
 				return AbstractorResult.unsafe();
 			}
 
@@ -296,7 +296,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 				});
 			}
 
-			visualize(astarArgStore, "end", astarArg.iteration);
+			visualize(astarArgStore, String.format("end %s", visualizerState),  astarArg.iteration);
 			return AbstractorResult.unsafe();
 		}
 	}
@@ -343,24 +343,14 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 				backPrinted = true;
 
 				calculateHeuristic(astarNode.descendant, astarArg.descendant, astarArg);
+				assert astarNode.descendant.state == AstarNode.State.HEURISTIC_EXACT || astarNode.descendant.state == AstarNode.State.HEURISTIC_INFINITE;
 
-				// TODO remove this?
-				// do not update current node's heuristic (exact => unknown, inf => inf)
-				// - outside caller (a call which doesn't go through this part but could update it's heuristic) won't update also
+				// do not update current node's heuristic (like: exact => unknown, inf => inf)
+				// - outside caller won't update also
+				// 		(a call which doesn't go through this part but could update it's heuristic:
+				// 		e.g. call from a node whose descendant is null and heuristic is unknown but will get infinite after search)
 				// - child node will simply call calculateHeuristic() and  TODO ??
-
-				// update current based on descendant's new heuristic
-				// TODO somehow inf desc but node is desc unknown
-				// 		calcheur is called from checkFromRoot
-				if (astarNode.descendant.state == AstarNode.State.HEURISTIC_EXACT) {
-					astarNode.state = AstarNode.State.HEURISTIC_UNKNOWN;
-				} else if (astarNode.descendant.state == AstarNode.State.HEURISTIC_INFINITE) {
-					astarNode.state = AstarNode.State.HEURISTIC_INFINITE;
-					break;
-				} else {
-					throw new IllegalArgumentException(AstarNode.IllegalState);
-				}
-
+				astarNode.state = AstarNode.State.HEURISTIC_UNKNOWN;
 				// no break as we want to calculate as we needed heuristic to walk in descendant's arg from which we get heuristic for current arg
 			// TODO here we can see that this can be merged
 			case HEURISTIC_UNKNOWN:
@@ -397,7 +387,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		// System.out.println(GraphvizWriter.getInstance().writeString(AstarArgVisualizer.getDefault().visualize(astarArg, state, astarArgStore.size())));
 
 		StringBuilder title = new StringBuilder();
-		for (int i = iteration; i <= astarArgStore.size(); i++) {
+		for (int i = astarArgStore.size(); i >= iteration ; i--) {
 			title.append(String.format("%d.", i));
 		}
 		title.append(String.format(" %s", state));
@@ -408,9 +398,9 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 				Files.createDirectory(Path.of(path));
 			}
 			File file = new File(path);
-			String filename = String.format("%s/%d. title.png", path, file.listFiles().length + 1);
+			String filename = String.format("%s/%d| %s.png", path, file.listFiles().length + 1, title.toString());
 
-			GraphvizWriter.getInstance().writeFileAutoConvert(AstarArgVisualizer.getDefault().visualize(astarArgStore.get(iteration), title.toString()), filename);
+			GraphvizWriter.getInstance().writeFileAutoConvert(AstarArgVisualizer.getDefault().visualize(astarArgStore.get(iteration - 1), title.toString()), filename);
 		} catch (IOException | InterruptedException e) {
 			throw new RuntimeException(e);
 		}
