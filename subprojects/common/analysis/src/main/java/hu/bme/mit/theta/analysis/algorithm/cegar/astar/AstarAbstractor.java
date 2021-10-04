@@ -27,12 +27,20 @@ import hu.bme.mit.theta.analysis.algorithm.cegar.AbstractorResult;
 import hu.bme.mit.theta.analysis.algorithm.cegar.abstractor.StopCriterion;
 import hu.bme.mit.theta.analysis.algorithm.cegar.abstractor.StopCriterions;
 import hu.bme.mit.theta.analysis.reachedset.Partition;
+import hu.bme.mit.theta.analysis.utils.AstarArgVisualizer;
 import hu.bme.mit.theta.analysis.waitlist.PriorityWaitlist;
 import hu.bme.mit.theta.analysis.waitlist.Waitlist;
 import hu.bme.mit.theta.common.logging.Logger;
 import hu.bme.mit.theta.common.logging.Logger.Level;
 import hu.bme.mit.theta.common.logging.NullLogger;
+import hu.bme.mit.theta.common.visualization.writer.GraphvizWriter;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -83,6 +91,14 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		checkNotNull(prec);
 		logger.write(Level.DETAIL, "|  |  Precision: %s%n", prec);
 
+		String visualizerTitle = "start ";
+		if (root != null) {
+			visualizerTitle += String.format("N%d", root.getId());
+		} else {
+			visualizerTitle += "root";
+		}
+		visualize(astarArgStore, visualizerTitle,  astarArg.iteration);
+
 		// initialize Arg
 		assert root == null || arg.isInitialized();
 		if (root == null && !arg.isInitialized()) {
@@ -104,7 +120,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 				initAstarNodeCandidates.addAll(astarArg.descendant.getAllInitNode().values());
 			}
 			Collection<AstarNode<S, A>> initAstarNodes = astarArg.putAllFromCandidates(initArgNodes, initAstarNodeCandidates, true);
-			initAstarNodes.forEach(astarNode -> calculateHeuristic(astarNode.descendant, astarArg.descendant));
+			initAstarNodes.forEach(astarNode -> calculateHeuristic(astarNode.descendant, astarArg.descendant, astarArg));
 
 			logger.write(Level.SUBSTEP, "done%n");
 		}
@@ -202,7 +218,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 						}
 
 						AstarNode<S, A> newAstarNode = astarArg.putFromCandidates(newArgNode, succAstarNodeCandidates, false);
-						calculateHeuristic(newAstarNode.descendant, astarArg.descendant);
+						calculateHeuristic(newAstarNode.descendant, astarArg.descendant, astarArg);
 					};
 
 					// do not add nodes with already known infinite distance
@@ -231,7 +247,9 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 
 		// distance to error as new heuristic
 		if (arg.isSafe()) {
-			checkState(arg.isComplete(), "Returning incomplete ARG as safe");
+			// TODO check whether arg is really safe
+			// checkState(arg.isComplete(), "Returning incomplete ARG as safe");
+			visualize(astarArgStore, "end", astarArg.iteration);
 			return AbstractorResult.safe();
 		} else {
 			// arg unsafe can because
@@ -247,12 +265,13 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 					astarNode.distanceToError = distance;
 				});
 
+				visualize(astarArgStore, "end", astarArg.iteration);
 				return AbstractorResult.unsafe();
 			}
 
 			// Apply now available distance to found error to all nodes reaching error, not only root
 			//	if not searched from init nodes then descendant nodes will also get updated
-			// TODO if a loop is detected during run == closed to it's descendant => give infinite weight
+			// TODO if a loop is detected during run == closed to it's descendant => give infinite weight?
 
 			if (targetReachedAgain) {
 				final Map<ArgNode<S, A>, Integer> distances = arg.getDistances();
@@ -277,6 +296,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 				});
 			}
 
+			visualize(astarArgStore, "end", astarArg.iteration);
 			return AbstractorResult.unsafe();
 		}
 	}
@@ -297,11 +317,13 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 	}
 
 	// calculate distance to error node for it to be used as heuristic for next arg
-	public void calculateHeuristic(final AstarNode<S, A> astarNode, final AstarArg<S, A, P> astarArg) {
+	public void calculateHeuristic(final AstarNode<S, A> astarNode, final AstarArg<S, A, P> astarArg, final AstarArg<S, A, P> parentAstarArg) {
 		if (astarNode == null) {
 			assert astarArg == null;
+			assert parentAstarArg == null;
 			return;
 		}
+		checkNotNull(parentAstarArg);
 		checkNotNull(astarArg);
 
 		// check for correct State value beforehand to be concise
@@ -311,25 +333,93 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 			assert astarNode.descendant != null;
 		}
 
+		boolean backPrinted = false;
 		switch (astarNode.state) {
 			case HEURISTIC_EXACT:
 			case HEURISTIC_INFINITE:
 				return;
 			case DESCENDANT_HEURISTIC_UNKNOWN:
-				calculateHeuristic(astarNode.descendant, astarArg.descendant);
-				assert astarNode.descendant.state == AstarNode.State.HEURISTIC_EXACT || astarNode.descendant.state == AstarNode.State.HEURISTIC_INFINITE;
+				// visualize(parentAstarArg, "back");
+				backPrinted = true;
 
-				astarNode.state = AstarNode.State.HEURISTIC_UNKNOWN;
+				calculateHeuristic(astarNode.descendant, astarArg.descendant, astarArg);
+
+				// TODO remove this?
+				// do not update current node's heuristic (exact => unknown, inf => inf)
+				// - outside caller (a call which doesn't go through this part but could update it's heuristic) won't update also
+				// - child node will simply call calculateHeuristic() and  TODO ??
+
+				// update current based on descendant's new heuristic
+				// TODO somehow inf desc but node is desc unknown
+				// 		calcheur is called from checkFromRoot
+				if (astarNode.descendant.state == AstarNode.State.HEURISTIC_EXACT) {
+					astarNode.state = AstarNode.State.HEURISTIC_UNKNOWN;
+				} else if (astarNode.descendant.state == AstarNode.State.HEURISTIC_INFINITE) {
+					astarNode.state = AstarNode.State.HEURISTIC_INFINITE;
+					break;
+				} else {
+					throw new IllegalArgumentException(AstarNode.IllegalState);
+				}
+
 				// no break as we want to calculate as we needed heuristic to walk in descendant's arg from which we get heuristic for current arg
+			// TODO here we can see that this can be merged
 			case HEURISTIC_UNKNOWN:
 			case DESCENDANT_HEURISTIC_UNAVAILABLE:
+				assert astarNode.state != AstarNode.State.DESCENDANT_HEURISTIC_UNKNOWN;
+				assert astarNode.state != AstarNode.State.HEURISTIC_EXACT;
+				assert astarNode.state != AstarNode.State.HEURISTIC_INFINITE;
+
+				// infinite heuristic descendant
+				// - don't walk arg
+				// - set state here
+				if (astarNode.descendant != null && astarNode.descendant.state == AstarNode.State.HEURISTIC_INFINITE) {
+					astarNode.state = AstarNode.State.HEURISTIC_INFINITE;
+					break;
+				}
+
 				// descendant has heuristics to walk from astarNode in astarArg
+				if (!backPrinted) {
+					// TODO fix this
+					// visualize(parentAstarArg, "back");
+				}
+				// TODO color root
 				checkFromNode(astarArg, astarArg.prec, astarNode.argNode);
+
 				assert astarNode.state == AstarNode.State.HEURISTIC_EXACT || astarNode.state == AstarNode.State.HEURISTIC_INFINITE;
 				break;
 			default:
 				throw new IllegalArgumentException(AstarNode.IllegalState);
 		}
+	}
+
+	private static String nowText = getNowText();
+	private void visualize(AstarArgStore<S, A, P> astarArgStore, String state, int iteration) {
+		// System.out.println(GraphvizWriter.getInstance().writeString(AstarArgVisualizer.getDefault().visualize(astarArg, state, astarArgStore.size())));
+
+		StringBuilder title = new StringBuilder();
+		for (int i = iteration; i <= astarArgStore.size(); i++) {
+			title.append(String.format("%d.", i));
+		}
+		title.append(String.format(" %s", state));
+
+		try {
+			String path = String.format("/mnt/hdd/tmp/theta/%s", nowText);
+			if (!Files.exists(Path.of(path))) {
+				Files.createDirectory(Path.of(path));
+			}
+			File file = new File(path);
+			String filename = String.format("%s/%d. title.png", path, file.listFiles().length + 1);
+
+			GraphvizWriter.getInstance().writeFileAutoConvert(AstarArgVisualizer.getDefault().visualize(astarArgStore.get(iteration), title.toString()), filename);
+		} catch (IOException | InterruptedException e) {
+			throw new RuntimeException(e);
+		}
+	}
+
+	private static String getNowText() {
+		LocalDateTime now = LocalDateTime.now();
+		DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy_MM_dd HH_mm_ss");
+		return dateTimeFormatter.format(now);
 	}
 
 	private void close(final ArgNode<S, A> node, final Collection<ArgNode<S, A>> candidates) {

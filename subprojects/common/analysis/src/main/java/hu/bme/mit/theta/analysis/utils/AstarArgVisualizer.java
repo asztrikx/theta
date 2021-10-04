@@ -48,7 +48,7 @@ public final class AstarArgVisualizer<S extends State, A extends Action, P exten
     private static final String ARG_LABEL = "";
     private static final String ARG_ID = "arg";
     private static final String FONT = "courier";
-    private static final String NODE_ID_PREFIX = "node_";
+    private static final String NODE_ID_PREFIX = "N";
     private static final Color FILL_COLOR = Color.WHITE;
     private static final Color LINE_COLOR = Color.BLACK;
     private static final String PHANTOM_INIT_ID = "phantom_init";
@@ -91,15 +91,9 @@ public final class AstarArgVisualizer<S extends State, A extends Action, P exten
         return LazyHolderStructureOnly.INSTANCE;
     }
 
-    public <S1 extends S, A1 extends A, P1 extends P>  Graph visualize(final AstarArg<S1, A1, P1> astarArg, String state, int iteration) {
+    public <S1 extends S, A1 extends A, P1 extends P>  Graph visualize(final AstarArg<S1, A1, P1> astarArg, String title) {
         ARG<S1, A1> arg = astarArg.arg;
 
-        // title
-        StringBuilder title = new StringBuilder();
-        for (int i = iteration; i >= astarArg.iteration; i--) {
-            title.append(String.format("%d.", i));
-        }
-        title.append(String.format(" %s", state));
         final Graph graph = new Graph(ARG_ID, title.toString());
 
         final Set<ArgNode<S1, A1>> traversed = Containers.createSet();
@@ -133,14 +127,17 @@ public final class AstarArgVisualizer<S extends State, A extends Action, P exten
         final int peripheries = node.isTarget() ? 2 : 1;
 
         AstarNode<S1, A1> astarNode = astarArg.get(node);
-        String descendantLabel = "Descendant: -";
+        String descendantLabel = "-";
+        if(astarNode == null){
+            System.out.println("ouch");
+        }
         if (astarNode.descendant != null) {
             descendantLabel = astarNodeToString.apply(astarNode.descendant);
         }
         String label = String.format("%s\\l%s\\l%s",
                 stateToString.apply(node.getState()),
-                astarNodeToString.apply(astarNode),
-                descendantLabel
+                String.format("AstarNode: %s", astarNodeToString.apply(astarNode)),
+                String.format("Descendant: %s", descendantLabel)
         );
 
         final NodeAttributes nAttributes = NodeAttributes.builder().label(label)

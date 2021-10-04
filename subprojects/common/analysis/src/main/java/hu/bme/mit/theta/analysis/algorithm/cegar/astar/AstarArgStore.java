@@ -35,6 +35,8 @@ public final class AstarArgStore<S extends State, A extends Action, P extends Pr
             descendant = getLast();
         }
         astarArg.descendant = descendant;
+        // iteration is started from 1 in logging
+        astarArg.iteration = astarArgs.size() + 1;
 
         astarArgs.add(astarArg);
     }

@@ -4,6 +4,8 @@ import hu.bme.mit.theta.analysis.Action;
 import hu.bme.mit.theta.analysis.State;
 import hu.bme.mit.theta.analysis.algorithm.ArgNode;
 
+import java.util.Objects;
+
 import static com.google.common.base.Preconditions.checkNotNull;
 
 // TODO rename to AstarArgNode
@@ -57,5 +59,14 @@ public final class AstarNode<S extends hu.bme.mit.theta.analysis.State, A extend
             final ArgNode<S, A> argNode,
             final AstarNode<S, A> descendant) {
         return new AstarNode<>(argNode, descendant);
+    }
+
+    @Override
+    public String toString() {
+        return String.format("(%s, %s, %s)",
+                state.toString(),
+                Objects.toString(distanceToError, "-1"),
+                String.format("N%d", argNode.getId())
+        );
     }
 }

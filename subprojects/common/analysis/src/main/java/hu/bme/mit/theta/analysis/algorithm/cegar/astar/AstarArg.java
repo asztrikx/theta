@@ -27,6 +27,7 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
     public AstarArg<S, A, P> descendant;
     // TODO make it available only through function parameter
     private final PartialOrd<S> partialOrd;
+    public int iteration = -1;
 
     private AstarArg(final ARG<S, A> arg, P prec, final AstarArg<S, A, P> descendant, final PartialOrd<S> partialOrd) {
         this.arg = checkNotNull(arg);

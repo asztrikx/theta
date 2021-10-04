@@ -55,6 +55,10 @@ public final class AstarCegarChecker<S extends State, A extends Action, P extend
 
 	// Blocking
 	// TODO uncomplete arg stopped => exception did this happen because heur inf?
+	// TODO fix test failing
+	// TODO fix astarviz (+ add title)
+	// TODO parallel run when going back
+	// TODO measure without debug!!!
 
 	// Last checks
 	// TODO fix intellij yellow warnings
