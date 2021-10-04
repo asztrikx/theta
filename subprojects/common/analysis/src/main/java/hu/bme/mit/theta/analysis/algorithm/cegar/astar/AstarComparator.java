@@ -28,12 +28,12 @@ public final class AstarComparator<S extends State, A extends Action, P extends 
         final AstarNode<S, A> astarNode2 = checkNotNull(astarArg.get(argNode2));
 
         // one heuristic is not available <=> other heuristic is not available
-        assert astarNode1.state != AstarNode.State.DESCENDANT_HEURISTIC_UNAVAILABLE && astarNode2.state != AstarNode.State.DESCENDANT_HEURISTIC_UNAVAILABLE ||
-                astarNode1.state == AstarNode.State.DESCENDANT_HEURISTIC_UNAVAILABLE && astarNode2.state == AstarNode.State.DESCENDANT_HEURISTIC_UNAVAILABLE;
+        assert astarNode1.descendant != null && astarNode2.descendant != null ||
+                astarNode1.descendant == null && astarNode2.descendant == null;
 
         // no heuristic from previous arg as no previous arg exists
         //  because of previous assert we only need to check one AstarNode's state
-        if (astarNode1.state == AstarNode.State.DESCENDANT_HEURISTIC_UNAVAILABLE) {
+        if (astarNode1.descendant == null) {
             // calculate bfs weights
             final int weight1 = argNode1.getDepth();
             final int weight2 = argNode2.getDepth();
@@ -62,10 +62,10 @@ public final class AstarComparator<S extends State, A extends Action, P extends 
         }
 
         // catch missing State handle for later developments
-        if (descendant1.state != AstarNode.State.HEURISTIC_EXACT) {
-            throw new IllegalArgumentException(AstarNode.IllegalState);
-        }
-        if (descendant2.state != AstarNode.State.HEURISTIC_EXACT) {
+        if (
+            descendant1.state != AstarNode.State.HEURISTIC_EXACT &&
+            descendant2.state != AstarNode.State.HEURISTIC_EXACT
+        ) {
             throw new IllegalArgumentException(AstarNode.IllegalState);
         }
 

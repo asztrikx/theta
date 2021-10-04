@@ -1,7 +1,6 @@
 package hu.bme.mit.theta.analysis.algorithm.cegar.astar;
 
 import hu.bme.mit.theta.analysis.Action;
-import hu.bme.mit.theta.analysis.State;
 import hu.bme.mit.theta.analysis.algorithm.ArgNode;
 
 import java.util.Objects;
@@ -21,10 +20,16 @@ public final class AstarNode<S extends hu.bme.mit.theta.analysis.State, A extend
 
     // heuristics is a value in distanceToError which can be used for next arg
     public enum State {
-        // no arg exists before this one from which we could have heuristic
-        DESCENDANT_HEURISTIC_UNAVAILABLE,
+        // DESCENDANT_HEURISTIC_UNAVAILABLE,
+        //  this goes into HEURISTIC_UNKNOWN as it can be replaced by e.g. HEURISTIC_EXACT
+        //  which is a problem when
+
+        // have to calculate descendant heuristic in order to walk in current node to get heuristic
         DESCENDANT_HEURISTIC_UNKNOWN,
+
+        // descendant heuristic is available (or doesn't exists) => we can walk in arg to get heuristic
         HEURISTIC_UNKNOWN,
+
         HEURISTIC_INFINITE,
         HEURISTIC_EXACT
     }
@@ -37,20 +42,20 @@ public final class AstarNode<S extends hu.bme.mit.theta.analysis.State, A extend
             switch (descendant.state) {
                 case DESCENDANT_HEURISTIC_UNKNOWN:
                 case HEURISTIC_UNKNOWN:
-                case DESCENDANT_HEURISTIC_UNAVAILABLE:
                     state = State.DESCENDANT_HEURISTIC_UNKNOWN;
                     break;
                 case HEURISTIC_EXACT:
                     state = State.HEURISTIC_UNKNOWN;
                     break;
                 case HEURISTIC_INFINITE:
+                    // TODO does this work? counter5 iteration 2
                     state = State.HEURISTIC_INFINITE;
                     break;
                 default:
                     throw new IllegalArgumentException(IllegalState);
             }
         } else {
-            state = State.DESCENDANT_HEURISTIC_UNAVAILABLE;
+            state = State.HEURISTIC_UNKNOWN;
         }
         this.distanceToError = null;
     }

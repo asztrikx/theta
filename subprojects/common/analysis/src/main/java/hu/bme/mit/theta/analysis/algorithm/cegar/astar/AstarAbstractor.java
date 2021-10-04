@@ -46,7 +46,6 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkNotNull;
-import static com.google.common.base.Preconditions.checkState;
 
 /**
  * Basic implementation for the abstractor, relying on an ArgBuilder.
@@ -114,7 +113,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 			}
 			// on first arg it will be empty
 			//	putAllFromCandidates sets descendant null
-			//	and sets state to DESCENDANT_HEURISTIC_UNAVAILABLE
+			//	and sets state to HEURISTIC_UNKNOWN
 			Collection<AstarNode<S, A>> initAstarNodeCandidates = new ArrayList<>();
 			if (astarArg.descendant != null) {
 				initAstarNodeCandidates.addAll(astarArg.descendant.getAllInitNode().values());
@@ -156,7 +155,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 				// only infinite AstarNodes
 				//	if only those nodes are left in waitlist which can't reach error then stop
 				//	by not adding infinite state nodes only init nodes can cause this
-				if (astarNode.state != AstarNode.State.DESCENDANT_HEURISTIC_UNAVAILABLE) {
+				if (astarNode.descendant != null) {
 					if (astarNode.descendant.state == AstarNode.State.HEURISTIC_INFINITE) {
 						assert arg.getInitNodes().collect(Collectors.toList()).contains(node);
 						break;
@@ -219,7 +218,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 
 						AstarNode<S, A> newAstarNode = astarArg.putFromCandidates(newArgNode, succAstarNodeCandidates, false);
 						calculateHeuristic(newAstarNode.descendant, astarArg.descendant, astarArg);
-					};
+					}
 
 					// do not add nodes with already known infinite distance
 					newNodes = newNodes.stream().filter(newNode -> {
@@ -326,19 +325,14 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		checkNotNull(parentAstarArg);
 		checkNotNull(astarArg);
 
-		// check for correct State value beforehand to be concise
-		if (astarNode.state == AstarNode.State.DESCENDANT_HEURISTIC_UNAVAILABLE) {
-			assert astarNode.descendant == null;
-		} else {
-			assert astarNode.descendant != null;
-		}
-
 		boolean backPrinted = false;
 		switch (astarNode.state) {
 			case HEURISTIC_EXACT:
 			case HEURISTIC_INFINITE:
 				return;
 			case DESCENDANT_HEURISTIC_UNKNOWN:
+				assert astarNode.descendant != null;
+
 				// visualize(parentAstarArg, "back");
 				backPrinted = true;
 
@@ -350,15 +344,10 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 				// 		(a call which doesn't go through this part but could update it's heuristic:
 				// 		e.g. call from a node whose descendant is null and heuristic is unknown but will get infinite after search)
 				// - child node will simply call calculateHeuristic() and  TODO ??
+				// - when new AstarNode will be created it will check it's descendant and set it there
 				astarNode.state = AstarNode.State.HEURISTIC_UNKNOWN;
 				// no break as we want to calculate as we needed heuristic to walk in descendant's arg from which we get heuristic for current arg
-			// TODO here we can see that this can be merged
 			case HEURISTIC_UNKNOWN:
-			case DESCENDANT_HEURISTIC_UNAVAILABLE:
-				assert astarNode.state != AstarNode.State.DESCENDANT_HEURISTIC_UNKNOWN;
-				assert astarNode.state != AstarNode.State.HEURISTIC_EXACT;
-				assert astarNode.state != AstarNode.State.HEURISTIC_INFINITE;
-
 				// infinite heuristic descendant
 				// - don't walk arg
 				// - set state here
@@ -382,7 +371,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		}
 	}
 
-	private static String nowText = getNowText();
+	private static final String nowText = getNowText();
 	private void visualize(AstarArgStore<S, A, P> astarArgStore, String state, int iteration) {
 		// System.out.println(GraphvizWriter.getInstance().writeString(AstarArgVisualizer.getDefault().visualize(astarArg, state, astarArgStore.size())));
 
@@ -398,7 +387,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 				Files.createDirectory(Path.of(path));
 			}
 			File file = new File(path);
-			String filename = String.format("%s/%d| %s.png", path, file.listFiles().length + 1, title.toString());
+			String filename = String.format("%s/%d| %s.png", path, file.listFiles().length + 1, title);
 
 			GraphvizWriter.getInstance().writeFileAutoConvert(AstarArgVisualizer.getDefault().visualize(astarArgStore.get(iteration - 1), title.toString()), filename);
 		} catch (IOException | InterruptedException e) {
