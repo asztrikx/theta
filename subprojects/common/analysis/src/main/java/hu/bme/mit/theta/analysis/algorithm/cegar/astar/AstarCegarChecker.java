@@ -81,6 +81,7 @@ public final class AstarCegarChecker<S extends State, A extends Action, P extend
 	// TODO check if covered => has to check coverer
 	// TODO rename Last Current to unified name
 	// TODO eliminate hashmap, create edges etc?
+	// TODO move AstarNode to ArgNode
 
 	final AstarArgStore<S, A, P> astarArgStore;
 

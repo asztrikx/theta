@@ -49,6 +49,10 @@ public final class AstarArgStore<S extends State, A extends Action, P extends Pr
         return astarArgs.get(index);
     }
 
+    public AstarArg<S, A, P> getIteration(int iteration) {
+        return get(iteration - 1);
+    }
+
     public AstarArg<S, A, P> getLast() {
         return astarArgs.get(astarArgs.size() - 1);
     }

@@ -25,8 +25,6 @@ import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarArg;
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarNode;
 import hu.bme.mit.theta.common.container.Containers;
 
-import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -99,13 +97,17 @@ public final class AstarArgVisualizer<S extends State, A extends Action, P exten
         final Set<ArgNode<S1, A1>> traversed = Containers.createSet();
 
         for (final ArgNode<S1, A1> initNode : arg.getInitNodes().collect(Collectors.toSet())) {
-            traverse(graph, initNode, traversed, astarArg);
-            final NodeAttributes nAttributes = NodeAttributes.builder().label("").fillColor(FILL_COLOR)
-                    .lineColor(FILL_COLOR).lineStyle(SUCC_EDGE_STYLE).peripheries(1).build();
-            graph.addNode(PHANTOM_INIT_ID + initNode.getId(), nAttributes);
-            final EdgeAttributes eAttributes = EdgeAttributes.builder().label("").color(LINE_COLOR)
-                    .lineStyle(SUCC_EDGE_STYLE).build();
-            graph.addEdge(PHANTOM_INIT_ID + initNode.getId(), NODE_ID_PREFIX + initNode.getId(), eAttributes);
+            // we might be visualizing a "back" state from a child just expanded => there could be children which don't have yet AstarNodes
+            AstarNode<S1, A1> astarInitNode = astarArg.get(initNode);
+            if(astarInitNode != null) {
+                traverse(graph, astarInitNode, traversed, astarArg);
+                final NodeAttributes nAttributes = NodeAttributes.builder().label("").fillColor(FILL_COLOR)
+                        .lineColor(FILL_COLOR).lineStyle(SUCC_EDGE_STYLE).peripheries(1).build();
+                graph.addNode(PHANTOM_INIT_ID + initNode.getId(), nAttributes);
+                final EdgeAttributes eAttributes = EdgeAttributes.builder().label("").color(LINE_COLOR)
+                        .lineStyle(SUCC_EDGE_STYLE).build();
+                graph.addEdge(PHANTOM_INIT_ID + initNode.getId(), NODE_ID_PREFIX + initNode.getId(), eAttributes);
+            }
         }
 
         return graph;
@@ -113,10 +115,11 @@ public final class AstarArgVisualizer<S extends State, A extends Action, P exten
 
     private <S1 extends S, A1 extends A, P1 extends P> void traverse(
             final Graph graph,
-            final ArgNode<S1, A1> node,
+            final AstarNode<S1, A1> astarNode,
             final Set<ArgNode<S1, A1>> traversed,
             AstarArg<S1, A1, P1> astarArg
     ) {
+        final ArgNode<S1, A1> node = astarNode.argNode;
         if (traversed.contains(node)) {
             return;
         } else {
@@ -126,11 +129,8 @@ public final class AstarArgVisualizer<S extends State, A extends Action, P exten
         final LineStyle lineStyle = SUCC_EDGE_STYLE;
         final int peripheries = node.isTarget() ? 2 : 1;
 
-        AstarNode<S1, A1> astarNode = astarArg.get(node);
+        // node format: information about node and it's descendant (if exists)
         String descendantLabel = "-";
-        if(astarNode == null){
-            System.out.println("ouch");
-        }
         if (astarNode.descendant != null) {
             descendantLabel = astarNodeToString.apply(astarNode.descendant);
         }
@@ -147,21 +147,29 @@ public final class AstarArgVisualizer<S extends State, A extends Action, P exten
         graph.addNode(nodeId, nAttributes);
 
         for (final ArgEdge<S1, A1> edge : node.getOutEdges().collect(Collectors.toSet())) {
-            traverse(graph, edge.getTarget(), traversed, astarArg);
-            final String sourceId = NODE_ID_PREFIX + edge.getSource().getId();
-            final String targetId = NODE_ID_PREFIX + edge.getTarget().getId();
-            final EdgeAttributes eAttributes = EdgeAttributes.builder().label(actionToString.apply(edge.getAction()))
-                    .alignment(LEFT).font(FONT).color(LINE_COLOR).lineStyle(SUCC_EDGE_STYLE).build();
-            graph.addEdge(sourceId, targetId, eAttributes);
+            // we might be visualizing a "back" state from a child just expanded => there could be children which don't have yet AstarNodes
+            AstarNode<S1, A1> astarNodeChild = astarArg.get(edge.getTarget());
+            if(astarNodeChild != null){
+                traverse(graph, astarNodeChild, traversed, astarArg);
+                final String sourceId = NODE_ID_PREFIX + edge.getSource().getId();
+                final String targetId = NODE_ID_PREFIX + edge.getTarget().getId();
+                final EdgeAttributes eAttributes = EdgeAttributes.builder().label(actionToString.apply(edge.getAction()))
+                        .alignment(LEFT).font(FONT).color(LINE_COLOR).lineStyle(SUCC_EDGE_STYLE).build();
+                graph.addEdge(sourceId, targetId, eAttributes);
+            }
         }
 
         if (node.getCoveringNode().isPresent()) {
-            traverse(graph, node.getCoveringNode().get(), traversed, astarArg);
-            final String sourceId = NODE_ID_PREFIX + node.getId();
-            final String targetId = NODE_ID_PREFIX + node.getCoveringNode().get().getId();
-            final EdgeAttributes eAttributes = EdgeAttributes.builder().label("").color(LINE_COLOR)
-                    .lineStyle(COVER_EDGE_STYLE).weight(0).build();
-            graph.addEdge(sourceId, targetId, eAttributes);
+            // we might be visualizing a "back" state from a child just expanded => there could be children which don't have yet AstarNodes
+            AstarNode<S1, A1> astarNodeChild = astarArg.get(node.getCoveringNode().get());
+            if(astarNodeChild != null){
+                traverse(graph, astarNodeChild, traversed, astarArg);
+                final String sourceId = NODE_ID_PREFIX + node.getId();
+                final String targetId = NODE_ID_PREFIX + node.getCoveringNode().get().getId();
+                final EdgeAttributes eAttributes = EdgeAttributes.builder().label("").color(LINE_COLOR)
+                        .lineStyle(COVER_EDGE_STYLE).weight(0).build();
+                graph.addEdge(sourceId, targetId, eAttributes);
+            }
         }
     }
 

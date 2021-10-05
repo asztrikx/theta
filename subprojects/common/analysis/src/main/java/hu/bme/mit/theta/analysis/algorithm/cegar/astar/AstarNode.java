@@ -38,6 +38,11 @@ public final class AstarNode<S extends hu.bme.mit.theta.analysis.State, A extend
         this.argNode = checkNotNull(argNode);
         // can be null if it is the first arg
         this.descendant = descendant;
+        recalculateState();
+        this.distanceToError = null;
+    }
+
+    public void recalculateState() {
         if (descendant != null) {
             switch (descendant.state) {
                 case DESCENDANT_HEURISTIC_UNKNOWN:
@@ -56,7 +61,6 @@ public final class AstarNode<S extends hu.bme.mit.theta.analysis.State, A extend
         } else {
             state = State.HEURISTIC_UNKNOWN;
         }
-        this.distanceToError = null;
     }
 
     public static <S extends hu.bme.mit.theta.analysis.State, A extends Action> AstarNode<S, A> create(

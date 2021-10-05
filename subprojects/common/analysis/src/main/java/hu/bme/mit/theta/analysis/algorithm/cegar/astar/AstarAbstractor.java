@@ -96,7 +96,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		} else {
 			visualizerState += "root";
 		}
-		visualize(astarArgStore, String.format("start %s", visualizerState),  astarArg.iteration);
+		visualize(String.format("start %s", visualizerState),  astarArg.iteration);
 
 		// initialize Arg
 		assert root == null || arg.isInitialized();
@@ -120,13 +120,20 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 			}
 
 			for (ArgNode<S, A> initArgNode : initArgNodes) {
+				// TODO duplicated code
 				AstarNode<S, A> initAstarNodeDescendant = null;
 				if (astarArg.descendant != null) {
 					initAstarNodeDescendant = astarArg.getDescendantFromCandidates(initArgNode, initAstarNodeCandidates);
-					calculateHeuristic(initAstarNodeDescendant, astarArg.descendant, astarArg);
+					assert initAstarNodeDescendant != null;
 				}
-				AstarNode<S, A> newAstarNode = AstarNode.create(initArgNode, initAstarNodeDescendant);
-				astarArg.putInitNode(newAstarNode);
+				AstarNode<S, A> newInitAstarNode = AstarNode.create(initArgNode, initAstarNodeDescendant);
+				astarArg.putInitNode(newInitAstarNode);
+				// must be called after adding AstarNode
+				//	- when we go back to previous arg to calculate heuristic: we need the node to be in visualization
+				if (astarArg.descendant != null) {
+					calculateHeuristic(initAstarNodeDescendant, astarArg.descendant);
+					newInitAstarNode.recalculateState();
+				}
 			}
 
 			logger.write(Level.SUBSTEP, "done%n");
@@ -227,10 +234,16 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 						AstarNode<S, A> newAstarNodeDescendant = null;
 						if (astarArg.descendant != null) {
 							newAstarNodeDescendant = astarArg.getDescendantFromCandidates(newArgNode, succAstarNodeCandidates);
-							calculateHeuristic(newAstarNodeDescendant, astarArg.descendant, astarArg);
+							assert newAstarNodeDescendant != null;
 						}
 						AstarNode<S, A> newAstarNode = AstarNode.create(newArgNode, newAstarNodeDescendant);
 						astarArg.put(newAstarNode);
+						// must be called after adding AstarNode
+						//	- when we go back to previous arg to calculate heuristic: we need the node to be in visualization
+						if (astarArg.descendant != null) {
+							calculateHeuristic(newAstarNodeDescendant, astarArg.descendant);
+							newAstarNode.recalculateState();
+						}
 					}
 
 					// do not add nodes with already known infinite distance
@@ -275,7 +288,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		if (arg.isSafe()) {
 			// TODO check whether arg is really safe
 			// checkState(arg.isComplete(), "Returning incomplete ARG as safe");
-			visualize(astarArgStore, String.format("end %s", visualizerState),  astarArg.iteration);
+			visualize(String.format("end %s", visualizerState),  astarArg.iteration);
 			return AbstractorResult.safe();
 		} else {
 			// arg unsafe can because
@@ -291,7 +304,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 					astarNode.distanceToError = distance;
 				});
 
-				visualize(astarArgStore, String.format("end %s", visualizerState),  astarArg.iteration);
+				visualize(String.format("end %s", visualizerState),  astarArg.iteration);
 				return AbstractorResult.unsafe();
 			}
 
@@ -324,7 +337,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 				});
 			}
 
-			visualize(astarArgStore, String.format("end %s", visualizerState),  astarArg.iteration);
+			visualize(String.format("end %s", visualizerState),  astarArg.iteration);
 			return AbstractorResult.unsafe();
 		}
 	}
@@ -345,10 +358,9 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 	}
 
 	// calculate distance to error node for it to be used as heuristic for next arg
-	public void calculateHeuristic(final AstarNode<S, A> astarNode, final AstarArg<S, A, P> astarArg, final AstarArg<S, A, P> parentAstarArg) {
+	public void calculateHeuristic(final AstarNode<S, A> astarNode, final AstarArg<S, A, P> astarArg) {
 		checkNotNull(astarNode);
 		checkNotNull(astarArg);
-		checkNotNull(parentAstarArg);
 
 		boolean backPrinted = false;
 		switch (astarNode.state) {
@@ -358,10 +370,11 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 			case DESCENDANT_HEURISTIC_UNKNOWN:
 				assert astarNode.descendant != null;
 
-				// visualize(parentAstarArg, "back");
+				// notify that we are going back
+				visualize(String.format("back for N%d", astarNode.argNode.getId()), astarArg.iteration + 1);
 				backPrinted = true;
 
-				calculateHeuristic(astarNode.descendant, astarArg.descendant, astarArg);
+				calculateHeuristic(astarNode.descendant, astarArg.descendant);
 				assert astarNode.descendant.state == AstarNode.State.HEURISTIC_EXACT || astarNode.descendant.state == AstarNode.State.HEURISTIC_INFINITE;
 
 				// do not update current node's heuristic (like: exact => unknown, inf => inf)
@@ -381,11 +394,12 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 					break;
 				}
 
-				// descendant has heuristics to walk from astarNode in astarArg
+				// notify that we are going back
 				if (!backPrinted) {
-					// TODO fix this
-					// visualize(parentAstarArg, "back");
+					visualize(String.format("back for N%d", astarNode.argNode.getId()), astarArg.iteration + 1);
 				}
+
+				// descendant has heuristics to walk from astarNode in astarArg
 				// TODO color root
 				checkFromNode(astarArg, astarArg.prec, astarNode.argNode);
 
@@ -397,7 +411,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 	}
 
 	private static final String nowText = getNowText();
-	private void visualize(AstarArgStore<S, A, P> astarArgStore, String state, int iteration) {
+	private void visualize(String state, int iteration) {
 		// System.out.println(GraphvizWriter.getInstance().writeString(AstarArgVisualizer.getDefault().visualize(astarArg, state, astarArgStore.size())));
 
 		StringBuilder title = new StringBuilder();
@@ -414,7 +428,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 			File file = new File(path);
 			String filename = String.format("%s/%d| %s.png", path, file.listFiles().length + 1, title);
 
-			GraphvizWriter.getInstance().writeFileAutoConvert(AstarArgVisualizer.getDefault().visualize(astarArgStore.get(iteration - 1), title.toString()), filename);
+			GraphvizWriter.getInstance().writeFileAutoConvert(AstarArgVisualizer.getDefault().visualize(astarArgStore.getIteration(iteration), title.toString()), filename);
 		} catch (IOException | InterruptedException e) {
 			throw new RuntimeException(e);
 		}
