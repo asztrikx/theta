@@ -55,9 +55,9 @@ public final class AstarCegarChecker<S extends State, A extends Action, P extend
 
 	// Blocking
 	// TODO uncomplete arg stopped => exception did this happen because heur inf?
-	// TODO fix test failing
+	// TODO fix test failing (maybe the astarArgStore null exception error related? check stacktrace)
 	// TODO fix astarviz (+ add title)
-	// TODO fix 3.2. end N8
+	// 	astarArgStore null exception error when trying to print back state with astarviz
 	// TODO assert doesnt throw exception: see telegram photo (in compare when checking descendant heur unknown)
 
 	// Last checks
