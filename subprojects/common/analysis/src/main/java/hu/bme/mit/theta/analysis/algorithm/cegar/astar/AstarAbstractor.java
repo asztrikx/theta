@@ -119,13 +119,13 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 				initAstarNodeCandidates.addAll(astarArg.descendant.getAllInitNode().values());
 			}
 
-			for (int i = 0; i < initArgNodes.size(); i++) {
+			for (ArgNode<S, A> initArgNode : initArgNodes) {
 				AstarNode<S, A> initAstarNodeDescendant = null;
 				if (astarArg.descendant != null) {
-					initAstarNodeDescendant = astarArg.getDescendantFromCandidates(initArgNodes.get(i), initAstarNodeCandidates);
+					initAstarNodeDescendant = astarArg.getDescendantFromCandidates(initArgNode, initAstarNodeCandidates);
 					calculateHeuristic(initAstarNodeDescendant, astarArg.descendant, astarArg);
 				}
-				AstarNode<S, A> newAstarNode = AstarNode.create(initArgNodes.get(i), initAstarNodeDescendant);
+				AstarNode<S, A> newAstarNode = AstarNode.create(initArgNode, initAstarNodeDescendant);
 				astarArg.putInitNode(newAstarNode);
 			}
 
