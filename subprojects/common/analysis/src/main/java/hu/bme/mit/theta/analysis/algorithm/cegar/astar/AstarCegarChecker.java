@@ -73,7 +73,6 @@ public final class AstarCegarChecker<S extends State, A extends Action, P extend
 	// TODO create testing env with some test cases
 	// TODO comment one parent abstract should be
 	// TODO use javadocs
-	// TODO use new HashContainerFactory().createMap()
 	// TODO check if covered => has to check coverer
 	// TODO rename Last Current to unified name
 	// TODO eliminate hashmap, create edges etc?

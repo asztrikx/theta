@@ -86,13 +86,13 @@ public final class ARG<S extends State, A extends Action> implements Cloneable {
 		ARG<S, A> arg = new ARG<>(partialOrd);
 		arg.initialized = initialized;
 		if (!initialized) {
-			return new ARGCopyResult<>(arg, new HashMap<>());
+			return new ARGCopyResult<>(arg, new HashContainerFactory().createMap());
 		}
 
 		// clone ArgNodes and their connection
 		//	don't copy state as it can be large
 		//	don't use ArgBuilder as we already know the partially expanded state of ARG
-		Map<ArgNode<S, A>, ArgNode<S, A>> oldToNew = new HashMap<>();
+		Map<ArgNode<S, A>, ArgNode<S, A>> oldToNew = new HashContainerFactory().createMap();
 		for (ArgNode<S, A> currentInitArgNode: initNodes) {
 			ArgNode<S, A> newInitArgNode = arg.createInitNode(currentInitArgNode.getState(), currentInitArgNode.isTarget());
 			assert !newInitArgNode.isCovered();
