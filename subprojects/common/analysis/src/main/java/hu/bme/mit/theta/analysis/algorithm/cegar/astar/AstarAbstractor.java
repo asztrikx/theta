@@ -15,6 +15,8 @@
  */
 package hu.bme.mit.theta.analysis.algorithm.cegar.astar;
 
+import static com.google.common.base.Preconditions.checkState;
+
 import hu.bme.mit.theta.analysis.Action;
 import hu.bme.mit.theta.analysis.Prec;
 import hu.bme.mit.theta.analysis.State;
@@ -44,6 +46,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
@@ -211,7 +214,8 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 
 					// descendant AstarNode map
 					// descendant heurisitcs calculate to be used in waitlist
-					for (ArgNode<S, A> newArgNode : newNodes) {
+					node.getOutEdges().forEach((ArgEdge<S, A> newArgEdge) -> {
+						ArgNode<S, A> newArgNode = newArgEdge.getTarget();
 						Collection<AstarNode<S, A>> succAstarNodeCandidates = new ArrayList<>();
 						if (astarNode.descendant != null) {
 							// covered nodes are expanded in their covering nodes
@@ -221,9 +225,11 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 								descendantArgNode = descendantArgNode.getCoveringNode().get();
 							}
 
-							Collection<ArgNode<S, A>> succArgNodeCandidates = descendantArgNode.getSuccNodes().collect(Collectors.toList());
-							succAstarNodeCandidates = succArgNodeCandidates.stream()
-									.map(astarArg.descendant::get).collect(Collectors.toList());
+							Stream<ArgEdge<S, A>> succArgEdgeCandidates = descendantArgNode.getOutEdges().
+									filter((ArgEdge<S, A> succArgEdgeCandidate) -> succArgEdgeCandidate.getAction().equals(newArgEdge.getAction()));
+							succAstarNodeCandidates = succArgEdgeCandidates
+									.map((ArgEdge<S, A> succArgEdgeCandidate) -> astarArg.descendant.get(succArgEdgeCandidate.getTarget()))
+									.collect(Collectors.toList());
 
 							// check if ::get was successful
 							for (AstarNode<S, A> succAstarNodeCandidate: succAstarNodeCandidates) {
@@ -231,6 +237,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 							}
 						}
 
+						// this is logically separate from previous block with same condition (this block appears in init nodes)
 						AstarNode<S, A> newAstarNodeDescendant = null;
 						if (astarArg.descendant != null) {
 							newAstarNodeDescendant = astarArg.getDescendantFromCandidates(newArgNode, succAstarNodeCandidates);
@@ -244,7 +251,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 							calculateHeuristic(newAstarNodeDescendant, astarArg.descendant);
 							newAstarNode.recalculateState();
 						}
-					}
+					});
 
 					// do not add nodes with already known infinite distance
 					newNodes = newNodes.stream().filter(newNode -> {
@@ -282,13 +289,12 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		logger.write(Level.INFO, "|  |  Finished ARG: %d nodes, %d incomplete, %d unsafe%n", arg.getNodes().count(),
 				arg.getIncompleteNodes().count(), arg.getUnsafeNodes().count());
 
-		waitlist.clear(); // Optimization
+		// waitlist.clear(); // Optimization
 
 		// distance to error as new heuristic
 		if (arg.isSafe()) {
-			// TODO check whether arg is really safe
-			// checkState(arg.isComplete(), "Returning incomplete ARG as safe");
 			visualize(String.format("end %s", visualizerState),  astarArg.iteration);
+			// checkState(arg.isComplete(), "Returning incomplete ARG as safe");
 			return AbstractorResult.safe();
 		} else {
 			// arg unsafe can because

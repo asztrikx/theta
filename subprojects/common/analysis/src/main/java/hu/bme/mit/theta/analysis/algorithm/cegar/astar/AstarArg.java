@@ -148,6 +148,7 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
         List<AstarNode<S, A>> descendantAstarNodes = descendantAstarNodeCandidates.stream()
                 .filter(descendantAstarNodeCandidate -> partialOrd.isLeq(argNode.getState(), descendantAstarNodeCandidate.argNode.getState()))
                 .collect(Collectors.toList());
+        // TODO one node might be covered by its sibling, create assert for this, and prove that this is the only way current assert fails
         assert descendantAstarNodes.size() == 1;
 
         return descendantAstarNodes.get(0);

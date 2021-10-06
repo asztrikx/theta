@@ -20,18 +20,17 @@ import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.base.Preconditions.checkState;
 import static java.util.stream.Collectors.toList;
 
-import java.util.Collection;
 
 import hu.bme.mit.theta.analysis.waitlist.FifoWaitlist;
 import hu.bme.mit.theta.analysis.waitlist.Waitlist;
 import hu.bme.mit.theta.common.container.Containers;
 
+import java.util.Collection;
 import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalInt;
 import java.util.function.BiFunction;
 import java.util.function.BiConsumer;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -113,9 +112,24 @@ public final class ARG<S extends State, A extends Action> implements Cloneable {
 					assert currentSuccArgNode.coveringNode.isPresent();
 					ArgNode<S, A> currentCoveringNode = currentSuccArgNode.coveringNode.get();
 					ArgNode<S, A> newCoveringNode = oldToNew.get(currentCoveringNode);
-					// covering node should already have been visited
-					assert newCoveringNode != null;
-					newSuccArgNode.setCoveringNode(newCoveringNode);
+					if (newCoveringNode != null) {
+						newSuccArgNode.setCoveringNode(newCoveringNode);
+					} else {
+						assert currentCoveringNode.getParent().isPresent() &&
+								currentCoveringNode.getParent().get() == currentArgNode;
+					}
+				}
+				// covering node can be created before or at the same time (has the same parent) when covered node is
+				// 	in the latter case the covered node can be created first
+				//		first they both get added to arg
+				//		then the covered nodes get out of waitlist and close will get called on it
+				if (currentSuccArgNode.coveredNodes.size() != 0) {
+					for (ArgNode<S, A> currentSuccCoveredArgNode: currentSuccArgNode.coveredNodes) {
+						if (currentSuccCoveredArgNode.getCoveringNode().isEmpty()) {
+							ArgNode<S, A> newCoveredArgNode = oldToNew.get(currentSuccCoveredArgNode);
+							newCoveredArgNode.setCoveringNode(currentSuccArgNode);
+						}
+					}
 				}
 
 				assert !oldToNew.containsKey(currentSuccArgNode);
