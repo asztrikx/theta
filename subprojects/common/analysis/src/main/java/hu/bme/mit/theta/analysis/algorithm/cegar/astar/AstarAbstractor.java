@@ -420,7 +420,9 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 
 	private static final String nowText = getNowText();
 	private void visualize(String state, int iteration) {
-		// System.out.println(GraphvizWriter.getInstance().writeString(AstarArgVisualizer.getDefault().visualize(astarArg, state, astarArgStore.size())));
+		if (logger == NullLogger.getInstance()) {
+			return;
+		}
 
 		StringBuilder title = new StringBuilder();
 		for (int i = astarArgStore.size(); i >= iteration ; i--) {
@@ -429,7 +431,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		title.append(String.format(" %s", state));
 
 		try {
-			String path = String.format("/mnt/hdd/tmp/theta/%s", nowText);
+			String path = String.format("%s/theta/%s", System.getProperty("java.io.tmpdir"), nowText);
 			if (!Files.exists(Path.of(path))) {
 				Files.createDirectory(Path.of(path));
 			}
