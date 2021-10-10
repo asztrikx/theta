@@ -9,23 +9,18 @@ import hu.bme.mit.theta.analysis.algorithm.ArgNode;
 
 import java.util.Comparator;
 
-public final class AstarComparator<S extends State, A extends Action, P extends Prec> implements Comparator<ArgNode<S, A>> {
-    private final AstarArg<S, A, P> astarArg;
-
-    private AstarComparator(final AstarArg<S, A, P> astarArg){
-        this.astarArg = astarArg;
+public final class AstarComparator<S extends State, A extends Action, P extends Prec> implements Comparator<AstarNode<S, A>> {
+    private AstarComparator() {
     }
 
-    public static <S extends State, A extends Action, P extends Prec> AstarComparator<S, A, P> create(
-            final AstarArg<S, A, P> astarArg
-    ) {
-        return new AstarComparator<>(astarArg);
+    public static <S extends State, A extends Action, P extends Prec> AstarComparator<S, A, P> create() {
+        return new AstarComparator<>();
     }
 
     @Override
-    public int compare(final ArgNode<S, A> argNode1, final ArgNode<S, A> argNode2) {
-        final AstarNode<S, A> astarNode1 = checkNotNull(astarArg.get(argNode1));
-        final AstarNode<S, A> astarNode2 = checkNotNull(astarArg.get(argNode2));
+    public int compare(final AstarNode<S, A> astarNode1, final AstarNode<S, A> astarNode2) {
+        ArgNode<S, A> argNode1 = astarNode1.argNode;
+        ArgNode<S, A> argNode2 = astarNode2.argNode;
 
         // one heuristic is not available <=> other heuristic is not available
         assert astarNode1.descendant != null && astarNode2.descendant != null ||

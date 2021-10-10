@@ -15,8 +15,6 @@
  */
 package hu.bme.mit.theta.analysis.algorithm.cegar.astar;
 
-import static com.google.common.base.Preconditions.checkState;
-
 import hu.bme.mit.theta.analysis.Action;
 import hu.bme.mit.theta.analysis.Prec;
 import hu.bme.mit.theta.analysis.State;
@@ -88,8 +86,9 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 
 	// checkFromNode
 	//	if root is null then new arg will be created
-	public AbstractorResult checkFromNode(final AstarArg<S, A, P> astarArg, final P prec, final ArgNode<S, A> root) {
+	public AbstractorResult checkFromNode(final AstarArg<S, A, P> astarArg, final P prec, final AstarNode<S, A> astarRoot) {
 		ARG<S, A> arg = astarArg.arg;
+		ArgNode<S, A> root = astarRoot.argNode;
 		checkNotNull(prec);
 		logger.write(Level.DETAIL, "|  |  Precision: %s%n", prec);
 
@@ -148,15 +147,15 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		logger.write(Level.SUBSTEP, "|  |  Building ARG...");
 
 		final Partition<ArgNode<S, A>, ?> reachedSet = Partition.of(n -> projection.apply(n.getState()));
-		final AstarComparator<S, A, P> astarComparator = AstarComparator.create(astarArg);
-		final Waitlist<ArgNode<S, A>> waitlist = PriorityWaitlist.create(astarComparator);
+		final AstarComparator<S, A, P> astarComparator = AstarComparator.create();
+		final Waitlist<AstarNode<S, A>> waitlist = PriorityWaitlist.create(astarComparator);
 
 		// if it will be used for more than findig covering node then recheck
 		reachedSet.addAll(arg.getNodes());
 		if (root != null) {
-			waitlist.add(root);
+			waitlist.add(astarRoot);
 		} else {
-			waitlist.addAll(arg.getIncompleteNodes());
+			waitlist.addAll(arg.getIncompleteNodes().map(astarArg::get));
 		}
 
 		// if root == null go until target reached
@@ -167,8 +166,8 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		}
 		if (!stopCriterion.canStop(arg) || root != null) {
 			while (!waitlist.isEmpty()) {
-				final ArgNode<S, A> node = waitlist.remove();
-				final AstarNode<S, A> astarNode = astarArg.get(node);
+				final AstarNode<S, A> astarNode = waitlist.remove();
+				final ArgNode<S, A> node = astarNode.argNode;
 
 				// only infinite AstarNodes
 				//	if only those nodes are left in waitlist which can't reach error then stop
@@ -186,19 +185,20 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 				if (node.isExpanded()) {
 					assert root != null;
 					// do not add nodes with already known infinite distance
-					Collection<ArgNode<S, A>> succNodes = node.getOutEdges().map(ArgEdge::getTarget)
-							.filter(succNode -> {
-								AstarNode<S, A> succAstarNode = astarArg.get(succNode);
-								return succAstarNode.state != AstarNode.State.HEURISTIC_INFINITE;
-							})
+					Collection<AstarNode<S, A>> succAstarNodes = node.getOutEdges()
+							.map(succEdge -> astarArg.get(succEdge.getTarget()))
+							.filter(succAstarNode -> succAstarNode.state != AstarNode.State.HEURISTIC_INFINITE)
 							.collect(Collectors.toList());
 					// astarArgStore already contains them
 					// reached set already contains them
-					waitlist.addAll(succNodes);
+					waitlist.addAll(succAstarNodes);
 
 					// if target was (as it is expanded) reached from this node => we should already have heuristics
 					// 	but this function is not specific to heuristic search so don't assert this
 					// succNodes is subset of all nodes => must have reached target already
+					Collection<ArgNode<S, A>> succNodes = succAstarNodes.stream()
+							.map(succAstarNode -> astarNode.argNode)
+							.collect(Collectors.toList());
 					if (stopCriterion.canStop(arg, succNodes)) {
 						targetReachedAgain = true;
 						break;
@@ -260,7 +260,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 					}).collect(Collectors.toList());
 
 					reachedSet.addAll(newNodes);
-					waitlist.addAll(newNodes);
+					waitlist.addAll(newNodes.stream().map(astarArg::get));
 				}
 				if (stopCriterion.canStop(arg, newNodes)) {
 					targetReachedAgain = true;
@@ -407,7 +407,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 
 				// descendant has heuristics to walk from astarNode in astarArg
 				// TODO color root
-				checkFromNode(astarArg, astarArg.prec, astarNode.argNode);
+				checkFromNode(astarArg, astarArg.prec, astarNode);
 
 				assert astarNode.state == AstarNode.State.HEURISTIC_EXACT || astarNode.state == AstarNode.State.HEURISTIC_INFINITE;
 				break;
