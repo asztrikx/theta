@@ -88,7 +88,10 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 	//	if root is null then new arg will be created
 	public AbstractorResult checkFromNode(final AstarArg<S, A, P> astarArg, final P prec, final AstarNode<S, A> astarRoot) {
 		ARG<S, A> arg = astarArg.arg;
-		ArgNode<S, A> root = astarRoot.argNode;
+		ArgNode<S, A> root = null;
+		if (astarRoot != null) {
+			root = astarRoot.argNode;
+		}
 		checkNotNull(prec);
 		logger.write(Level.DETAIL, "|  |  Precision: %s%n", prec);
 
@@ -431,12 +434,13 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		title.append(String.format(" %s", state));
 
 		try {
-			String path = String.format("%s/theta/%s", System.getProperty("java.io.tmpdir"), nowText);
-			if (!Files.exists(Path.of(path))) {
-				Files.createDirectory(Path.of(path));
+			File directory = new File(String.format("%s/theta/%s", System.getProperty("java.io.tmpdir"), nowText));
+			if (!directory.exists()) {
+				directory.mkdirs();
 			}
-			File file = new File(path);
-			String filename = String.format("%s/%d| %s.png", path, file.listFiles().length + 1, title);
+
+			File file = new File(directory.getCanonicalPath());
+			String filename = String.format("%s/%d| %s.png", directory.getCanonicalPath(), file.listFiles().length + 1, title);
 
 			GraphvizWriter.getInstance().writeFileAutoConvert(AstarArgVisualizer.getDefault().visualize(astarArgStore.getIteration(iteration), title.toString()), filename);
 		} catch (IOException | InterruptedException e) {
