@@ -218,6 +218,8 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 						ArgNode<S, A> newArgNode = newArgEdge.getTarget();
 						Collection<AstarNode<S, A>> succAstarNodeCandidates = new ArrayList<>();
 						if (astarNode.descendant != null) {
+							assert astarArg.descendant != null;
+
 							// covered nodes are expanded in their covering nodes
 							ArgNode<S, A> descendantArgNode = astarNode.descendant.argNode;
 							if (descendantArgNode.isCovered()) {
@@ -228,7 +230,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 							Stream<ArgEdge<S, A>> succArgEdgeCandidates = descendantArgNode.getOutEdges().
 									filter((ArgEdge<S, A> succArgEdgeCandidate) -> succArgEdgeCandidate.getAction().equals(newArgEdge.getAction()));
 							succAstarNodeCandidates = succArgEdgeCandidates
-									.map((ArgEdge<S, A> succArgEdgeCandidate) -> astarArg.descendant.get(succArgEdgeCandidate.getTarget()))
+									.map(succArgEdgeCandidate -> astarArg.descendant.get(succArgEdgeCandidate.getTarget()))
 									.collect(Collectors.toList());
 
 							// check if ::get was successful
