@@ -351,8 +351,14 @@ public class CfaConfigBuilder {
 			SafetyChecker<CfaState<ExplState>, CfaAction, CfaPrec<ExplPrec>> checker;
 			switch (search) {
 				case ASTAR:
+					AstarCegarChecker.Type astarCegarCheckerType;
+					if (refinement == Refinement.MULTI_SEQ) {
+						astarCegarCheckerType = AstarCegarChecker.Type.FULL;
+					} else {
+						astarCegarCheckerType = AstarCegarChecker.Type.SEMI_ONDEMAND;
+					}
 					checker = AstarCegarChecker
-							.create(argBuilder, projection, refiner, analysis.getPartialOrd(), logger);
+							.create(argBuilder, projection, refiner, logger, analysis.getPartialOrd(), astarCegarCheckerType);
 					break;
 				default:
 					checker = CegarChecker
@@ -460,8 +466,14 @@ public class CfaConfigBuilder {
 			SafetyChecker<CfaState<PredState>, CfaAction, CfaPrec<PredPrec>> checker;
 			switch (search) {
 				case ASTAR:
+					AstarCegarChecker.Type astarCegarCheckerType;
+					if (refinement == Refinement.MULTI_SEQ) {
+						astarCegarCheckerType = AstarCegarChecker.Type.FULL;
+					} else {
+						astarCegarCheckerType = AstarCegarChecker.Type.SEMI_ONDEMAND;
+					}
 					checker = AstarCegarChecker
-							.create(argBuilder, projection, refiner, analysis.getPartialOrd(), logger);
+							.create(argBuilder, projection, refiner, logger, analysis.getPartialOrd(), astarCegarCheckerType);
 					break;
 				default:
 					checker = CegarChecker

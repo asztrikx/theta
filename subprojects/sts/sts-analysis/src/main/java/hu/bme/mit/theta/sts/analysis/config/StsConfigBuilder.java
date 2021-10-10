@@ -208,8 +208,14 @@ public final class StsConfigBuilder {
 			SafetyChecker<ExplState, StsAction, ExplPrec> checker;
 			switch (search) {
 				case ASTAR:
+					AstarCegarChecker.Type astarCegarCheckerType;
+					if (refinement == Refinement.MULTI_SEQ) {
+						astarCegarCheckerType = AstarCegarChecker.Type.FULL;
+					} else {
+						astarCegarCheckerType = AstarCegarChecker.Type.SEMI_ONDEMAND;
+					}
 					checker = AstarCegarChecker
-							.create(argBuilder, projection, refiner, analysis.getPartialOrd(), logger);
+							.create(argBuilder, projection, refiner, logger, analysis.getPartialOrd(), astarCegarCheckerType);
 					break;
 				default:
 					checker = CegarChecker.create(abstractor, refiner, logger);
@@ -275,8 +281,14 @@ public final class StsConfigBuilder {
 			SafetyChecker<PredState, StsAction, PredPrec> checker;
 			switch (search) {
 				case ASTAR:
+					AstarCegarChecker.Type astarCegarCheckerType;
+					if (refinement == Refinement.MULTI_SEQ) {
+						astarCegarCheckerType = AstarCegarChecker.Type.FULL;
+					} else {
+						astarCegarCheckerType = AstarCegarChecker.Type.SEMI_ONDEMAND;
+					}
 					checker = AstarCegarChecker
-							.create(argBuilder, projection, refiner, analysis.getPartialOrd(), logger);
+							.create(argBuilder, projection, refiner, logger, analysis.getPartialOrd(), astarCegarCheckerType);
 					break;
 				default:
 					checker = CegarChecker.create(abstractor, refiner, logger);

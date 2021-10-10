@@ -26,6 +26,7 @@ import hu.bme.mit.theta.analysis.algorithm.cegar.Abstractor;
 import hu.bme.mit.theta.analysis.algorithm.cegar.AbstractorResult;
 import hu.bme.mit.theta.analysis.algorithm.cegar.abstractor.StopCriterion;
 import hu.bme.mit.theta.analysis.algorithm.cegar.abstractor.StopCriterions;
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarCegarChecker.Type;
 import hu.bme.mit.theta.analysis.reachedset.Partition;
 import hu.bme.mit.theta.analysis.utils.AstarArgVisualizer;
 import hu.bme.mit.theta.analysis.waitlist.PriorityWaitlist;
@@ -37,8 +38,6 @@ import hu.bme.mit.theta.common.visualization.writer.GraphvizWriter;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -58,6 +57,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 	private final StopCriterion<S, A> stopCriterion;
 	private final Logger logger;
 	private final AstarArgStore<S, A, P> astarArgStore;
+	private final Type type;
 
 	// a* specific
 	// TODO should these change during run? or event should there be local versions
@@ -66,12 +66,15 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 							final Function<? super S, ?> projection,
 							final StopCriterion<S, A> stopCriterion,
 							final Logger logger,
-							final AstarArgStore<S, A, P> astarArgStore) {
+							final AstarArgStore<S, A, P> astarArgStore,
+							final Type type
+	) {
 		this.argBuilder = checkNotNull(argBuilder);
 		this.projection = checkNotNull(projection);
 		this.stopCriterion = checkNotNull(stopCriterion);
 		this.logger = checkNotNull(logger);
 		this.astarArgStore = checkNotNull(astarArgStore);
+		this.type = type;
 	}
 
 	public static <S extends State, A extends Action, P extends Prec> Builder<S, A, P> builder(
@@ -296,16 +299,21 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 
 		// waitlist.clear(); // Optimization
 
-		// distance to error as new heuristic
 		if (arg.isSafe()) {
 			visualize(String.format("end %s", visualizerState),  astarArg.iteration);
 			// checkState(arg.isComplete(), "Returning incomplete ARG as safe");
 			return AbstractorResult.safe();
 		} else {
+			// distance to error as new heuristic
+
 			// arg unsafe can because
 			// - we just expanded the arg until error is reached
 			// - we went back to a previous arg (this) and expanded other part of it
 			// in the latter case arg must be unsafe otherwise algorithm would have ended there
+
+			if (type == Type.FULL) {
+				assert root == null;
+			}
 
 			if (root == null) {
 				final Map<ArgNode<S, A>, Integer> distances = arg.getDistances();
@@ -314,6 +322,14 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 					astarNode.state = AstarNode.State.HEURISTIC_EXACT;
 					astarNode.distanceToError = distance;
 				});
+
+				if (type == Type.FULL) {
+					astarArg.getAll().values().forEach(astarNode -> {
+						if (astarNode.state != AstarNode.State.HEURISTIC_EXACT) {
+							astarNode.state = AstarNode.State.HEURISTIC_INFINITE;
+						}
+					});
+				}
 
 				visualize(String.format("end %s", visualizerState),  astarArg.iteration);
 				return AbstractorResult.unsafe();
@@ -358,7 +374,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 	// it is assumed that last AstarArg in astarArgStore should be used if exists
 	public AbstractorResult check(final ARG<S, A> arg, final P prec) {
 		AstarArg<S, A, P> astarArg;
-		if (astarArgStore.size() == 0) {
+		if (astarArgStore.isEmpty()) {
 			astarArg = AstarArg.create(arg, prec, null, astarArgStore.partialOrd);
 			astarArgStore.add(astarArg);
 		} else {
@@ -428,7 +444,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		}
 
 		StringBuilder title = new StringBuilder();
-		for (int i = astarArgStore.size(); i >= iteration ; i--) {
+		for (int i = astarArgStore.getLastIteration(); i >= iteration ; i--) {
 			title.append(String.format("%d.", i));
 		}
 		title.append(String.format(" %s", state));
@@ -436,11 +452,13 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		try {
 			File directory = new File(String.format("%s/theta/%s", System.getProperty("java.io.tmpdir"), nowText));
 			if (!directory.exists()) {
-				directory.mkdirs();
+				boolean successful = directory.mkdirs();
+				assert successful;
 			}
 
 			File file = new File(directory.getCanonicalPath());
-			String filename = String.format("%s/%d| %s.png", directory.getCanonicalPath(), file.listFiles().length + 1, title);
+			// '∣' != '|' (for Windows)
+ 			String filename = String.format("%s/%d∣ %s.png", directory.getCanonicalPath(), file.listFiles().length + 1, title);
 
 			GraphvizWriter.getInstance().writeFileAutoConvert(AstarArgVisualizer.getDefault().visualize(astarArgStore.getIteration(iteration), title.toString()), filename);
 		} catch (IOException | InterruptedException e) {
@@ -477,6 +495,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		private StopCriterion<S, A> stopCriterion;
 		private Logger logger;
 		private AstarArgStore<S, A, P> astarArgStore;
+		private Type type;
 
 		private Builder(final ArgBuilder<S, A, P> argBuilder) {
 			this.argBuilder = argBuilder;
@@ -506,8 +525,13 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 			return this;
 		}
 
+		public Builder<S, A, P> type(final Type type) {
+			this.type = type;
+			return this;
+		}
+
 		public AstarAbstractor<S, A, P> build() {
-			return new AstarAbstractor<>(argBuilder, projection, stopCriterion, logger, astarArgStore);
+			return new AstarAbstractor<>(argBuilder, projection, stopCriterion, logger, astarArgStore, type);
 		}
 	}
 

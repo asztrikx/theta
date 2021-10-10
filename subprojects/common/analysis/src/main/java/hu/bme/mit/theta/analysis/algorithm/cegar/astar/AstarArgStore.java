@@ -13,23 +13,19 @@ import java.util.Map;
 
 // AstarArgStore
 //  this should be a class as later we might make this abstract and create NoStore implementation
-public final class AstarArgStore<S extends State, A extends Action, P extends Prec> {
+public class AstarArgStore<S extends State, A extends Action, P extends Prec> {
     // TODO make not protected
     protected final PartialOrd<S> partialOrd;
-    private final List<AstarArg<S, A, P>> astarArgs = new ArrayList<>();
+    protected final List<AstarArg<S, A, P>> astarArgs = new ArrayList<>();
 
-    private AstarArgStore(final PartialOrd<S> partialOrd) {
+    public AstarArgStore(final PartialOrd<S> partialOrd) {
         this.partialOrd = partialOrd;
-    }
-
-    public static <S extends State, A extends Action, P extends Prec> AstarArgStore<S, A, P> create(final PartialOrd<S> partialOrd) {
-        return new AstarArgStore<>(partialOrd);
     }
 
     public void add(final AstarArg<S, A, P> astarArg) {
         // set descendant
         AstarArg<S, A, P> descendant;
-        if (size() == 0) {
+        if (astarArgs.isEmpty()) {
             descendant = null;
         } else {
             descendant = getLast();
@@ -41,23 +37,19 @@ public final class AstarArgStore<S extends State, A extends Action, P extends Pr
         astarArgs.add(astarArg);
     }
 
-    public int size() {
-        return astarArgs.size();
-    }
-
-    public AstarArg<S, A, P> get(int index) {
-        return astarArgs.get(index);
+    public boolean isEmpty() {
+        return astarArgs.isEmpty();
     }
 
     public AstarArg<S, A, P> getIteration(int iteration) {
-        return get(iteration - 1);
+        return astarArgs.get(iteration - 1);
     }
 
     public AstarArg<S, A, P> getLast() {
         return astarArgs.get(astarArgs.size() - 1);
     }
 
-    public void addLastCopied() {
+    public AstarArg<S, A, P> lastCopy() {
         final AstarArg<S, A, P> astarArgLast = getLast();
 
         // copy ARG
@@ -93,6 +85,14 @@ public final class AstarArgStore<S extends State, A extends Action, P extends Pr
             astarArgNew.put(astarNodeNew);
         }
 
-        add(astarArgNew);
+        return astarArgNew;
+    }
+
+    public void addLastCopied() {
+        add(lastCopy());
+    }
+
+    public int getLastIteration() {
+        return getLast().iteration;
     }
 }

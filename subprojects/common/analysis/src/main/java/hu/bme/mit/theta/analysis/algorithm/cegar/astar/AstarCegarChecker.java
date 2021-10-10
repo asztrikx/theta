@@ -19,7 +19,6 @@ import static com.google.common.base.Preconditions.checkNotNull;
 
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 
 import com.google.common.base.Stopwatch;
 
@@ -53,8 +52,13 @@ public final class AstarCegarChecker<S extends State, A extends Action, P extend
 	private final Refiner<S, A, P> refiner;
 	private final Logger logger;
 
+	public enum Type {
+		FULL, SEMI_ONDEMAND
+	}
+
 	// Blocking
 	// TODO recheck where sibling cover node is a problem
+	// TODO NWT_IT_WP, UCB refinement doesn't work: java.lang.NullPointerException: Unsupported function 'bvule' in Z3 back-transformation.
 
 	// Last checks
 	// TODO parallel run when going back
@@ -77,20 +81,32 @@ public final class AstarCegarChecker<S extends State, A extends Action, P extend
 	// TODO rename Last Current to unified name
 	// TODO eliminate hashmap, create edges etc?
 	// TODO move AstarNode to ArgNode
+	// TODO build with dropping assertions?
+	// TODO use --benchmark
 
 	final AstarArgStore<S, A, P> astarArgStore;
 
 	private AstarCegarChecker(
 			final ArgBuilder<S, A, P> argBuilder, final Function<? super S, ?> projection, final Refiner<S, A, P> refiner,
-			final PartialOrd<S> partialOrd, final Logger logger
+			final PartialOrd<S> partialOrd, final Logger logger, final Type type
 	) {
-		this.astarArgStore = AstarArgStore.create(partialOrd);
+		switch (type) {
+			case FULL:
+				this.astarArgStore = new AstarArgStoreFull<>(partialOrd);
+				break;
+			case SEMI_ONDEMAND:
+				this.astarArgStore = new AstarArgStore<>(partialOrd);
+				break;
+			default:
+				throw new IllegalArgumentException("Unknown AstarCegarChecker.Type");
+		}
 		final Abstractor<S, A, P> abstractor = AstarAbstractor
 			.builder(argBuilder)
 			.projection(projection)
 			.stopCriterion(StopCriterions.firstCex())
 			.logger(logger)
 			.AstarArgStore(astarArgStore)
+			.type(type)
 			.build();
 
 		this.abstractor = checkNotNull(abstractor);
@@ -100,14 +116,14 @@ public final class AstarCegarChecker<S extends State, A extends Action, P extend
 
 	public static <S extends State, A extends Action, P extends Prec> AstarCegarChecker<S, A, P> create(
 			final ArgBuilder<S, A, P> argBuilder, final Function<? super S, ?> projection, final Refiner<S, A, P> refiner,
-			final PartialOrd<S> partialOrd) {
-		return new AstarCegarChecker<>(argBuilder, projection, refiner, partialOrd, NullLogger.getInstance());
+			final PartialOrd<S> partialOrd, final Type type) {
+		return new AstarCegarChecker<>(argBuilder, projection, refiner, partialOrd, NullLogger.getInstance(), type);
 	}
 
 	public static <S extends State, A extends Action, P extends Prec> AstarCegarChecker<S, A, P> create(
 			final ArgBuilder<S, A, P> argBuilder, final Function<? super S, ?> projection, final Refiner<S, A, P> refiner,
-			final PartialOrd<S> partialOrd, final Logger logger) {
-		return new AstarCegarChecker<>(argBuilder, projection, refiner, partialOrd, logger);
+			final Logger logger, final PartialOrd<S> partialOrd, final Type type) {
+		return new AstarCegarChecker<>(argBuilder, projection, refiner, partialOrd, logger, type);
 	}
 
 	@Override

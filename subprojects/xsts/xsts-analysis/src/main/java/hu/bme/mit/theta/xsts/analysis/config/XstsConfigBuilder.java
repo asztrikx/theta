@@ -212,7 +212,14 @@ public class XstsConfigBuilder {
 			SafetyChecker<XstsState<ExplState>, XstsAction, ExplPrec> checker;
 			switch (search) {
 				case ASTAR:
-					checker = AstarCegarChecker.create(argBuilder, projection, refiner, analysis.getPartialOrd(), logger);
+					AstarCegarChecker.Type astarCegarCheckerType;
+					if (refinement == Refinement.MULTI_SEQ) {
+						astarCegarCheckerType = AstarCegarChecker.Type.FULL;
+					} else {
+						astarCegarCheckerType = AstarCegarChecker.Type.SEMI_ONDEMAND;
+					}
+					checker = AstarCegarChecker
+							.create(argBuilder, projection, refiner, logger, analysis.getPartialOrd(), astarCegarCheckerType);
 					break;
 				default:
 					checker = CegarChecker.create(abstractor, refiner, logger);
@@ -286,7 +293,14 @@ public class XstsConfigBuilder {
 			SafetyChecker<XstsState<PredState>, XstsAction, PredPrec> checker;
 			switch (search) {
 				case ASTAR:
-					checker = AstarCegarChecker.create(argBuilder, projection, refiner, analysis.getPartialOrd(), logger);
+					AstarCegarChecker.Type astarCegarCheckerType;
+					if (refinement == Refinement.MULTI_SEQ) {
+						astarCegarCheckerType = AstarCegarChecker.Type.FULL;
+					} else {
+						astarCegarCheckerType = AstarCegarChecker.Type.SEMI_ONDEMAND;
+					}
+					checker = AstarCegarChecker
+							.create(argBuilder, projection, refiner, logger, analysis.getPartialOrd(), astarCegarCheckerType);
 					break;
 				default:
 					checker = CegarChecker.create(abstractor, refiner, logger);
@@ -376,7 +390,14 @@ public class XstsConfigBuilder {
 			final SafetyChecker<XstsState<Prod2State<ExplState, PredState>>, XstsAction, Prod2Prec<ExplPrec, PredPrec>> checker;
 			switch (search) {
 				case ASTAR:
-					checker = AstarCegarChecker.create(argBuilder, projection, refiner, analysis.getPartialOrd(), logger);
+					AstarCegarChecker.Type astarCegarCheckerType;
+					if (refinement == Refinement.MULTI_SEQ) {
+						astarCegarCheckerType = AstarCegarChecker.Type.FULL;
+					} else {
+						astarCegarCheckerType = AstarCegarChecker.Type.SEMI_ONDEMAND;
+					}
+					checker = AstarCegarChecker
+							.create(argBuilder, projection, refiner, logger, analysis.getPartialOrd(), astarCegarCheckerType);
 					break;
 				default:
 					checker = CegarChecker.create(abstractor, refiner, logger);
