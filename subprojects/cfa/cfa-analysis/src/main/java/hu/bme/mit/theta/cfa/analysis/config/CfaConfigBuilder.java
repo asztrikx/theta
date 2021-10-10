@@ -97,7 +97,8 @@ public class CfaConfigBuilder {
 		},
 
 		ASTAR {
-			// TODO this is ugly
+			// Astar creates the Waitlist, multiple times, as it has to traverse other ARG-s while the current one isn't finished yet
+			// 	=> this line is ignored
 			@Override
 			public ArgNodeComparator getComp(final CFA cfa, final CFA.Loc errLoc) {
 				return new DistToErrComparator(cfa, errLoc);

@@ -54,7 +54,8 @@ public class XstsConfigBuilder {
 
 		DFS(ArgNodeComparators.combine(ArgNodeComparators.targetFirst(), ArgNodeComparators.dfs())),
 
-		// TODO this is ugly
+		// Astar uses multiple levels of heuristic
+		// 	=> this line is ignored
 		ASTAR(ArgNodeComparators.combine(ArgNodeComparators.targetFirst(), ArgNodeComparators.dfs()));
 
 		public final ArgNodeComparators.ArgNodeComparator comparator;
