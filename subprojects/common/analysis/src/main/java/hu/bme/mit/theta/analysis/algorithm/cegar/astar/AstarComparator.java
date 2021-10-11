@@ -19,8 +19,8 @@ public final class AstarComparator<S extends State, A extends Action, P extends 
 
     @Override
     public int compare(final AstarNode<S, A> astarNode1, final AstarNode<S, A> astarNode2) {
-        ArgNode<S, A> argNode1 = astarNode1.argNode;
-        ArgNode<S, A> argNode2 = astarNode2.argNode;
+        final ArgNode<S, A> argNode1 = astarNode1.argNode;
+        final ArgNode<S, A> argNode2 = astarNode2.argNode;
 
         // one heuristic is not available <=> other heuristic is not available
         assert astarNode1.descendant != null && astarNode2.descendant != null ||
@@ -37,17 +37,16 @@ public final class AstarComparator<S extends State, A extends Action, P extends 
         }
 
         // descendant's heuristics should be known
-        // TODO getheuristics for descendant should be called here (for later not exact heuristics)
-        assert astarNode1.state != AstarNode.State.DESCENDANT_HEURISTIC_UNKNOWN;
-        assert astarNode2.state != AstarNode.State.DESCENDANT_HEURISTIC_UNKNOWN;
+        assert astarNode1.heuristicState != AstarNode.HeuristicState.DESCENDANT_UNKNOWN;
+        assert astarNode2.heuristicState != AstarNode.HeuristicState.DESCENDANT_UNKNOWN;
 
         // use descendants to get heuristics
         final AstarNode<S, A> descendant1 = astarNode1.descendant;
         final AstarNode<S, A> descendant2 = astarNode2.descendant;
 
         // not reachable in more abstract domain => won't be reachable in refined => treat as 'infinite' weight
-        final boolean unreachable1 = descendant1.state == AstarNode.State.HEURISTIC_INFINITE;
-        final boolean unreachable2 = descendant2.state == AstarNode.State.HEURISTIC_INFINITE;
+        final boolean unreachable1 = descendant1.heuristicState == AstarNode.HeuristicState.INFINITE;
+        final boolean unreachable2 = descendant2.heuristicState == AstarNode.HeuristicState.INFINITE;
         if (unreachable1 && unreachable2) {
             return 0;
         } else if (unreachable1) {
@@ -58,8 +57,8 @@ public final class AstarComparator<S extends State, A extends Action, P extends 
 
         // catch missing State handle for later developments
         if (
-            descendant1.state != AstarNode.State.HEURISTIC_EXACT &&
-            descendant2.state != AstarNode.State.HEURISTIC_EXACT
+            descendant1.heuristicState != AstarNode.HeuristicState.EXACT &&
+            descendant2.heuristicState != AstarNode.HeuristicState.EXACT
         ) {
             throw new IllegalArgumentException(AstarNode.IllegalState);
         }

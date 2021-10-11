@@ -14,8 +14,7 @@ import java.util.Map;
 // AstarArgStore
 //  this should be a class as later we might make this abstract and create NoStore implementation
 public class AstarArgStore<S extends State, A extends Action, P extends Prec> {
-    // TODO make not protected
-    protected final PartialOrd<S> partialOrd;
+    public final PartialOrd<S> partialOrd;
     protected final List<AstarArg<S, A, P>> astarArgs = new ArrayList<>();
 
     public AstarArgStore(final PartialOrd<S> partialOrd) {
@@ -41,7 +40,7 @@ public class AstarArgStore<S extends State, A extends Action, P extends Prec> {
         return astarArgs.isEmpty();
     }
 
-    public AstarArg<S, A, P> getIteration(int iteration) {
+    public AstarArg<S, A, P> getIteration(final int iteration) {
         return astarArgs.get(iteration - 1);
     }
 
@@ -64,24 +63,24 @@ public class AstarArgStore<S extends State, A extends Action, P extends Prec> {
         //  which will give more accurate heuristics for next arg
 
         // init nodes
-        for (Map.Entry<ArgNode<S, A>, AstarNode<S, A>> entry : astarArgLast.getAllInitNode().entrySet()) {
-            ArgNode<S, A> argNodeLast = entry.getKey();
-            ArgNode<S, A> argNodeNew = oldToNew.get(argNodeLast);
-            AstarNode<S, A> astarNodeLast = entry.getValue();
+        for (Map.Entry<ArgNode<S, A>, AstarNode<S, A>> entry : astarArgLast.getAllInit().entrySet()) {
+            final ArgNode<S, A> argNodeLast = entry.getKey();
+            final ArgNode<S, A> argNodeNew = oldToNew.get(argNodeLast);
+            final AstarNode<S, A> astarNodeLast = entry.getValue();
 
-            AstarNode<S, A> astarNodeNew = AstarNode.create(argNodeNew, astarNodeLast);
-            astarArgNew.putInitNode(astarNodeNew);
+            final AstarNode<S, A> astarNodeNew = AstarNode.create(argNodeNew, astarNodeLast);
+            astarArgNew.putInit(astarNodeNew);
             // do not add as it will be added when getAll is called
             //  astarArgNew.put(astarNodeNew);
         }
 
         // nodes
         for (Map.Entry<ArgNode<S, A>, AstarNode<S, A>> entry : astarArgLast.getAll().entrySet()) {
-            ArgNode<S, A> argNodeLast = entry.getKey();
-            ArgNode<S, A> argNodeNew = oldToNew.get(argNodeLast);
-            AstarNode<S, A> astarNodeLast = entry.getValue();
+            final ArgNode<S, A> argNodeLast = entry.getKey();
+            final ArgNode<S, A> argNodeNew = oldToNew.get(argNodeLast);
+            final AstarNode<S, A> astarNodeLast = entry.getValue();
 
-            AstarNode<S, A> astarNodeNew = AstarNode.create(argNodeNew, astarNodeLast);
+            final AstarNode<S, A> astarNodeNew = AstarNode.create(argNodeNew, astarNodeLast);
             astarArgNew.put(astarNodeNew);
         }
 

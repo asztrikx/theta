@@ -58,31 +58,7 @@ public final class AstarCegarChecker<S extends State, A extends Action, P extend
 
 	// Blocking
 	// TODO recheck where sibling cover node is a problem
-	// TODO NWT_IT_WP, UCB refinement doesn't work: java.lang.NullPointerException: Unsupported function 'bvule' in Z3 back-transformation.
-
-	// Last checks
-	// TODO parallel run when going back
-	// TODO measure without debug!!!
-	// TODO fix intellij yellow warnings
-	// TODO final for func arguments
-	// TODO checkNotNull for func arguments
-	// TODO use Collection (where no indexing required)
-	// TODO log: root,etc
-	// TODO create common store for argnodes until they modified (copy on write)
-	// TODO fix imports
-	// TODO what if prune deletes an init node, is it possible?
-	// TODO covering edges to descendants: when can we give inf heur
-	// TODO should we check descendant != null (intellij helps) or state != DESCENDANT_UNAVAILABLE
-	// TODO Collections.Emptylist instead of new Arr.. ?
-	// TODO create testing env with some test cases
-	// TODO comment one parent abstract should be
-	// TODO use javadocs
 	// TODO check if covered => has to check coverer
-	// TODO rename Last Current to unified name
-	// TODO eliminate hashmap, create edges etc?
-	// TODO move AstarNode to ArgNode
-	// TODO build with dropping assertions?
-	// TODO use --benchmark
 
 	final AstarArgStore<S, A, P> astarArgStore;
 
@@ -90,6 +66,8 @@ public final class AstarCegarChecker<S extends State, A extends Action, P extend
 			final ArgBuilder<S, A, P> argBuilder, final Function<? super S, ?> projection, final Refiner<S, A, P> refiner,
 			final PartialOrd<S> partialOrd, final Logger logger, final Type type
 	) {
+		// TODO NWT_IT_WP, UCB refinement doesn't work: java.lang.NullPointerException: Unsupported function 'bvule' in Z3 back-transformation.
+
 		switch (type) {
 			case FULL:
 				this.astarArgStore = new AstarArgStoreFull<>(partialOrd);

@@ -48,7 +48,7 @@ import java.util.stream.Stream;
 import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
- * Basic implementation for the abstractor, relying on an ArgBuilder.
+ * Astar implementation for the abstractor, relying on an ArgBuilder.
  */
 public final class AstarAbstractor<S extends State, A extends Action, P extends Prec> implements Abstractor<S, A, P> {
 	private final ArgBuilder<S, A, P> argBuilder;
@@ -58,9 +58,6 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 	private final Logger logger;
 	private final AstarArgStore<S, A, P> astarArgStore;
 	private final Type type;
-
-	// a* specific
-	// TODO should these change during run? or event should there be local versions
 
 	private AstarAbstractor(final ArgBuilder<S, A, P> argBuilder,
 							final Function<? super S, ?> projection,
@@ -90,12 +87,13 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 	// checkFromNode
 	//	if root is null then new arg will be created
 	public AbstractorResult checkFromNode(final AstarArg<S, A, P> astarArg, final P prec, final AstarNode<S, A> astarRoot) {
-		ARG<S, A> arg = astarArg.arg;
+		checkNotNull(astarArg);
+		checkNotNull(prec);
+		final ARG<S, A> arg = astarArg.arg;
 		ArgNode<S, A> root = null;
 		if (astarRoot != null) {
 			root = astarRoot.argNode;
 		}
-		checkNotNull(prec);
 		logger.write(Level.DETAIL, "|  |  Precision: %s%n", prec);
 
 		String visualizerState = "";
@@ -114,17 +112,16 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 
 			// create AstarNodes for init ArgNodes
 			//	output of argBuilder.init(...) is not used for clarity
-			List<ArgNode<S, A>> initArgNodes = arg.getInitNodes().collect(Collectors.toList());
-			// TODO init nodes shouldn't be covered?
+			final List<ArgNode<S, A>> initArgNodes = arg.getInitNodes().collect(Collectors.toList());
 			for (ArgNode<S, A> initArgNode : initArgNodes) {
 				assert !initArgNode.isCovered();
 			}
 			// on first arg it will be empty
 			//	putAllFromCandidates sets descendant null
 			//	and sets state to HEURISTIC_UNKNOWN
-			Collection<AstarNode<S, A>> initAstarNodeCandidates = new ArrayList<>();
+			final Collection<AstarNode<S, A>> initAstarNodeCandidates = new ArrayList<>();
 			if (astarArg.descendant != null) {
-				initAstarNodeCandidates.addAll(astarArg.descendant.getAllInitNode().values());
+				initAstarNodeCandidates.addAll(astarArg.descendant.getAllInit().values());
 			}
 
 			for (ArgNode<S, A> initArgNode : initArgNodes) {
@@ -134,8 +131,8 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 					initAstarNodeDescendant = astarArg.getDescendantFromCandidates(initArgNode, initAstarNodeCandidates);
 					assert initAstarNodeDescendant != null;
 				}
-				AstarNode<S, A> newInitAstarNode = AstarNode.create(initArgNode, initAstarNodeDescendant);
-				astarArg.putInitNode(newInitAstarNode);
+				final AstarNode<S, A> newInitAstarNode = AstarNode.create(initArgNode, initAstarNodeDescendant);
+				astarArg.putInit(newInitAstarNode);
 				// must be called after adding AstarNode
 				//	- when we go back to previous arg to calculate heuristic: we need the node to be in visualization
 				if (astarArg.descendant != null) {
@@ -179,7 +176,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 				//	if only those nodes are left in waitlist which can't reach error then stop
 				//	by not adding infinite state nodes only init nodes can cause this
 				if (astarNode.descendant != null) {
-					if (astarNode.descendant.state == AstarNode.State.HEURISTIC_INFINITE) {
+					if (astarNode.descendant.heuristicState == AstarNode.HeuristicState.INFINITE) {
 						assert arg.getInitNodes().collect(Collectors.toList()).contains(node);
 						break;
 					}
@@ -191,9 +188,9 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 				if (node.isExpanded()) {
 					assert root != null;
 					// do not add nodes with already known infinite distance
-					Collection<AstarNode<S, A>> succAstarNodes = node.getOutEdges()
+					final Collection<AstarNode<S, A>> succAstarNodes = node.getOutEdges()
 							.map(succEdge -> astarArg.get(succEdge.getTarget()))
-							.filter(succAstarNode -> succAstarNode.state != AstarNode.State.HEURISTIC_INFINITE)
+							.filter(succAstarNode -> succAstarNode.heuristicState != AstarNode.HeuristicState.INFINITE)
 							.collect(Collectors.toList());
 					// astarArgStore already contains them
 					// reached set already contains them
@@ -202,7 +199,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 					// if target was (as it is expanded) reached from this node => we should already have heuristics
 					// 	but this function is not specific to heuristic search so don't assert this
 					// succNodes is subset of all nodes => must have reached target already
-					Collection<ArgNode<S, A>> succNodes = succAstarNodes.stream()
+					final Collection<ArgNode<S, A>> succNodes = succAstarNodes.stream()
 							.map(succAstarNode -> astarNode.argNode)
 							.collect(Collectors.toList());
 					if (stopCriterion.canStop(arg, succNodes)) {
@@ -221,7 +218,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 					// descendant AstarNode map
 					// descendant heurisitcs calculate to be used in waitlist
 					node.getOutEdges().forEach((ArgEdge<S, A> newArgEdge) -> {
-						ArgNode<S, A> newArgNode = newArgEdge.getTarget();
+						final ArgNode<S, A> newArgNode = newArgEdge.getTarget();
 						Collection<AstarNode<S, A>> succAstarNodeCandidates = new ArrayList<>();
 						if (astarNode.descendant != null) {
 							assert astarArg.descendant != null;
@@ -233,7 +230,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 								descendantArgNode = descendantArgNode.getCoveringNode().get();
 							}
 
-							Stream<ArgEdge<S, A>> succArgEdgeCandidates = descendantArgNode.getOutEdges().
+							final Stream<ArgEdge<S, A>> succArgEdgeCandidates = descendantArgNode.getOutEdges().
 									filter((ArgEdge<S, A> succArgEdgeCandidate) -> succArgEdgeCandidate.getAction().equals(newArgEdge.getAction()));
 							succAstarNodeCandidates = succArgEdgeCandidates
 									.map(succArgEdgeCandidate -> astarArg.descendant.get(succArgEdgeCandidate.getTarget()))
@@ -251,7 +248,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 							newAstarNodeDescendant = astarArg.getDescendantFromCandidates(newArgNode, succAstarNodeCandidates);
 							assert newAstarNodeDescendant != null;
 						}
-						AstarNode<S, A> newAstarNode = AstarNode.create(newArgNode, newAstarNodeDescendant);
+						final AstarNode<S, A> newAstarNode = AstarNode.create(newArgNode, newAstarNodeDescendant);
 						astarArg.put(newAstarNode);
 						// must be called after adding AstarNode
 						//	- when we go back to previous arg to calculate heuristic: we need the node to be in visualization
@@ -264,7 +261,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 					// do not add nodes with already known infinite distance
 					newNodes = newNodes.stream().filter(newNode -> {
 						AstarNode<S, A> newAstarNode = astarArg.get(newNode);
-						return newAstarNode.state != AstarNode.State.HEURISTIC_INFINITE;
+						return newAstarNode.heuristicState != AstarNode.HeuristicState.INFINITE;
 					}).collect(Collectors.toList());
 
 					reachedSet.addAll(newNodes);
@@ -279,10 +276,10 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 				//	- getting a covering edge to a node already reaching target
 				if (root != null) {
 					if (node.getCoveringNode().isPresent()) {
-						ArgNode<S, A> coveringArgNode = node.getCoveringNode().get();
-						AstarNode<S, A> coveringAstarNode = astarArg.get(coveringArgNode);
+						final ArgNode<S, A> coveringArgNode = node.getCoveringNode().get();
+						final AstarNode<S, A> coveringAstarNode = astarArg.get(coveringArgNode);
 						assert coveringAstarNode != null;
-						if (coveringAstarNode.state == AstarNode.State.HEURISTIC_EXACT) {
+						if (coveringAstarNode.heuristicState == AstarNode.HeuristicState.EXACT) {
 							targetReachedAgain = true;
 							break;
 						}
@@ -319,14 +316,14 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 				final Map<ArgNode<S, A>, Integer> distances = arg.getDistances();
 				distances.forEach((argNode, distance) -> {
 					AstarNode<S, A> astarNode = astarArg.get(argNode);
-					astarNode.state = AstarNode.State.HEURISTIC_EXACT;
+					astarNode.heuristicState = AstarNode.HeuristicState.EXACT;
 					astarNode.distanceToError = distance;
 				});
 
 				if (type == Type.FULL) {
 					astarArg.getAll().values().forEach(astarNode -> {
-						if (astarNode.state != AstarNode.State.HEURISTIC_EXACT) {
-							astarNode.state = AstarNode.State.HEURISTIC_INFINITE;
+						if (astarNode.heuristicState != AstarNode.HeuristicState.EXACT) {
+							astarNode.heuristicState = AstarNode.HeuristicState.INFINITE;
 						}
 					});
 				}
@@ -337,15 +334,12 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 
 			// Apply now available distance to found error to all nodes reaching error, not only root
 			//	if not searched from init nodes then descendant nodes will also get updated
-			// TODO if a loop is detected during run == closed to it's descendant => give infinite weight?
 
 			if (targetReachedAgain) {
-				// TODO maybe we can be more efficient: when coming from covering node just go from there
-				// 	when coming from target just go straigth up to root somehow
 				final Map<ArgNode<S, A>, Integer> distances = arg.getDistances();
 				distances.forEach((argNode, distance) -> {
 					AstarNode<S, A> astarNode = astarArg.get(argNode);
-					astarNode.state = AstarNode.State.HEURISTIC_EXACT;
+					astarNode.heuristicState = AstarNode.HeuristicState.EXACT;
 					astarNode.distanceToError = distance;
 				});
 			} else {
@@ -356,9 +350,9 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 					AstarNode<S, A> astarNode = astarArg.get(argNode);
 
 					// if we reach a part where target is reachable then root shouldn't be unreachable
-					assert(astarNode.state != AstarNode.State.HEURISTIC_EXACT);
+					assert(astarNode.heuristicState != AstarNode.HeuristicState.EXACT);
 
-					astarNode.state = AstarNode.State.HEURISTIC_INFINITE;
+					astarNode.heuristicState = AstarNode.HeuristicState.INFINITE;
 
 					return false;
 				});
@@ -373,6 +367,9 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 	// uses previous AstarArg then calls checkFromNode with root=null
 	// it is assumed that last AstarArg in astarArgStore should be used if exists
 	public AbstractorResult check(final ARG<S, A> arg, final P prec) {
+		checkNotNull(arg);
+		checkNotNull(prec);
+
 		AstarArg<S, A, P> astarArg;
 		if (astarArgStore.isEmpty()) {
 			astarArg = AstarArg.create(arg, prec, null, astarArgStore.partialOrd);
@@ -390,11 +387,11 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		checkNotNull(astarArg);
 
 		boolean backPrinted = false;
-		switch (astarNode.state) {
-			case HEURISTIC_EXACT:
-			case HEURISTIC_INFINITE:
+		switch (astarNode.heuristicState) {
+			case EXACT:
+			case INFINITE:
 				return;
-			case DESCENDANT_HEURISTIC_UNKNOWN:
+			case DESCENDANT_UNKNOWN:
 				assert astarNode.descendant != null;
 
 				// notify that we are going back
@@ -402,22 +399,21 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 				backPrinted = true;
 
 				calculateHeuristic(astarNode.descendant, astarArg.descendant);
-				assert astarNode.descendant.state == AstarNode.State.HEURISTIC_EXACT || astarNode.descendant.state == AstarNode.State.HEURISTIC_INFINITE;
+				assert astarNode.descendant.heuristicState == AstarNode.HeuristicState.EXACT || astarNode.descendant.heuristicState == AstarNode.HeuristicState.INFINITE;
 
 				// do not update current node's heuristic (like: exact => unknown, inf => inf)
 				// - outside caller won't update also
 				// 		(a call which doesn't go through this part but could update it's heuristic:
 				// 		e.g. call from a node whose descendant is null and heuristic is unknown but will get infinite after search)
-				// - child node will simply call calculateHeuristic() and  TODO ??
 				// - when new AstarNode will be created it will check it's descendant and set it there
-				astarNode.state = AstarNode.State.HEURISTIC_UNKNOWN;
+				astarNode.heuristicState = AstarNode.HeuristicState.UNKNOWN;
 				// no break as we want to calculate as we needed heuristic to walk in descendant's arg from which we get heuristic for current arg
-			case HEURISTIC_UNKNOWN:
+			case UNKNOWN:
 				// infinite heuristic descendant
 				// - don't walk arg
 				// - set state here
-				if (astarNode.descendant != null && astarNode.descendant.state == AstarNode.State.HEURISTIC_INFINITE) {
-					astarNode.state = AstarNode.State.HEURISTIC_INFINITE;
+				if (astarNode.descendant != null && astarNode.descendant.heuristicState == AstarNode.HeuristicState.INFINITE) {
+					astarNode.heuristicState = AstarNode.HeuristicState.INFINITE;
 					break;
 				}
 
@@ -427,10 +423,9 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 				}
 
 				// descendant has heuristics to walk from astarNode in astarArg
-				// TODO color root
 				checkFromNode(astarArg, astarArg.prec, astarNode);
 
-				assert astarNode.state == AstarNode.State.HEURISTIC_EXACT || astarNode.state == AstarNode.State.HEURISTIC_INFINITE;
+				assert astarNode.heuristicState == AstarNode.HeuristicState.EXACT || astarNode.heuristicState == AstarNode.HeuristicState.INFINITE;
 				break;
 			default:
 				throw new IllegalArgumentException(AstarNode.IllegalState);
@@ -439,6 +434,8 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 
 	private static final String nowText = getNowText();
 	private void visualize(String state, int iteration) {
+		checkNotNull(state);
+
 		if (logger == NullLogger.getInstance()) {
 			return;
 		}
@@ -458,7 +455,9 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 
 			File file = new File(directory.getCanonicalPath());
 			// '∣' != '|' (for Windows)
- 			String filename = String.format("%s/%d∣ %s.png", directory.getCanonicalPath(), file.listFiles().length + 1, title);
+			File[] subfiles = file.listFiles();
+			assert subfiles != null;
+			String filename = String.format("%s/%d∣ %s.png", directory.getCanonicalPath(), subfiles.length + 1, title);
 
 			GraphvizWriter.getInstance().writeFileAutoConvert(AstarArgVisualizer.getDefault().visualize(astarArgStore.getIteration(iteration), title.toString()), filename);
 		} catch (IOException | InterruptedException e) {
@@ -502,7 +501,6 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 			this.projection = s -> 0;
 			this.stopCriterion = StopCriterions.firstCex();
 			this.logger = NullLogger.getInstance();
-			this.astarArgStore = null; // TODO
 		}
 
 		public Builder<S, A, P> projection(final Function<? super S, ?> projection) {
@@ -531,6 +529,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		}
 
 		public AstarAbstractor<S, A, P> build() {
+			assert astarArgStore != null;
 			return new AstarAbstractor<>(argBuilder, projection, stopCriterion, logger, astarArgStore, type);
 		}
 	}
