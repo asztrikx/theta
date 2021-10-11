@@ -125,8 +125,6 @@ public final class AstarCegarChecker<S extends State, A extends Action, P extend
 			abstractorTime += stopwatch.elapsed(TimeUnit.MILLISECONDS) - abstractorStartTime;
 			logger.write(Level.MAINSTEP, "| Checking abstraction done, result: %s%n", abstractorResult);
 
-			//System.out.println(GraphvizWriter.getInstance().writeString(ArgVisualizer.getDefault().visualize(arg)));
-
 			// copy state of arg and last AstarArg in astarArgStore to be able to go back ondemand for heuristics
 			// 	always has last as check will create if there isn't
 			astarArgStore.addLastCopied();

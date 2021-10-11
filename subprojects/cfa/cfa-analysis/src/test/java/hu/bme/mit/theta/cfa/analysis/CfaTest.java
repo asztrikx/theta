@@ -25,8 +25,6 @@ import hu.bme.mit.theta.cfa.CFA;
 import hu.bme.mit.theta.cfa.analysis.config.CfaConfig;
 import hu.bme.mit.theta.cfa.analysis.config.CfaConfigBuilder;
 import hu.bme.mit.theta.cfa.dsl.CfaDslManager;
-import hu.bme.mit.theta.common.logging.ConsoleLogger;
-import hu.bme.mit.theta.common.logging.Logger;
 import hu.bme.mit.theta.solver.z3.Z3SolverFactory;
 import org.junit.Assert;
 import org.junit.Test;
