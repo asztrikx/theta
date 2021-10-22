@@ -35,6 +35,7 @@ import hu.bme.mit.theta.analysis.algorithm.cegar.AbstractorResult;
 import hu.bme.mit.theta.analysis.algorithm.cegar.Refiner;
 import hu.bme.mit.theta.analysis.algorithm.cegar.RefinerResult;
 import hu.bme.mit.theta.analysis.algorithm.cegar.CegarStatistics;
+import hu.bme.mit.theta.analysis.algorithm.cegar.abstractor.StopCriterion;
 import hu.bme.mit.theta.analysis.algorithm.cegar.abstractor.StopCriterions;
 import hu.bme.mit.theta.common.Utils;
 import hu.bme.mit.theta.common.logging.Logger;
@@ -68,12 +69,15 @@ public final class AstarCegarChecker<S extends State, A extends Action, P extend
 	) {
 		// TODO NWT_IT_WP, UCB refinement doesn't work: java.lang.NullPointerException: Unsupported function 'bvule' in Z3 back-transformation.
 
+		StopCriterion<S, A> stopCriterion;
 		switch (type) {
 			case FULL:
 				this.astarArgStore = new AstarArgStoreFull<>(partialOrd);
+				stopCriterion = StopCriterions.fullExploration();
 				break;
 			case SEMI_ONDEMAND:
 				this.astarArgStore = new AstarArgStore<>(partialOrd);
+				stopCriterion = StopCriterions.firstCex();
 				break;
 			default:
 				throw new IllegalArgumentException("Unknown AstarCegarChecker.Type");
@@ -81,7 +85,7 @@ public final class AstarCegarChecker<S extends State, A extends Action, P extend
 		final Abstractor<S, A, P> abstractor = AstarAbstractor
 			.builder(argBuilder)
 			.projection(projection)
-			.stopCriterion(StopCriterions.firstCex())
+			.stopCriterion(stopCriterion)
 			.logger(logger)
 			.AstarArgStore(astarArgStore)
 			.type(type)
