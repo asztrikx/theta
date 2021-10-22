@@ -117,26 +117,26 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 				assert !initArgNode.isCovered();
 			}
 			// on first arg it will be empty
-			//	putAllFromCandidates sets descendant null
+			//	putAllFromCandidates sets parent null
 			//	and sets state to HEURISTIC_UNKNOWN
 			final Collection<AstarNode<S, A>> initAstarNodeCandidates = new ArrayList<>();
-			if (astarArg.descendant != null) {
-				initAstarNodeCandidates.addAll(astarArg.descendant.getAllInit().values());
+			if (astarArg.parent != null) {
+				initAstarNodeCandidates.addAll(astarArg.parent.getAllInit().values());
 			}
 
 			for (ArgNode<S, A> initArgNode : initArgNodes) {
 				// TODO duplicated code
-				AstarNode<S, A> initAstarNodeDescendant = null;
-				if (astarArg.descendant != null) {
-					initAstarNodeDescendant = astarArg.getDescendantFromCandidates(initArgNode, initAstarNodeCandidates);
-					assert initAstarNodeDescendant != null;
+				AstarNode<S, A> initAstarNodeParent = null;
+				if (astarArg.parent != null) {
+					initAstarNodeParent = astarArg.getParentFromCandidates(initArgNode, initAstarNodeCandidates);
+					assert initAstarNodeParent != null;
 				}
-				final AstarNode<S, A> newInitAstarNode = AstarNode.create(initArgNode, initAstarNodeDescendant);
+				final AstarNode<S, A> newInitAstarNode = AstarNode.create(initArgNode, initAstarNodeParent);
 				astarArg.putInit(newInitAstarNode);
 				// must be called after adding AstarNode
 				//	- when we go back to previous arg to calculate heuristic: we need the node to be in visualization
-				if (astarArg.descendant != null) {
-					calculateHeuristic(initAstarNodeDescendant, astarArg.descendant);
+				if (astarArg.parent != null) {
+					calculateHeuristic(initAstarNodeParent, astarArg.parent);
 					newInitAstarNode.recalculateState();
 				}
 			}
@@ -175,8 +175,8 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 				// only infinite AstarNodes
 				//	if only those nodes are left in waitlist which can't reach error then stop
 				//	by not adding infinite state nodes only init nodes can cause this
-				if (astarNode.descendant != null) {
-					if (astarNode.descendant.heuristicState == AstarNode.HeuristicState.INFINITE) {
+				if (astarNode.parent != null) {
+					if (astarNode.parent.heuristicState == AstarNode.HeuristicState.INFINITE) {
 						assert arg.getInitNodes().collect(Collectors.toList()).contains(node);
 						break;
 					}
@@ -215,25 +215,25 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 				if (!node.isSubsumed() && !node.isTarget()) {
 					newNodes = argBuilder.expand(node, prec);
 
-					// descendant AstarNode map
-					// descendant heurisitcs calculate to be used in waitlist
+					// parent AstarNode map
+					// parent heurisitcs calculate to be used in waitlist
 					node.getOutEdges().forEach((ArgEdge<S, A> newArgEdge) -> {
 						final ArgNode<S, A> newArgNode = newArgEdge.getTarget();
 						Collection<AstarNode<S, A>> succAstarNodeCandidates = new ArrayList<>();
-						if (astarNode.descendant != null) {
-							assert astarArg.descendant != null;
+						if (astarNode.parent != null) {
+							assert astarArg.parent != null;
 
 							// covered nodes are expanded in their covering nodes
-							ArgNode<S, A> descendantArgNode = astarNode.descendant.argNode;
-							if (descendantArgNode.isCovered()) {
-								assert descendantArgNode.getCoveringNode().isPresent();
-								descendantArgNode = descendantArgNode.getCoveringNode().get();
+							ArgNode<S, A> parentArgNode = astarNode.parent.argNode;
+							if (parentArgNode.isCovered()) {
+								assert parentArgNode.getCoveringNode().isPresent();
+								parentArgNode = parentArgNode.getCoveringNode().get();
 							}
 
-							final Stream<ArgEdge<S, A>> succArgEdgeCandidates = descendantArgNode.getOutEdges().
+							final Stream<ArgEdge<S, A>> succArgEdgeCandidates = parentArgNode.getOutEdges().
 									filter((ArgEdge<S, A> succArgEdgeCandidate) -> succArgEdgeCandidate.getAction().equals(newArgEdge.getAction()));
 							succAstarNodeCandidates = succArgEdgeCandidates
-									.map(succArgEdgeCandidate -> astarArg.descendant.get(succArgEdgeCandidate.getTarget()))
+									.map(succArgEdgeCandidate -> astarArg.parent.get(succArgEdgeCandidate.getTarget()))
 									.collect(Collectors.toList());
 
 							// check if ::get was successful
@@ -243,17 +243,17 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 						}
 
 						// this is logically separate from previous block with same condition (this block appears in init nodes)
-						AstarNode<S, A> newAstarNodeDescendant = null;
-						if (astarArg.descendant != null) {
-							newAstarNodeDescendant = astarArg.getDescendantFromCandidates(newArgNode, succAstarNodeCandidates);
-							assert newAstarNodeDescendant != null;
+						AstarNode<S, A> newAstarNodeParent = null;
+						if (astarArg.parent != null) {
+							newAstarNodeParent = astarArg.getParentFromCandidates(newArgNode, succAstarNodeCandidates);
+							assert newAstarNodeParent != null;
 						}
-						final AstarNode<S, A> newAstarNode = AstarNode.create(newArgNode, newAstarNodeDescendant);
+						final AstarNode<S, A> newAstarNode = AstarNode.create(newArgNode, newAstarNodeParent);
 						astarArg.put(newAstarNode);
 						// must be called after adding AstarNode
 						//	- when we go back to previous arg to calculate heuristic: we need the node to be in visualization
-						if (astarArg.descendant != null) {
-							calculateHeuristic(newAstarNodeDescendant, astarArg.descendant);
+						if (astarArg.parent != null) {
+							calculateHeuristic(newAstarNodeParent, astarArg.parent);
 							newAstarNode.recalculateState();
 						}
 					});
@@ -333,7 +333,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 			}
 
 			// Apply now available distance to found error to all nodes reaching error, not only root
-			//	if not searched from init nodes then descendant nodes will also get updated
+			//	if not searched from init nodes then parent nodes will also get updated
 
 			if (targetReachedAgain) {
 				final Map<ArgNode<S, A>, Integer> distances = arg.getDistances();
@@ -391,28 +391,28 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 			case EXACT:
 			case INFINITE:
 				return;
-			case DESCENDANT_UNKNOWN:
-				assert astarNode.descendant != null;
+			case PARENT_UNKNOWN:
+				assert astarNode.parent != null;
 
 				// notify that we are going back
 				visualize(String.format("back for N%d", astarNode.argNode.getId()), astarArg.iteration + 1);
 				backPrinted = true;
 
-				calculateHeuristic(astarNode.descendant, astarArg.descendant);
-				assert astarNode.descendant.heuristicState == AstarNode.HeuristicState.EXACT || astarNode.descendant.heuristicState == AstarNode.HeuristicState.INFINITE;
+				calculateHeuristic(astarNode.parent, astarArg.parent);
+				assert astarNode.parent.heuristicState == AstarNode.HeuristicState.EXACT || astarNode.parent.heuristicState == AstarNode.HeuristicState.INFINITE;
 
 				// do not update current node's heuristic (like: exact => unknown, inf => inf)
 				// - outside caller won't update also
 				// 		(a call which doesn't go through this part but could update it's heuristic:
-				// 		e.g. call from a node whose descendant is null and heuristic is unknown but will get infinite after search)
-				// - when new AstarNode will be created it will check it's descendant and set it there
+				// 		e.g. call from a node whose parent is null and heuristic is unknown but will get infinite after search)
+				// - when new AstarNode will be created it will check it's parent and set it there
 				astarNode.heuristicState = AstarNode.HeuristicState.UNKNOWN;
-				// no break as we want to calculate as we needed heuristic to walk in descendant's arg from which we get heuristic for current arg
+				// no break as we want to calculate as we needed heuristic to walk in parent's arg from which we get heuristic for current arg
 			case UNKNOWN:
-				// infinite heuristic descendant
+				// infinite heuristic parent
 				// - don't walk arg
 				// - set state here
-				if (astarNode.descendant != null && astarNode.descendant.heuristicState == AstarNode.HeuristicState.INFINITE) {
+				if (astarNode.parent != null && astarNode.parent.heuristicState == AstarNode.HeuristicState.INFINITE) {
 					astarNode.heuristicState = AstarNode.HeuristicState.INFINITE;
 					break;
 				}
@@ -422,7 +422,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 					visualize(String.format("back for N%d", astarNode.argNode.getId()), astarArg.iteration + 1);
 				}
 
-				// descendant has heuristics to walk from astarNode in astarArg
+				// parent has heuristics to walk from astarNode in astarArg
 				checkFromNode(astarArg, astarArg.prec, astarNode);
 
 				assert astarNode.heuristicState == AstarNode.HeuristicState.EXACT || astarNode.heuristicState == AstarNode.HeuristicState.INFINITE;

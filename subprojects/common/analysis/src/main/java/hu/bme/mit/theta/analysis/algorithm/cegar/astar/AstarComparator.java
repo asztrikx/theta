@@ -23,12 +23,12 @@ public final class AstarComparator<S extends State, A extends Action, P extends 
         final ArgNode<S, A> argNode2 = astarNode2.argNode;
 
         // one heuristic is not available <=> other heuristic is not available
-        assert astarNode1.descendant != null && astarNode2.descendant != null ||
-                astarNode1.descendant == null && astarNode2.descendant == null;
+        assert astarNode1.parent != null && astarNode2.parent != null ||
+                astarNode1.parent == null && astarNode2.parent == null;
 
         // no heuristic from previous arg as no previous arg exists
         //  because of previous assert we only need to check one AstarNode's state
-        if (astarNode1.descendant == null) {
+        if (astarNode1.parent == null) {
             // calculate bfs weights
             final int weight1 = argNode1.getDepth();
             final int weight2 = argNode2.getDepth();
@@ -36,17 +36,17 @@ public final class AstarComparator<S extends State, A extends Action, P extends 
             return weight1 - weight2;
         }
 
-        // descendant's heuristics should be known
-        assert astarNode1.heuristicState != AstarNode.HeuristicState.DESCENDANT_UNKNOWN;
-        assert astarNode2.heuristicState != AstarNode.HeuristicState.DESCENDANT_UNKNOWN;
+        // parent's heuristics should be known
+        assert astarNode1.heuristicState != AstarNode.HeuristicState.PARENT_UNKNOWN;
+        assert astarNode2.heuristicState != AstarNode.HeuristicState.PARENT_UNKNOWN;
 
-        // use descendants to get heuristics
-        final AstarNode<S, A> descendant1 = astarNode1.descendant;
-        final AstarNode<S, A> descendant2 = astarNode2.descendant;
+        // use parents to get heuristics
+        final AstarNode<S, A> parent1 = astarNode1.parent;
+        final AstarNode<S, A> parent2 = astarNode2.parent;
 
         // not reachable in more abstract domain => won't be reachable in refined => treat as 'infinite' weight
-        final boolean unreachable1 = descendant1.heuristicState == AstarNode.HeuristicState.INFINITE;
-        final boolean unreachable2 = descendant2.heuristicState == AstarNode.HeuristicState.INFINITE;
+        final boolean unreachable1 = parent1.heuristicState == AstarNode.HeuristicState.INFINITE;
+        final boolean unreachable2 = parent2.heuristicState == AstarNode.HeuristicState.INFINITE;
         if (unreachable1 && unreachable2) {
             return 0;
         } else if (unreachable1) {
@@ -57,14 +57,14 @@ public final class AstarComparator<S extends State, A extends Action, P extends 
 
         // catch missing State handle for later developments
         if (
-            descendant1.heuristicState != AstarNode.HeuristicState.EXACT &&
-            descendant2.heuristicState != AstarNode.HeuristicState.EXACT
+            parent1.heuristicState != AstarNode.HeuristicState.EXACT &&
+            parent2.heuristicState != AstarNode.HeuristicState.EXACT
         ) {
             throw new IllegalArgumentException(AstarNode.IllegalState);
         }
 
-        final int distanceToError1 = checkNotNull(descendant1.distanceToError);
-        final int distanceToError2 = checkNotNull(descendant2.distanceToError);
+        final int distanceToError1 = checkNotNull(parent1.distanceToError);
+        final int distanceToError2 = checkNotNull(parent2.distanceToError);
 
         // calculate a* heuristics
         final int weight1 = argNode1.getDepth() + distanceToError1;

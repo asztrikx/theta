@@ -10,7 +10,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
 
 public final class AstarNode<S extends hu.bme.mit.theta.analysis.State, A extends Action> {
     public final ArgNode<S, A> argNode;
-    public final AstarNode<S, A> descendant;
+    public final AstarNode<S, A> parent;
     public HeuristicState heuristicState;
     // Has to be integer in order to know when its not set
     public Integer distanceToError;
@@ -18,34 +18,34 @@ public final class AstarNode<S extends hu.bme.mit.theta.analysis.State, A extend
 
     // heuristics is a value in distanceToError which can be used for next arg
     public enum HeuristicState {
-        // DESCENDANT_UNAVAILABLE,
+        // PARENT_UNAVAILABLE,
         //  this goes into HEURISTIC_UNKNOWN as it can be replaced by e.g. HEURISTIC_EXACT
         //  which is a problem when
 
-        // have to calculate descendant heuristic in order to walk in current node to get heuristic
-        DESCENDANT_UNKNOWN,
+        // have to calculate parent heuristic in order to walk in current node to get heuristic
+        PARENT_UNKNOWN,
 
-        // descendant heuristic is available (or doesn't exists) => we can walk in arg to get heuristic
+        // parent heuristic is available (or doesn't exists) => we can walk in arg to get heuristic
         UNKNOWN,
 
         INFINITE,
         EXACT
     }
 
-    private AstarNode(final ArgNode<S, A> argNode, final AstarNode<S, A> descendant) {
+    private AstarNode(final ArgNode<S, A> argNode, final AstarNode<S, A> parent) {
         this.argNode = checkNotNull(argNode);
         // can be null if it is the first arg
-        this.descendant = descendant;
+        this.parent = parent;
         recalculateState();
         this.distanceToError = null;
     }
 
     public void recalculateState() {
-        if (descendant != null) {
-            switch (descendant.heuristicState) {
-                case DESCENDANT_UNKNOWN:
+        if (parent != null) {
+            switch (parent.heuristicState) {
+                case PARENT_UNKNOWN:
                 case UNKNOWN:
-                    heuristicState = HeuristicState.DESCENDANT_UNKNOWN;
+                    heuristicState = HeuristicState.PARENT_UNKNOWN;
                     break;
                 case EXACT:
                     heuristicState = HeuristicState.UNKNOWN;
@@ -63,8 +63,8 @@ public final class AstarNode<S extends hu.bme.mit.theta.analysis.State, A extend
 
     public static <S extends State, A extends Action> AstarNode<S, A> create(
             final ArgNode<S, A> argNode,
-            final AstarNode<S, A> descendant) {
-        return new AstarNode<>(argNode, descendant);
+            final AstarNode<S, A> parent) {
+        return new AstarNode<>(argNode, parent);
     }
 
     @Override

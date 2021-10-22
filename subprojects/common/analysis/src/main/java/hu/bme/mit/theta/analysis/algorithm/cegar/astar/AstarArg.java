@@ -23,24 +23,24 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
     //  TODO use partition
     private Map<ArgNode<S, A>, AstarNode<S, A>> astarNodes = new HashContainerFactory().createMap();
     private Map<ArgNode<S, A>, AstarNode<S, A>> astarInitNodes = new HashContainerFactory().createMap();
-    public AstarArg<S, A, P> descendant;
+    public AstarArg<S, A, P> parent;
     private final PartialOrd<S> partialOrd;
     public int iteration = -1;
 
-    private AstarArg(final ARG<S, A> arg, P prec, final AstarArg<S, A, P> descendant, final PartialOrd<S> partialOrd) {
+    private AstarArg(final ARG<S, A> arg, P prec, final AstarArg<S, A, P> parent, final PartialOrd<S> partialOrd) {
         this.arg = checkNotNull(arg);
         this.prec = prec;
-        this.descendant = descendant;
+        this.parent = parent;
         this.partialOrd = checkNotNull(partialOrd);
     }
 
     public static <S extends State, A extends Action, P extends Prec> AstarArg<S, A, P> create(
             final ARG<S, A> arg,
             final P prec,
-            final AstarArg<S, A, P> descendant,
+            final AstarArg<S, A, P> parent,
             final PartialOrd<S> partialOrd
     ) {
-        return new AstarArg<>(arg, prec, descendant, partialOrd);
+        return new AstarArg<>(arg, prec, parent, partialOrd);
     }
 
     // put saves the AstarNode for ArgNode
@@ -107,46 +107,46 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
     }
 
     /**
-     * when descendantAstarNodeCandidates is empty descendant will be null
+     * when parentAstarNodeCandidates is empty parent will be null
      */
-    public Collection<AstarNode<S, A>> getAllDescendantFromCandidates(final List<ArgNode<S, A>> argNodes, List<Collection<AstarNode<S, A>>> descendantAstarNodeCandidates) {
-        assert argNodes.size() == descendantAstarNodeCandidates.size();
+    public Collection<AstarNode<S, A>> getAllParentFromCandidates(final List<ArgNode<S, A>> argNodes, List<Collection<AstarNode<S, A>>> parentAstarNodeCandidates) {
+        assert argNodes.size() == parentAstarNodeCandidates.size();
 
         final List<AstarNode<S, A>> astarNodes = new ArrayList<>();
         for (int i = 0; i < argNodes.size(); i++) {
-            final AstarNode<S, A> astarNode = getDescendantFromCandidates(argNodes.get(i), descendantAstarNodeCandidates.get(i));
+            final AstarNode<S, A> astarNode = getParentFromCandidates(argNodes.get(i), parentAstarNodeCandidates.get(i));
             astarNodes.add(astarNode);
         }
         return astarNodes;
     }
 
     /**
-     * the same descendantAstarNodeCandidates will be used for all argNodes
-     * when descendantAstarNodeCandidates is empty descendant will be null
+     * the same parentAstarNodeCandidates will be used for all argNodes
+     * when parentAstarNodeCandidates is empty parent will be null
      */
-    public Collection<AstarNode<S, A>> getAllDescendantFromCandidates(final List<ArgNode<S, A>> argNodes, Collection<AstarNode<S, A>> descendantAstarNodeCandidates) {
+    public Collection<AstarNode<S, A>> getAllParentFromCandidates(final List<ArgNode<S, A>> argNodes, Collection<AstarNode<S, A>> parentAstarNodeCandidates) {
         // create list with the same items to use already written general funcion
         final List<Collection<AstarNode<S, A>>> list = new ArrayList<>(argNodes.size());
         for (int i = 0; i < argNodes.size(); i++) {
-            list.add(descendantAstarNodeCandidates);
+            list.add(parentAstarNodeCandidates);
         }
 
-        return getAllDescendantFromCandidates(argNodes, list);
+        return getAllParentFromCandidates(argNodes, list);
     }
 
     /**
-     * if descendant parent is covered get descendantAstarNodeCandidates from covering node's successor nodes
+     * if parent's parent is covered get parentAstarNodeCandidates from covering node's successor nodes
      */
-    public AstarNode<S, A> getDescendantFromCandidates(final ArgNode<S, A> argNode, Collection<AstarNode<S, A>> descendantAstarNodeCandidates) {
-        assert descendantAstarNodeCandidates.size() != 0;
+    public AstarNode<S, A> getParentFromCandidates(final ArgNode<S, A> argNode, Collection<AstarNode<S, A>> parentAstarNodeCandidates) {
+        assert parentAstarNodeCandidates.size() != 0;
 
-        final List<AstarNode<S, A>> descendantAstarNodes = descendantAstarNodeCandidates.stream()
-                .filter(descendantAstarNodeCandidate -> partialOrd.isLeq(argNode.getState(), descendantAstarNodeCandidate.argNode.getState()))
+        final List<AstarNode<S, A>> parentAstarNodes = parentAstarNodeCandidates.stream()
+                .filter(parentAstarNodeCandidate -> partialOrd.isLeq(argNode.getState(), parentAstarNodeCandidate.argNode.getState()))
                 .collect(Collectors.toList());
         // it is assumed that all edges have unique Action
         //  otherwise: {a} {b} are reachable with the same action; in next arg child is {a,b,c}; which is the parent?
-        assert descendantAstarNodes.size() == 1;
+        assert parentAstarNodes.size() == 1;
 
-        return descendantAstarNodes.get(0);
+        return parentAstarNodes.get(0);
     }
 }

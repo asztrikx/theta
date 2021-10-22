@@ -76,8 +76,7 @@ public final class AstarArgVisualizer<S extends State, A extends Action, P exten
     public static <S extends State, A extends Action, P extends Prec> AstarArgVisualizer<S, A, P> create(
             final Function<S, String> stateToString,
             final Function<A, String> actionToString,
-            final Function<? super AstarNode<? extends S, ? extends A>, String> astarNodeToString,
-            final Function<? super AstarNode<? extends S, ? extends A>, String> descendantAstarNodeToString) {
+            final Function<? super AstarNode<? extends S, ? extends A>, String> astarNodeToString) {
         return new AstarArgVisualizer<>(stateToString, actionToString, astarNodeToString);
     }
 
@@ -129,15 +128,15 @@ public final class AstarArgVisualizer<S extends State, A extends Action, P exten
         final LineStyle lineStyle = SUCC_EDGE_STYLE;
         final int peripheries = node.isTarget() ? 2 : 1;
 
-        // node format: information about node and it's descendant (if exists)
-        String descendantLabel = "-";
-        if (astarNode.descendant != null) {
-            descendantLabel = astarNodeToString.apply(astarNode.descendant);
+        // node format: information about node and it's parent (if exists)
+        String parentLabel = "-";
+        if (astarNode.parent != null) {
+            parentLabel = astarNodeToString.apply(astarNode.parent);
         }
         String label = String.format("%s\\l%s\\l%s",
                 stateToString.apply(node.getState()),
                 String.format("AstarNode: %s", astarNodeToString.apply(astarNode)),
-                String.format("Descendant: %s", descendantLabel)
+                String.format("Parent: %s", parentLabel)
         );
 
         final NodeAttributes nAttributes = NodeAttributes.builder().label(label)

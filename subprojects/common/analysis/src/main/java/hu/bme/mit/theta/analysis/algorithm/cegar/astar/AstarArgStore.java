@@ -22,14 +22,14 @@ public class AstarArgStore<S extends State, A extends Action, P extends Prec> {
     }
 
     public void add(final AstarArg<S, A, P> astarArg) {
-        // set descendant
-        AstarArg<S, A, P> descendant;
+        // set parent
+        AstarArg<S, A, P> parent;
         if (astarArgs.isEmpty()) {
-            descendant = null;
+            parent = null;
         } else {
-            descendant = getLast();
+            parent = getLast();
         }
-        astarArg.descendant = descendant;
+        astarArg.parent = parent;
         // iteration is started from 1 in logging
         astarArg.iteration = astarArgs.size() + 1;
 
