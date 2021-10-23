@@ -89,59 +89,21 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 	public AbstractorResult checkFromNode(final AstarArg<S, A, P> astarArg, final P prec, final AstarNode<S, A> astarRoot) {
 		checkNotNull(astarArg);
 		checkNotNull(prec);
+
 		final ARG<S, A> arg = astarArg.arg;
 		ArgNode<S, A> root = null;
 		if (astarRoot != null) {
 			root = astarRoot.argNode;
 		}
-		logger.write(Level.DETAIL, "|  |  Precision: %s%n", prec);
 
-		String visualizerState = "";
-		if (root != null) {
-			visualizerState += String.format("N%d", root.getId());
-		} else {
-			visualizerState += "root";
-		}
+		logger.write(Level.DETAIL, "|  |  Precision: %s%n", prec);
+		String visualizerState = getVisualizerState(root);
 		visualize(String.format("start %s", visualizerState),  astarArg.iteration);
 
 		// initialize Arg
 		assert root == null || arg.isInitialized();
 		if (root == null && !arg.isInitialized()) {
-			logger.write(Level.SUBSTEP, "|  |  (Re)initializing ARG...");
-			argBuilder.init(arg, prec);
-
-			// create AstarNodes for init ArgNodes
-			//	output of argBuilder.init(...) is not used for clarity
-			final List<ArgNode<S, A>> initArgNodes = arg.getInitNodes().collect(Collectors.toList());
-			for (ArgNode<S, A> initArgNode : initArgNodes) {
-				assert !initArgNode.isCovered();
-			}
-			// on first arg it will be empty
-			//	putAllFromCandidates sets parent null
-			//	and sets state to HEURISTIC_UNKNOWN
-			final Collection<AstarNode<S, A>> initAstarNodeCandidates = new ArrayList<>();
-			if (astarArg.parent != null) {
-				initAstarNodeCandidates.addAll(astarArg.parent.getAllInit().values());
-			}
-
-			for (ArgNode<S, A> initArgNode : initArgNodes) {
-				// TODO duplicated code
-				AstarNode<S, A> initAstarNodeParent = null;
-				if (astarArg.parent != null) {
-					initAstarNodeParent = astarArg.getParentFromCandidates(initArgNode, initAstarNodeCandidates);
-					assert initAstarNodeParent != null;
-				}
-				final AstarNode<S, A> newInitAstarNode = AstarNode.create(initArgNode, initAstarNodeParent);
-				astarArg.putInit(newInitAstarNode);
-				// must be called after adding AstarNode
-				//	- when we go back to previous arg to calculate heuristic: we need the node to be in visualization
-				if (astarArg.parent != null) {
-					calculateHeuristic(initAstarNodeParent, astarArg.parent);
-					newInitAstarNode.recalculateState();
-				}
-			}
-
-			logger.write(Level.SUBSTEP, "done%n");
+			initializeArg(astarArg, prec);
 		}
 		assert arg.isInitialized();
 
@@ -183,25 +145,8 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 				}
 
 				// in already expanded Arg part
-				//	can happen if root != null
-				//	when walking from an already expanded node just add outedges to waitlist
 				if (node.isExpanded()) {
-					assert root != null;
-					// do not add nodes with already known infinite distance
-					final Collection<AstarNode<S, A>> succAstarNodes = node.getOutEdges()
-							.map(succEdge -> astarArg.get(succEdge.getTarget()))
-							.filter(succAstarNode -> succAstarNode.heuristicState != AstarNode.HeuristicState.INFINITE)
-							.collect(Collectors.toList());
-					// astarArgStore already contains them
-					// reached set already contains them
-					waitlist.addAll(succAstarNodes);
-
-					// if target was (as it is expanded) reached from this node => we should already have heuristics
-					// 	but this function is not specific to heuristic search so don't assert this
-					// succNodes is subset of all nodes => must have reached target already
-					final Collection<ArgNode<S, A>> succNodes = succAstarNodes.stream()
-							.map(succAstarNode -> astarNode.argNode)
-							.collect(Collectors.toList());
+					final Collection<ArgNode<S, A>> succNodes = handleExpanded(astarArg, root, waitlist, astarNode);
 					if (stopCriterion.canStop(arg, succNodes)) {
 						targetReachedAgain = true;
 						break;
@@ -215,59 +160,12 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 				if (!node.isSubsumed() && !node.isTarget()) {
 					newNodes = argBuilder.expand(node, prec);
 
-					// parent AstarNode map
-					// parent heurisitcs calculate to be used in waitlist
-					node.getOutEdges().forEach((ArgEdge<S, A> newArgEdge) -> {
-						final ArgNode<S, A> newNode = newArgEdge.getTarget();
-						Collection<AstarNode<S, A>> succAstarNodeCandidates = new ArrayList<>();
-						if (astarNode.parent != null) {
-							assert astarArg.parent != null;
-
-							// covered nodes are expanded in their covering nodes
-							ArgNode<S, A> parentNode = astarNode.parent.argNode;
-							if (parentNode.isCovered()) {
-								assert parentNode.getCoveringNode().isPresent();
-								parentNode = parentNode.getCoveringNode().get();
-							}
-
-							final Stream<ArgEdge<S, A>> succArgEdgeCandidates = parentNode.getOutEdges().
-									filter((ArgEdge<S, A> succArgEdgeCandidate) -> succArgEdgeCandidate.getAction().equals(newArgEdge.getAction()));
-							succAstarNodeCandidates = succArgEdgeCandidates
-									.map(succArgEdgeCandidate -> astarArg.parent.get(succArgEdgeCandidate.getTarget()))
-									.collect(Collectors.toList());
-							// add parent as nodes may can be split
-							succAstarNodeCandidates.add(astarArg.parent.get(parentNode));
-
-							// check if ::get was successful
-							for (AstarNode<S, A> succAstarNodeCandidate: succAstarNodeCandidates) {
-								assert succAstarNodeCandidate != null;
-							}
-						}
-
-						// this is logically separate from previous block with same condition (this block appears in init nodes)
-						AstarNode<S, A> newAstarNodeParent = null;
-						if (astarArg.parent != null) {
-							newAstarNodeParent = astarArg.getParentFromCandidates(newNode, succAstarNodeCandidates);
-							assert newAstarNodeParent != null;
-						}
-						final AstarNode<S, A> newAstarNode = AstarNode.create(newNode, newAstarNodeParent);
-						astarArg.put(newAstarNode);
-						// must be called after adding AstarNode
-						//	- when we go back to previous arg to calculate heuristic: we need the node to be in visualization
-						if (astarArg.parent != null) {
-							calculateHeuristic(newAstarNodeParent, astarArg.parent);
-							newAstarNode.recalculateState();
-						}
-					});
-
-					// do not add nodes with already known infinite distance
-					newNodes = newNodes.stream().filter(newNode -> {
-						AstarNode<S, A> newAstarNode = astarArg.get(newNode);
-						return newAstarNode.heuristicState != AstarNode.HeuristicState.INFINITE;
-					}).collect(Collectors.toList());
+					Collection<AstarNode<S, A>> newAstarNodes = getNewAstarNodes(astarArg, astarNode);
+					// we only need INFINITE heuristic new nodes to add to reachedSet
+					newNodes = newAstarNodes.stream().map(newAstarNode -> newAstarNode.argNode).collect(Collectors.toList());
 
 					reachedSet.addAll(newNodes);
-					waitlist.addAll(newNodes.stream().map(astarArg::get));
+					waitlist.addAll(newAstarNodes);
 				}
 				if (stopCriterion.canStop(arg, newNodes)) {
 					targetReachedAgain = true;
@@ -303,66 +201,216 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 			// checkState(arg.isComplete(), "Returning incomplete ARG as safe");
 			return AbstractorResult.safe();
 		} else {
-			// distance to error as new heuristic
-
-			// arg unsafe can because
-			// - we just expanded the arg until error is reached
-			// - we went back to a previous arg (this) and expanded other part of it
-			// in the latter case arg must be unsafe otherwise algorithm would have ended there
-
-			if (type == Type.FULL) {
-				assert root == null;
-			}
-
-			if (root == null) {
-				final Map<ArgNode<S, A>, Integer> distances = arg.getDistances();
-				distances.forEach((argNode, distance) -> {
-					AstarNode<S, A> astarNode = astarArg.get(argNode);
-					astarNode.heuristicState = AstarNode.HeuristicState.EXACT;
-					astarNode.distanceToError = distance;
-				});
-
-				if (type == Type.FULL) {
-					astarArg.getAll().values().forEach(astarNode -> {
-						if (astarNode.heuristicState != AstarNode.HeuristicState.EXACT) {
-							astarNode.heuristicState = AstarNode.HeuristicState.INFINITE;
-						}
-					});
-				}
-
-				visualize(String.format("end %s", visualizerState),  astarArg.iteration);
-				return AbstractorResult.unsafe();
-			}
-
-			// Apply now available distance to found error to all nodes reaching error, not only root
-			//	if not searched from init nodes then parent nodes will also get updated
-
-			if (targetReachedAgain) {
-				final Map<ArgNode<S, A>, Integer> distances = arg.getDistances();
-				distances.forEach((argNode, distance) -> {
-					AstarNode<S, A> astarNode = astarArg.get(argNode);
-					astarNode.heuristicState = AstarNode.HeuristicState.EXACT;
-					astarNode.distanceToError = distance;
-				});
-			} else {
-				// if a cover edge pointed to a node reaching target then root would also have reached target in the first arg expand
-				// 	=> we wouldn't have gone back to this arg from this root
-
-				arg.walk(root, (argNode, integer) -> {
-					AstarNode<S, A> astarNode = astarArg.get(argNode);
-
-					// if we reach a part where target is reachable then root shouldn't be unreachable
-					assert(astarNode.heuristicState != AstarNode.HeuristicState.EXACT);
-
-					astarNode.heuristicState = AstarNode.HeuristicState.INFINITE;
-
-					return false;
-				});
-			}
-
+			updateDistances(astarArg, root, targetReachedAgain);
 			visualize(String.format("end %s", visualizerState),  astarArg.iteration);
 			return AbstractorResult.unsafe();
 		}
+	}
+
+	public String getVisualizerState(ArgNode<S, A> root) {
+		String visualizerState = "";
+		if (root != null) {
+			visualizerState += String.format("N%d", root.getId());
+		} else {
+			visualizerState += "root";
+		}
+		return visualizerState;
+	}
+
+	public void initializeArg(final AstarArg<S, A, P> astarArg, final P prec) {
+		final ARG<S, A> arg = astarArg.arg;
+
+		logger.write(Level.SUBSTEP, "|  |  (Re)initializing ARG...");
+		argBuilder.init(arg, prec);
+
+		// create AstarNodes for init ArgNodes
+		//	output of argBuilder.init(...) is not used for clarity
+		final List<ArgNode<S, A>> initArgNodes = arg.getInitNodes().collect(Collectors.toList());
+		for (ArgNode<S, A> initArgNode : initArgNodes) {
+			assert !initArgNode.isCovered();
+		}
+		// on first arg it will be empty
+		//	putAllFromCandidates sets parent null
+		//	and sets state to HEURISTIC_UNKNOWN
+		final Collection<AstarNode<S, A>> initAstarNodeCandidates = new ArrayList<>();
+		if (astarArg.parent != null) {
+			initAstarNodeCandidates.addAll(astarArg.parent.getAllInit().values());
+		}
+
+		for (ArgNode<S, A> initArgNode : initArgNodes) {
+			// TODO duplicated code
+			AstarNode<S, A> initAstarNodeParent = null;
+			if (astarArg.parent != null) {
+				initAstarNodeParent = astarArg.getParentFromCandidates(initArgNode, initAstarNodeCandidates);
+				assert initAstarNodeParent != null;
+			}
+			final AstarNode<S, A> newInitAstarNode = AstarNode.create(initArgNode, initAstarNodeParent);
+			astarArg.putInit(newInitAstarNode);
+			// must be called after adding AstarNode
+			//	- when we go back to previous arg to calculate heuristic: we need the node to be in visualization
+			if (astarArg.parent != null) {
+				calculateHeuristic(initAstarNodeParent, astarArg.parent);
+				newInitAstarNode.recalculateState();
+			}
+		}
+
+		logger.write(Level.SUBSTEP, "done%n");
+	}
+
+	public Collection<ArgNode<S, A>> handleExpanded(
+			final AstarArg<S, A, P> astarArg,
+			final ArgNode<S, A> root,
+			final Waitlist<AstarNode<S, A>> waitlist,
+			final AstarNode<S, A> astarNode
+	) {
+		final ArgNode<S, A> node = astarNode.argNode;
+
+		// when walking from an already expanded node just add outedges to waitlist
+		//can happen if root != null
+		assert root != null;
+
+		// do not add nodes with already known infinite distance
+		final Collection<AstarNode<S, A>> succAstarNodes = node.getOutEdges()
+				.map(succEdge -> astarArg.get(succEdge.getTarget()))
+				.filter(succAstarNode -> succAstarNode.heuristicState != AstarNode.HeuristicState.INFINITE)
+				.collect(Collectors.toList());
+		// astarArgStore already contains them
+		// reached set already contains them
+		waitlist.addAll(succAstarNodes);
+
+		// if target was (as it is expanded) reached from this node => we should already have heuristics
+		// 	but this function is not specific to heuristic search so don't assert this
+		// succNodes is subset of all nodes => must have reached target already
+		final Collection<ArgNode<S, A>> succNodes = succAstarNodes.stream()
+				.map(succAstarNode -> astarNode.argNode)
+				.collect(Collectors.toList());
+		return succNodes;
+	}
+
+	public Collection<AstarNode<S, A>> getNewAstarNodes(AstarArg<S, A, P> astarArg, AstarNode<S, A> astarNode) {
+		ArgNode<S, A> node = astarNode.argNode;
+
+		return node.getOutEdges().map((ArgEdge<S, A> newArgEdge) -> {
+			final ArgNode<S, A> newNode = newArgEdge.getTarget();
+			Collection<AstarNode<S, A>> succAstarNodeCandidates = getSuccAstarNodeCandidates(astarArg, astarNode, newArgEdge);
+
+			// parent AstarNode map
+			// 	TODO (this block appears in init nodes)
+			AstarNode<S, A> newAstarNodeParent = null;
+			if (astarArg.parent != null) {
+				newAstarNodeParent = astarArg.getParentFromCandidates(newNode, succAstarNodeCandidates);
+				assert newAstarNodeParent != null;
+			}
+			final AstarNode<S, A> newAstarNode = AstarNode.create(newNode, newAstarNodeParent);
+			astarArg.put(newAstarNode);
+
+			// parent heurisitcs calculate to be used in waitlist
+			// must be called after adding AstarNode
+			//	- when we go back to previous arg to calculate heuristic: we need the node to be in visualization
+			if (astarArg.parent != null) {
+				calculateHeuristic(newAstarNodeParent, astarArg.parent);
+				newAstarNode.recalculateState();
+			}
+
+			return newAstarNode;
+		}).filter(
+				// do not add nodes with already known infinite distance
+				newAstarNode -> newAstarNode.heuristicState != AstarNode.HeuristicState.INFINITE
+		).collect(Collectors.toList());
+	}
+
+	public Collection<AstarNode<S, A>> getSuccAstarNodeCandidates(
+			final AstarArg<S, A, P> astarArg,
+			final AstarNode<S, A> astarNode,
+			final ArgEdge<S, A> newArgEdge
+	) {
+		if (astarNode.parent == null) {
+			return new ArrayList<>();
+		}
+		assert astarArg.parent != null;
+
+		// covered nodes are expanded in their covering nodes
+		ArgNode<S, A> parentNode = astarNode.parent.argNode;
+		if (parentNode.isCovered()) {
+			assert parentNode.getCoveringNode().isPresent();
+			parentNode = parentNode.getCoveringNode().get();
+		}
+
+		final Stream<ArgEdge<S, A>> succArgEdgeCandidates = parentNode.getOutEdges().
+				filter((ArgEdge<S, A> succArgEdgeCandidate) -> succArgEdgeCandidate.getAction().equals(newArgEdge.getAction()));
+		Collection<AstarNode<S, A>> succAstarNodeCandidates = succArgEdgeCandidates
+				.map(succArgEdgeCandidate -> astarArg.parent.get(succArgEdgeCandidate.getTarget()))
+				.collect(Collectors.toList());
+		// add parent as nodes may can be split
+		succAstarNodeCandidates.add(astarArg.parent.get(parentNode));
+
+		// check if ::get was successful
+		for (AstarNode<S, A> succAstarNodeCandidate: succAstarNodeCandidates) {
+			assert succAstarNodeCandidate != null;
+		}
+		return succAstarNodeCandidates;
+	}
+
+	public void updateDistances(final AstarArg<S, A, P> astarArg, final ArgNode<S, A> root, boolean targetReachedAgain) {
+		ARG<S, A> arg = astarArg.arg;
+
+		// distance to error as new heuristic
+
+		// arg unsafe can because
+		// - we just expanded the arg until error is reached
+		// - we went back to a previous arg (this) and expanded other part of it
+		// in the latter case arg must be unsafe otherwise algorithm would have ended there
+
+		if (type == Type.FULL) {
+			assert root == null;
+		}
+
+		if (root == null) {
+			final Map<ArgNode<S, A>, Integer> distances = arg.getDistances();
+			distances.forEach((argNode, distance) -> {
+				AstarNode<S, A> astarNode = astarArg.get(argNode);
+				astarNode.heuristicState = AstarNode.HeuristicState.EXACT;
+				astarNode.distanceToError = distance;
+			});
+
+			if (type == Type.FULL) {
+				astarArg.getAll().values().forEach(astarNode -> {
+					if (astarNode.heuristicState != AstarNode.HeuristicState.EXACT) {
+						astarNode.heuristicState = AstarNode.HeuristicState.INFINITE;
+					}
+				});
+			}
+
+			return;
+		}
+
+		// Apply now available distance to found error to all nodes reaching error, not only root
+		//	if not searched from init nodes then parent nodes will also get updated
+
+		if (targetReachedAgain) {
+			final Map<ArgNode<S, A>, Integer> distances = arg.getDistances();
+			distances.forEach((argNode, distance) -> {
+				AstarNode<S, A> astarNode = astarArg.get(argNode);
+				astarNode.heuristicState = AstarNode.HeuristicState.EXACT;
+				astarNode.distanceToError = distance;
+			});
+		} else {
+			// if a cover edge pointed to a node reaching target then root would also have reached target in the first arg expand
+			// 	=> we wouldn't have gone back to this arg from this root
+
+			arg.walk(root, (argNode, integer) -> {
+				AstarNode<S, A> astarNode = astarArg.get(argNode);
+
+				// if we reach a part where target is reachable then root shouldn't be unreachable
+				assert(astarNode.heuristicState != AstarNode.HeuristicState.EXACT);
+
+				astarNode.heuristicState = AstarNode.HeuristicState.INFINITE;
+
+				return false;
+			});
+		}
+
+		return;
 	}
 
 	@Override
