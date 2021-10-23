@@ -138,14 +138,18 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
      * if parent's parent is covered get parentAstarNodeCandidates from covering node's successor nodes
      */
     public AstarNode<S, A> getParentFromCandidates(final ArgNode<S, A> argNode, Collection<AstarNode<S, A>> parentAstarNodeCandidates) {
+        // when a node with no outgoing edge is split and we don't add the node to candidates this assertion fails
         assert parentAstarNodeCandidates.size() != 0;
 
         final List<AstarNode<S, A>> parentAstarNodes = parentAstarNodeCandidates.stream()
                 .filter(parentAstarNodeCandidate -> partialOrd.isLeq(argNode.getState(), parentAstarNodeCandidate.argNode.getState()))
                 .collect(Collectors.toList());
+
         // it is assumed that all edges have unique Action
         //  otherwise: {a} {b} are reachable with the same action; in next arg child is {a,b,c}; which is the parent?
-        assert parentAstarNodes.size() == 1;
+        // init nodes may have 1 candidate
+        // not init nodes may have 2 (parent and its child) as child can be covered by parent (or if child is error then it *could* be covered)
+        assert parentAstarNodes.size() == 1 || parentAstarNodes.size() == 2;
 
         return parentAstarNodes.get(0);
     }

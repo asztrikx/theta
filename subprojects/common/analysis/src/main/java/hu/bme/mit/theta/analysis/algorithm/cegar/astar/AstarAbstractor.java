@@ -218,23 +218,25 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 					// parent AstarNode map
 					// parent heurisitcs calculate to be used in waitlist
 					node.getOutEdges().forEach((ArgEdge<S, A> newArgEdge) -> {
-						final ArgNode<S, A> newArgNode = newArgEdge.getTarget();
+						final ArgNode<S, A> newNode = newArgEdge.getTarget();
 						Collection<AstarNode<S, A>> succAstarNodeCandidates = new ArrayList<>();
 						if (astarNode.parent != null) {
 							assert astarArg.parent != null;
 
 							// covered nodes are expanded in their covering nodes
-							ArgNode<S, A> parentArgNode = astarNode.parent.argNode;
-							if (parentArgNode.isCovered()) {
-								assert parentArgNode.getCoveringNode().isPresent();
-								parentArgNode = parentArgNode.getCoveringNode().get();
+							ArgNode<S, A> parentNode = astarNode.parent.argNode;
+							if (parentNode.isCovered()) {
+								assert parentNode.getCoveringNode().isPresent();
+								parentNode = parentNode.getCoveringNode().get();
 							}
 
-							final Stream<ArgEdge<S, A>> succArgEdgeCandidates = parentArgNode.getOutEdges().
+							final Stream<ArgEdge<S, A>> succArgEdgeCandidates = parentNode.getOutEdges().
 									filter((ArgEdge<S, A> succArgEdgeCandidate) -> succArgEdgeCandidate.getAction().equals(newArgEdge.getAction()));
 							succAstarNodeCandidates = succArgEdgeCandidates
 									.map(succArgEdgeCandidate -> astarArg.parent.get(succArgEdgeCandidate.getTarget()))
 									.collect(Collectors.toList());
+							// add parent as nodes may can be split
+							succAstarNodeCandidates.add(astarArg.parent.get(parentNode));
 
 							// check if ::get was successful
 							for (AstarNode<S, A> succAstarNodeCandidate: succAstarNodeCandidates) {
@@ -245,10 +247,10 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 						// this is logically separate from previous block with same condition (this block appears in init nodes)
 						AstarNode<S, A> newAstarNodeParent = null;
 						if (astarArg.parent != null) {
-							newAstarNodeParent = astarArg.getParentFromCandidates(newArgNode, succAstarNodeCandidates);
+							newAstarNodeParent = astarArg.getParentFromCandidates(newNode, succAstarNodeCandidates);
 							assert newAstarNodeParent != null;
 						}
-						final AstarNode<S, A> newAstarNode = AstarNode.create(newArgNode, newAstarNodeParent);
+						final AstarNode<S, A> newAstarNode = AstarNode.create(newNode, newAstarNodeParent);
 						astarArg.put(newAstarNode);
 						// must be called after adding AstarNode
 						//	- when we go back to previous arg to calculate heuristic: we need the node to be in visualization
