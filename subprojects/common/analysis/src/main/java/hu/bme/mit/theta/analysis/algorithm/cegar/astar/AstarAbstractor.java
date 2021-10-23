@@ -158,13 +158,21 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 				Collection<ArgNode<S, A>> newNodes = Collections.emptyList();
 				close(node, reachedSet.get(node));
 				if (!node.isSubsumed() && !node.isTarget()) {
-					newNodes = argBuilder.expand(node, prec);
+					// node is not expanded
+					assert node.getOutEdges().count() == 0;
 
-					Collection<AstarNode<S, A>> newAstarNodes = getNewAstarNodes(astarArg, astarNode);
-					// we only need INFINITE heuristic new nodes to add to reachedSet
+					newNodes = argBuilder.expand(node, prec);
+					// add to reachedSet before filtering
+					reachedSet.addAll(newNodes);
+
+					Collection<AstarNode<S, A>> newAstarNodes = getNewAstarNodes(astarArg, astarNode)
+						.filter(
+								// do not add nodes with already known infinite distance
+								newAstarNode -> newAstarNode.heuristicState != AstarNode.HeuristicState.INFINITE
+						).collect(Collectors.toList());
+					// we only need INFINITE heuristic new nodes to be added to reachedSet
 					newNodes = newAstarNodes.stream().map(newAstarNode -> newAstarNode.argNode).collect(Collectors.toList());
 
-					reachedSet.addAll(newNodes);
 					waitlist.addAll(newAstarNodes);
 				}
 				if (stopCriterion.canStop(arg, newNodes)) {
@@ -287,15 +295,18 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		return succNodes;
 	}
 
-	public Collection<AstarNode<S, A>> getNewAstarNodes(AstarArg<S, A, P> astarArg, AstarNode<S, A> astarNode) {
+	public Stream<AstarNode<S, A>> getNewAstarNodes(AstarArg<S, A, P> astarArg, AstarNode<S, A> astarNode) {
 		ArgNode<S, A> node = astarNode.argNode;
 
-		return node.getOutEdges().map((ArgEdge<S, A> newArgEdge) -> {
+		return node.getOutEdges().map(newArgEdge -> {
 			final ArgNode<S, A> newNode = newArgEdge.getTarget();
+			// newNode is really new
+			assert astarArg.get(newNode) == null;
+
 			Collection<AstarNode<S, A>> succAstarNodeCandidates = getSuccAstarNodeCandidates(astarArg, astarNode, newArgEdge);
 
 			// parent AstarNode map
-			// 	TODO (this block appears in init nodes)
+			// 	TODO duplicated code in init nodes
 			AstarNode<S, A> newAstarNodeParent = null;
 			if (astarArg.parent != null) {
 				newAstarNodeParent = astarArg.getParentFromCandidates(newNode, succAstarNodeCandidates);
@@ -313,10 +324,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 			}
 
 			return newAstarNode;
-		}).filter(
-				// do not add nodes with already known infinite distance
-				newAstarNode -> newAstarNode.heuristicState != AstarNode.HeuristicState.INFINITE
-		).collect(Collectors.toList());
+		});
 	}
 
 	public Collection<AstarNode<S, A>> getSuccAstarNodeCandidates(
@@ -336,13 +344,12 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 			parentNode = parentNode.getCoveringNode().get();
 		}
 
-		final Stream<ArgEdge<S, A>> succArgEdgeCandidates = parentNode.getOutEdges().
-				filter((ArgEdge<S, A> succArgEdgeCandidate) -> succArgEdgeCandidate.getAction().equals(newArgEdge.getAction()));
-		Collection<AstarNode<S, A>> succAstarNodeCandidates = succArgEdgeCandidates
+		final Collection<AstarNode<S, A>> succAstarNodeCandidates = parentNode.getOutEdges().
+				filter(succArgEdgeCandidate -> succArgEdgeCandidate.getAction().equals(newArgEdge.getAction()))
 				.map(succArgEdgeCandidate -> astarArg.parent.get(succArgEdgeCandidate.getTarget()))
 				.collect(Collectors.toList());
 		// add parent as nodes may can be split
-		succAstarNodeCandidates.add(astarArg.parent.get(parentNode));
+		succAstarNodeCandidates.add(astarNode.parent);
 
 		// check if ::get was successful
 		for (AstarNode<S, A> succAstarNodeCandidate: succAstarNodeCandidates) {

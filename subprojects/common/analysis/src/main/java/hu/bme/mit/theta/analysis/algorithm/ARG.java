@@ -93,12 +93,13 @@ public final class ARG<S extends State, A extends Action> {
 		Map<ArgNode<S, A>, ArgNode<S, A>> oldToNew = new HashContainerFactory().createMap();
 		for (ArgNode<S, A> currentInitArgNode: initNodes) {
 			ArgNode<S, A> newInitArgNode = arg.createInitNode(currentInitArgNode.getState(), currentInitArgNode.isTarget());
+			newInitArgNode.expanded = currentInitArgNode.expanded;
 			assert !newInitArgNode.isCovered();
 
 			oldToNew.put(currentInitArgNode, newInitArgNode);
 		}
 
-		walk(oldToNew.keySet(), (ArgNode<S, A> currentArgNode, Integer distance) -> {
+		walk(oldToNew.keySet(), (currentArgNode, distance) -> {
 			ArgNode<S, A> newArgNode = oldToNew.get(currentArgNode);
 			assert newArgNode != null;
 
@@ -106,6 +107,7 @@ public final class ARG<S extends State, A extends Action> {
 			currentArgNode.getOutEdges().forEach((ArgEdge<S, A> argEdge) -> {
 				ArgNode<S, A> currentSuccArgNode = argEdge.getTarget();
 				ArgNode<S, A> newSuccArgNode = arg.createSuccNode(newArgNode, argEdge.getAction(), currentSuccArgNode.getState(), currentSuccArgNode.isTarget());
+				newSuccArgNode.expanded = currentSuccArgNode.expanded;
 				if (currentSuccArgNode.isCovered()) {
 					assert currentSuccArgNode.coveringNode.isPresent();
 					ArgNode<S, A> currentCoveringNode = currentSuccArgNode.coveringNode.get();
