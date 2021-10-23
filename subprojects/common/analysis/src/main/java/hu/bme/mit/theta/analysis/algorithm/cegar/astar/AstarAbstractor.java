@@ -144,9 +144,39 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 					}
 				}
 
+				// we close nodes as we add them to arg => we can and should exit early
+				if (node.isCovered()) {
+					// no need to check stopCriterion.canStop as its newNodes parameter will be empty resulting in false
+					// 	however we need to check whether coverer reaches error if root != null
+					if (root == null) {
+						continue;
+					}
+
+					assert node.getCoveringNode().isPresent();
+					ArgNode<S, A> coverer = node.getCoveringNode().get();
+					AstarNode<S, A> astarCoverer = astarArg.get(coverer);
+					assert astarCoverer.heuristicState != AstarNode.HeuristicState.PARENT_UNKNOWN;
+
+					if (astarCoverer.heuristicState == AstarNode.HeuristicState.EXACT) {
+						targetReachedAgain = true;
+						break;
+					}
+					// we must also continue expanding the covering node
+					if (astarCoverer.heuristicState == AstarNode.HeuristicState.UNKNOWN) {
+						waitlist.add(astarCoverer);
+						continue;
+					}
+
+					assert astarCoverer.heuristicState == AstarNode.HeuristicState.INFINITE;
+					continue;
+				}
+
 				// in already expanded Arg part
+				// 	this will only happen if root != null as if it was null then we would only add incomplete nodes
 				if (node.isExpanded()) {
-					final Collection<ArgNode<S, A>> succNodes = handleExpanded(astarArg, root, waitlist, astarNode);
+					assert root != null;
+
+					final Collection<ArgNode<S, A>> succNodes = handleExpanded(astarArg, waitlist, astarNode);
 					if (stopCriterion.canStop(arg, succNodes)) {
 						targetReachedAgain = true;
 						break;
@@ -156,14 +186,21 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 
 				// expand
 				Collection<ArgNode<S, A>> newNodes = Collections.emptyList();
+				// only left here to cover initNodes or root TODO place this elsewhere, replace !node.isSubsumed with node.isFeasible()
 				close(node, reachedSet.get(node));
 				if (!node.isSubsumed() && !node.isTarget()) {
 					// node is not expanded
 					assert node.getOutEdges().count() == 0;
 
 					newNodes = argBuilder.expand(node, prec);
-					// add to reachedSet before filtering
+					// add to reachedSet before:
+					// 	filtering
+					// 	covering (like in BasicAbstractor)
 					reachedSet.addAll(newNodes);
+
+					// when we expand a node which will be covered, then we can't find its parent from current node
+					//	therefore we should find coverer before and find parent in coverer
+					newNodes.forEach(newNode -> close(newNode, reachedSet.get(newNode)));
 
 					Collection<AstarNode<S, A>> newAstarNodes = getNewAstarNodes(astarArg, astarNode)
 						.filter(
@@ -173,6 +210,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 					// we only need INFINITE heuristic new nodes to be added to reachedSet
 					newNodes = newAstarNodes.stream().map(newAstarNode -> newAstarNode.argNode).collect(Collectors.toList());
 
+					// add covered nodes as well in order to check whether coverer reaches error
 					waitlist.addAll(newAstarNodes);
 				}
 				if (stopCriterion.canStop(arg, newNodes)) {
@@ -267,15 +305,12 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 
 	public Collection<ArgNode<S, A>> handleExpanded(
 			final AstarArg<S, A, P> astarArg,
-			final ArgNode<S, A> root,
 			final Waitlist<AstarNode<S, A>> waitlist,
 			final AstarNode<S, A> astarNode
 	) {
 		final ArgNode<S, A> node = astarNode.argNode;
 
 		// when walking from an already expanded node just add outedges to waitlist
-		//can happen if root != null
-		assert root != null;
 
 		// do not add nodes with already known infinite distance
 		final Collection<AstarNode<S, A>> succAstarNodes = node.getOutEdges()
@@ -298,12 +333,17 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 	public Stream<AstarNode<S, A>> getNewAstarNodes(AstarArg<S, A, P> astarArg, AstarNode<S, A> astarNode) {
 		ArgNode<S, A> node = astarNode.argNode;
 
-		return node.getOutEdges().map(newArgEdge -> {
+		// a node can have children b and c. b can get covered by c. b can be before c in outEdges.
+		// 	getParentAstarNodeCandidates will look at coverer's parent which does not exists => reverse order
+		// TODO faster? or move reachedSet add later
+		List<ArgEdge<S, A>> outEdges = node.getOutEdges().collect(Collectors.toList());
+		Collections.reverse(outEdges);
+		return outEdges.stream().map(newArgEdge -> {
 			final ArgNode<S, A> newNode = newArgEdge.getTarget();
 			// newNode is really new
 			assert astarArg.get(newNode) == null;
 
-			Collection<AstarNode<S, A>> succAstarNodeCandidates = getSuccAstarNodeCandidates(astarArg, astarNode, newArgEdge);
+			Collection<AstarNode<S, A>> succAstarNodeCandidates = getParentAstarNodeCandidates(astarArg, astarNode, newArgEdge);
 
 			// parent AstarNode map
 			// 	TODO duplicated code in init nodes
@@ -327,11 +367,20 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		});
 	}
 
-	public Collection<AstarNode<S, A>> getSuccAstarNodeCandidates(
+	public Collection<AstarNode<S, A>> getParentAstarNodeCandidates(
 			final AstarArg<S, A, P> astarArg,
 			final AstarNode<S, A> astarNode,
 			final ArgEdge<S, A> newArgEdge
 	) {
+		// if covered then we have look for parent in coverer
+		if (newArgEdge.getTarget().isCovered()) {
+			assert newArgEdge.getTarget().getCoveringNode().isPresent();
+			final ArgNode<S, A> coverer = newArgEdge.getTarget().getCoveringNode().get();
+			final AstarNode<S, A> astarCoverer = astarArg.get(coverer);
+			assert astarCoverer != null;
+			return Collections.singletonList(astarCoverer.parent);
+		}
+
 		if (astarNode.parent == null) {
 			return new ArrayList<>();
 		}
@@ -344,18 +393,18 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 			parentNode = parentNode.getCoveringNode().get();
 		}
 
-		final Collection<AstarNode<S, A>> succAstarNodeCandidates = parentNode.getOutEdges().
+		final Collection<AstarNode<S, A>> parentAstarNodeCandidates = parentNode.getOutEdges().
 				filter(succArgEdgeCandidate -> succArgEdgeCandidate.getAction().equals(newArgEdge.getAction()))
 				.map(succArgEdgeCandidate -> astarArg.parent.get(succArgEdgeCandidate.getTarget()))
 				.collect(Collectors.toList());
 		// add parent as nodes may can be split
-		succAstarNodeCandidates.add(astarNode.parent);
+		parentAstarNodeCandidates.add(astarNode.parent);
 
 		// check if ::get was successful
-		for (AstarNode<S, A> succAstarNodeCandidate: succAstarNodeCandidates) {
+		for (AstarNode<S, A> succAstarNodeCandidate: parentAstarNodeCandidates) {
 			assert succAstarNodeCandidate != null;
 		}
-		return succAstarNodeCandidates;
+		return parentAstarNodeCandidates;
 	}
 
 	public void updateDistances(final AstarArg<S, A, P> astarArg, final ArgNode<S, A> root, boolean targetReachedAgain) {
@@ -416,8 +465,6 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 				return false;
 			});
 		}
-
-		return;
 	}
 
 	@Override

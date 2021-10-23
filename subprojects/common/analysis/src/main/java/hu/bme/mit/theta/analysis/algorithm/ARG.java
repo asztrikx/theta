@@ -385,6 +385,7 @@ public final class ARG<S extends State, A extends Action> {
 			if (argNode.getCoveringNode().isPresent()) {
 				expand.accept(argNode.getCoveringNode().get(), distanceSearchResult.distance);
 			}
+
 			argNode.getOutEdges().map(ArgEdge::getTarget).forEach(argNodeSuccessor -> {
 				expand.accept(argNodeSuccessor, distanceSearchResult.distance + 1);
 			});
