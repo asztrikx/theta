@@ -63,7 +63,7 @@ public class AstarArgStore<S extends State, A extends Action, P extends Prec> {
         //  which will give more accurate heuristics for next arg
 
         // init nodes
-        for (Map.Entry<ArgNode<S, A>, AstarNode<S, A>> entry : astarArgLast.getAllInit().entrySet()) {
+        for (Map.Entry<ArgNode<S, A>, AstarNode<S, A>> entry : astarArgLast.getAllAstarInit().entrySet()) {
             final ArgNode<S, A> argNodeLast = entry.getKey();
             final ArgNode<S, A> argNodeNew = oldToNew.get(argNodeLast);
             final AstarNode<S, A> astarNodeLast = entry.getValue();

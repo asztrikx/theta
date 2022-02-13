@@ -24,14 +24,9 @@ import hu.bme.mit.theta.analysis.waitlist.FifoWaitlist;
 import hu.bme.mit.theta.analysis.waitlist.Waitlist;
 import hu.bme.mit.theta.common.container.Containers;
 
-import java.util.Collection;
-import java.util.Map;
-import java.util.Optional;
-import java.util.OptionalInt;
+import java.util.*;
 import java.util.function.BiFunction;
-import java.util.function.BiConsumer;
 import java.util.stream.Stream;
-import java.util.ArrayList;
 
 import hu.bme.mit.theta.analysis.Action;
 import hu.bme.mit.theta.analysis.PartialOrd;
@@ -68,6 +63,64 @@ public final class ARG<S extends State, A extends Action> {
 	@Override
 	public Object clone() {
 		return cloneWithResult().argCopied;
+	}
+
+	public ARG copy() {
+		ARG argCopy = ARG.create(partialOrd);
+		argCopy.initialized = initialized;
+		argCopy.nextId = nextId;
+		// partial order set in ctor
+
+		// copy initNodes
+		Map<Integer, ArgNode<S, A>> visitedInCopy = new HashContainerFactory().createMap();
+		FifoWaitlist<ArgNode<S, A>> queue = FifoWaitlist.create();
+		FifoWaitlist<ArgNode<S, A>> queueForCopy = FifoWaitlist.create();
+		for (ArgNode<S, A> initNode : initNodes) {
+			ArgNode<S, A> argNodeCopy = argCopy.createInitNode(initNode.getState(), initNode.isTarget());
+
+			queue.add(initNode);
+			queueForCopy.add(argNodeCopy);
+
+			visitedInCopy.put(argNodeCopy.getId(), argNodeCopy);
+		}
+
+		// walk through ARG and copy nodes
+		while (!queue.isEmpty()) {
+			ArgNode<S, A> argNode = queue.remove();
+			ArgNode<S, A> argNodeCopy = queueForCopy.remove();
+
+			if (argNode.isCovered()) {
+				ArgNode<S, A> coveringNode = argNode.getCoveringNode().get();
+				if (visitedInCopy.containsKey(coveringNode.getId())) {
+					// (argNodeCopy's covering node is a shallow copy)
+					argNodeCopy.setCoveringNode(visitedInCopy.get(coveringNode.getId()));
+				}
+
+				// if covering node does not exists yet then cover will be handled after it is created
+				continue;
+			}
+
+			// Covered nodes may have been created before covering node
+			argNode.getCoveredNodes()
+				.filter(coveredNode -> visitedInCopy.containsKey(coveredNode.getId()))
+				.forEach(coveredNode -> {
+					System.out.println("Covering node created later");
+					assert(false);
+					ArgNode<S, A> coveredNodeCopy = visitedInCopy.get(coveredNode.getId());
+					coveredNodeCopy.setCoveringNode(argNode);
+				});
+
+			argNode.getOutEdges().forEach(edge -> {
+				argCopy.createSuccNode(argNodeCopy, edge.getAction(), edge.getTarget().getState(), edge.getTarget().isTarget());
+
+				queue.addAll(argNode.getSuccNodes());
+				queueForCopy.addAll(argNodeCopy.getSuccNodes());
+
+				visitedInCopy.put(argNodeCopy.getId(), argNodeCopy);
+			});
+		}
+
+		return argCopy;
 	}
 
 	public static final class ARGCopyResult<S extends State, A extends Action> {
@@ -341,73 +394,72 @@ public final class ARG<S extends State, A extends Action> {
 		}
 		checkNotNull(skip);
 
-		class DistanceSearchResult<S extends State, A extends Action> {
-			final public ArgNode<S,A> argNode;
+		class Result<S extends State, A extends Action> {
+			final public ArgNode<S, A> argNode;
 			final public int distance;
-			DistanceSearchResult(final ArgNode<S,A> argNode, final int distance) {
+
+			public Result(ArgNode<S, A> argNode, int distance) {
 				this.argNode = argNode;
 				this.distance = distance;
 			}
 		}
 
-		// arg without covering edges are trees
-		// 	we walk down the tree and also follow covering edges
-		// use BFS so size of waitlist won't be too large
-		final Map<ArgNode<S,A>, Integer> distances = new HashContainerFactory().createMap();
-		Collection<DistanceSearchResult<S, A>> distanceSearchResults = new ArrayList<>();
+		Set<ArgNode<S, A>> doneSet = new HashContainerFactory().createSet();
+		Waitlist<Result<S, A>> waitlist = FifoWaitlist.create();
 		for (ArgNode<S, A> root : roots) {
-			distances.put(root, 0);
-			distanceSearchResults.add(new DistanceSearchResult<>(root, 0));
+			waitlist.add(new Result<>(root, 0));
 		}
 
-		final Waitlist<DistanceSearchResult<S,A>> waitlist = FifoWaitlist.create();
-		waitlist.addAll(distanceSearchResults);
-
+		Result<S, A> coveringResult = null;
 		while (!waitlist.isEmpty()) {
-			final DistanceSearchResult<S, A> distanceSearchResult = waitlist.remove();
-			final ArgNode<S, A> argNode = distanceSearchResult.argNode;
+			Result<S, A> result;
+			if (coveringResult == null) {
+				result = waitlist.remove();
+			} else {
+				result = coveringResult;
+				coveringResult = null;
+			}
+			ArgNode<S, A> argNode = result.argNode;
+			int distance = result.distance;
 
-			if (skip.apply(argNode, distanceSearchResult.distance)) {
+			// covering edges can point to 2 non-disjoint subgraph => revisiting can happen
+			if (doneSet.contains(argNode)) {
+				continue;
+			}
+			doneSet.add(argNode);
+
+			// skip
+			if (skip.apply(argNode, distance)) {
 				continue;
 			}
 
-			BiConsumer<ArgNode<S,A>, Integer> expand = (succArgNode, distanceNext) -> {
-				// cex traces and covered traces can have common nodes with other cex or covered traces
-				if (distances.containsKey(succArgNode) && distanceNext >= distances.get(succArgNode)){
-					return;
-				}
-				waitlist.add(new DistanceSearchResult<>(succArgNode, distanceNext));
-				distances.put(succArgNode, distanceNext);
-			};
-
-			// TODO inf loop detecting here??
-			// covering nodes will have the same distance => has to be before regular nodes (+1 distance) (bfs)
+			// covered
 			if (argNode.getCoveringNode().isPresent()) {
-				expand.accept(argNode.getCoveringNode().get(), distanceSearchResult.distance);
+				ArgNode<S, A> coveringNode = argNode.getCoveringNode().get();
+				coveringResult = new Result<>(coveringNode, distance);
+				// do not add to waitlist as it would violate bfs property of monotone distances in queue
+				continue;
 			}
 
-			argNode.getOutEdges().map(ArgEdge::getTarget).forEach(argNodeSuccessor -> {
-				expand.accept(argNodeSuccessor, distanceSearchResult.distance + 1);
+			argNode.getSuccNodes().forEach(succNode -> {
+				waitlist.add(new Result<>(succNode, distance + 1));
 			});
 		}
 	}
 
-	public void walkUpParents(ArgNode<S, A> root, BiFunction<ArgNode, Integer, Boolean> skip) {
-		checkNotNull(root);
+	public void walkUpParents(ArgNode<S, A> start, Map<ArgNode<S, A>, ArgNode<S, A>> parents, BiFunction<ArgNode<S, A>, Integer, Boolean> skip) {
+		checkNotNull(start);
 		checkNotNull(skip);
 
-		ArgNode<S, A> current = root;
-		int pseudoDistance = 0;
-		while (true) {
-			if (skip.apply(current, pseudoDistance)) {
-				break;
-			}
-			if (current.getParent().isEmpty()){
+		ArgNode<S, A> current = start;
+		int distance = 0;
+		while (current != null) {
+			if (skip.apply(current, distance)) {
 				break;
 			}
 
-			pseudoDistance++;
-			current = current.getParent().get();
+			distance++;
+			current = parents.get(current);
 		}
 	}
 

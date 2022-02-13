@@ -122,6 +122,12 @@ public final class AstarCegarChecker<S extends State, A extends Action, P extend
 		do {
 			++iteration;
 
+			AstarArg<S, A, P> astarArg = AstarArg.create(arg, prec, null, astarArgStore.partialOrd);
+			// Set the remained AstarNodes parent
+			//	This can possibly be done during expand in next iteration
+			//astarArg.setParent();
+			astarArgStore.add(astarArg);
+
 			logger.write(Level.MAINSTEP, "Iteration %d%n", iteration);
 			logger.write(Level.MAINSTEP, "| Checking abstraction...%n");
 			final long abstractorStartTime = stopwatch.elapsed(TimeUnit.MILLISECONDS);
@@ -129,23 +135,21 @@ public final class AstarCegarChecker<S extends State, A extends Action, P extend
 			abstractorTime += stopwatch.elapsed(TimeUnit.MILLISECONDS) - abstractorStartTime;
 			logger.write(Level.MAINSTEP, "| Checking abstraction done, result: %s%n", abstractorResult);
 
-			// copy state of arg and last AstarArg in astarArgStore to be able to go back ondemand for heuristics
-			// 	always has last as check will create if there isn't
-			astarArgStore.addLastCopied();
-			arg = astarArgStore.getLast().arg;
-
 			if (abstractorResult.isUnsafe()) {
+				// AstarArg has to be copied as arg will be modified after refinement
+				// prec refinement return new copy of Prec
+				ARG argNext = arg.copy();
+
 				logger.write(Level.MAINSTEP, "| Refining abstraction...%n");
 				final long refinerStartTime = stopwatch.elapsed(TimeUnit.MILLISECONDS);
-				refinerResult = refiner.refine(arg, prec);
-				// throw out pruned ArgNode's AstarNodes
-				astarArgStore.getLast().prune();
+				refinerResult = refiner.refine(argNext, prec);
 				refinerTime += stopwatch.elapsed(TimeUnit.MILLISECONDS) - refinerStartTime;
 				logger.write(Level.MAINSTEP, "Refining abstraction done, result: %s%n", refinerResult);
 
 				if (refinerResult.isSpurious()) {
+					// Pruned version of an ARG is the next iteration of ARG.
 					prec = refinerResult.asSpurious().getRefinedPrec();
-					astarArgStore.getLast().prec = prec;
+					arg = argNext;
 				}
 			}
 		} while (!abstractorResult.isSafe() && !refinerResult.isUnsafe());

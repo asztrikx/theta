@@ -130,8 +130,8 @@ public final class AstarArgVisualizer<S extends State, A extends Action, P exten
 
         // node format: information about node and it's parent (if exists)
         String parentLabel = "-";
-        if (astarNode.parent != null) {
-            parentLabel = astarNodeToString.apply(astarNode.parent);
+        if (astarNode.coveringAstarNode != null) {
+            parentLabel = astarNodeToString.apply(astarNode.coveringAstarNode);
         }
         String label = String.format("%s\\l%s\\l%s",
                 stateToString.apply(node.getState()),
