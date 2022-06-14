@@ -59,7 +59,7 @@ public class CfaTest {
 	@Parameterized.Parameters(name = "{index}: {0}, {1}, {2}, {3}, {4}")
 	public static Collection<Object[]> data() {
 		return Arrays.asList(new Object[][] {
-/*
+
 				{ "src/test/resources/arithmetic-bool00.cfa", PRED_CART, SEQ_ITP, false, 15 },
 
 				{ "src/test/resources/arithmetic-bool00.cfa", PRED_BOOL, BW_BIN_ITP, false, 15 },
@@ -117,7 +117,7 @@ public class CfaTest {
 				{ "src/test/resources/ifelse.cfa", EXPL, SEQ_ITP, false, 3 },
 
 				{ "src/test/resources/locking.cfa", PRED_CART, SEQ_ITP, true, 0 },
-*/
+
 		});
 	}
 

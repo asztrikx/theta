@@ -17,14 +17,9 @@ package hu.bme.mit.theta.sts.analysis.config;
 
 import static hu.bme.mit.theta.core.type.booltype.BoolExprs.Not;
 
-import java.util.function.Function;
 import java.util.function.Predicate;
 
-import hu.bme.mit.theta.analysis.Action;
-import hu.bme.mit.theta.analysis.Analysis;
-import hu.bme.mit.theta.analysis.LTS;
-import hu.bme.mit.theta.analysis.Prec;
-import hu.bme.mit.theta.analysis.State;
+import hu.bme.mit.theta.analysis.*;
 import hu.bme.mit.theta.analysis.algorithm.ArgBuilder;
 import hu.bme.mit.theta.analysis.algorithm.ArgNodeComparators;
 import hu.bme.mit.theta.analysis.algorithm.ArgNodeComparators.ArgNodeComparator;
@@ -32,9 +27,9 @@ import hu.bme.mit.theta.analysis.algorithm.SafetyChecker;
 import hu.bme.mit.theta.analysis.algorithm.cegar.Abstractor;
 import hu.bme.mit.theta.analysis.algorithm.cegar.BasicAbstractor;
 import hu.bme.mit.theta.analysis.algorithm.cegar.CegarChecker;
-import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarCegarChecker;
 import hu.bme.mit.theta.analysis.algorithm.cegar.Refiner;
 import hu.bme.mit.theta.analysis.algorithm.cegar.abstractor.StopCriterions;
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarSafetyChecker;
 import hu.bme.mit.theta.analysis.expl.ExplAnalysis;
 import hu.bme.mit.theta.analysis.expl.ExplPrec;
 import hu.bme.mit.theta.analysis.expl.ExplState;
@@ -82,9 +77,8 @@ public final class StsConfigBuilder {
 
 		DFS(ArgNodeComparators.combine(ArgNodeComparators.targetFirst(), ArgNodeComparators.dfs())),
 
-		// Astar uses multiple levels of heuristic
-		// 	=> this line is ignored
-		ASTAR(ArgNodeComparators.combine(ArgNodeComparators.targetFirst(), ArgNodeComparators.dfs()));
+		// Astar doesn't use the comparator specified here
+		ASTAR(null);
 
 		public final ArgNodeComparator comparator;
 
@@ -170,7 +164,6 @@ public final class StsConfigBuilder {
 			final Analysis<ExplState, ExprAction, ExplPrec> analysis = ExplAnalysis.create(solver, init);
 			final ArgBuilder<ExplState, StsAction, ExplPrec> argBuilder = ArgBuilder.create(lts, analysis, target,
 					true);
-			final Function<? super ExplState, ?> projection = s -> 0;
 			final Abstractor<ExplState, StsAction, ExplPrec> abstractor = BasicAbstractor.builder(argBuilder)
 					.waitlist(PriorityWaitlist.create(search.comparator))
 					.stopCriterion(refinement == Refinement.MULTI_SEQ ? StopCriterions.fullExploration()
@@ -208,14 +201,11 @@ public final class StsConfigBuilder {
 			SafetyChecker<ExplState, StsAction, ExplPrec> checker;
 			switch (search) {
 				case ASTAR:
-					AstarCegarChecker.Type astarCegarCheckerType;
-					if (refinement == Refinement.MULTI_SEQ) {
-						astarCegarCheckerType = AstarCegarChecker.Type.FULL;
-					} else {
-						astarCegarCheckerType = AstarCegarChecker.Type.SEMI_ONDEMAND;
-					}
-					checker = AstarCegarChecker
-							.create(argBuilder, projection, refiner, logger, analysis.getPartialOrd(), astarCegarCheckerType);
+					checker = AstarSafetyChecker.getAstarSafetyChecker(
+							argBuilder, refiner, analysis.getPartialOrd(), logger,
+							s -> 0,
+							refinement == Refinement.MULTI_SEQ
+					);
 					break;
 				default:
 					checker = CegarChecker.create(abstractor, refiner, logger);
@@ -244,7 +234,6 @@ public final class StsConfigBuilder {
 					init);
 			final ArgBuilder<PredState, StsAction, PredPrec> argBuilder = ArgBuilder.create(lts, analysis, target,
 					true);
-			final Function<? super PredState, ?> projection = s -> 0;
 			final Abstractor<PredState, StsAction, PredPrec> abstractor = BasicAbstractor.builder(argBuilder)
 					.waitlist(PriorityWaitlist.create(search.comparator))
 					.stopCriterion(refinement == Refinement.MULTI_SEQ ? StopCriterions.fullExploration()
@@ -281,14 +270,11 @@ public final class StsConfigBuilder {
 			SafetyChecker<PredState, StsAction, PredPrec> checker;
 			switch (search) {
 				case ASTAR:
-					AstarCegarChecker.Type astarCegarCheckerType;
-					if (refinement == Refinement.MULTI_SEQ) {
-						astarCegarCheckerType = AstarCegarChecker.Type.FULL;
-					} else {
-						astarCegarCheckerType = AstarCegarChecker.Type.SEMI_ONDEMAND;
-					}
-					checker = AstarCegarChecker
-							.create(argBuilder, projection, refiner, logger, analysis.getPartialOrd(), astarCegarCheckerType);
+					checker = AstarSafetyChecker.getAstarSafetyChecker(
+							argBuilder, refiner, analysis.getPartialOrd(), logger,
+							s -> 0,
+							refinement == Refinement.MULTI_SEQ
+					);
 					break;
 				default:
 					checker = CegarChecker.create(abstractor, refiner, logger);

@@ -31,6 +31,7 @@ import hu.bme.mit.theta.analysis.algorithm.cegar.CegarChecker;
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarCegarChecker;
 import hu.bme.mit.theta.analysis.algorithm.cegar.Refiner;
 import hu.bme.mit.theta.analysis.algorithm.cegar.abstractor.StopCriterions;
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarSafetyChecker;
 import hu.bme.mit.theta.analysis.expl.ExplPrec;
 import hu.bme.mit.theta.analysis.expl.ExplState;
 import hu.bme.mit.theta.analysis.expl.ExplStmtAnalysis;
@@ -96,12 +97,11 @@ public class CfaConfigBuilder {
 			}
 		},
 
+		// Astar doesn't use the comparator specified here
 		ASTAR {
-			// Astar creates the Waitlist, multiple times, as it has to traverse other ARG-s while the current one isn't finished yet
-			// 	=> this line is ignored
 			@Override
 			public ArgNodeComparator getComp(final CFA cfa, final CFA.Loc errLoc) {
-				return new DistToErrComparator(cfa, errLoc);
+				return null;
 			}
 		};
 
@@ -351,18 +351,14 @@ public class CfaConfigBuilder {
 			SafetyChecker<CfaState<ExplState>, CfaAction, CfaPrec<ExplPrec>> checker;
 			switch (search) {
 				case ASTAR:
-					AstarCegarChecker.Type astarCegarCheckerType;
-					if (refinement == Refinement.MULTI_SEQ) {
-						astarCegarCheckerType = AstarCegarChecker.Type.FULL;
-					} else {
-						astarCegarCheckerType = AstarCegarChecker.Type.SEMI_ONDEMAND;
-					}
-					checker = AstarCegarChecker
-							.create(argBuilder, projection, refiner, logger, analysis.getPartialOrd(), astarCegarCheckerType);
+					checker = AstarSafetyChecker.getAstarSafetyChecker(
+							argBuilder, refiner, analysis.getPartialOrd(), logger,
+							projection,
+							refinement == Refinement.MULTI_SEQ
+					);
 					break;
 				default:
-					checker = CegarChecker
-							.create(abstractor, refiner, logger);
+					checker = CegarChecker.create(abstractor, refiner, logger);
 			}
 
 			CfaPrec<ExplPrec> prec;
@@ -466,18 +462,14 @@ public class CfaConfigBuilder {
 			SafetyChecker<CfaState<PredState>, CfaAction, CfaPrec<PredPrec>> checker;
 			switch (search) {
 				case ASTAR:
-					AstarCegarChecker.Type astarCegarCheckerType;
-					if (refinement == Refinement.MULTI_SEQ) {
-						astarCegarCheckerType = AstarCegarChecker.Type.FULL;
-					} else {
-						astarCegarCheckerType = AstarCegarChecker.Type.SEMI_ONDEMAND;
-					}
-					checker = AstarCegarChecker
-							.create(argBuilder, projection, refiner, logger, analysis.getPartialOrd(), astarCegarCheckerType);
+					checker = AstarSafetyChecker.getAstarSafetyChecker(
+							argBuilder, refiner, analysis.getPartialOrd(), logger,
+							projection,
+							refinement == Refinement.MULTI_SEQ
+					);
 					break;
 				default:
-					checker = CegarChecker
-							.create(abstractor, refiner, logger);
+					checker = CegarChecker.create(abstractor, refiner, logger);
 			}
 
 			CfaPrec<PredPrec> prec;

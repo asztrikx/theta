@@ -10,7 +10,6 @@ import hu.bme.mit.theta.analysis.algorithm.cegar.CegarChecker;
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarCegarChecker;
 import hu.bme.mit.theta.analysis.algorithm.cegar.Refiner;
 import hu.bme.mit.theta.analysis.algorithm.cegar.abstractor.StopCriterions;
-import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarSafetyChecker;
 import hu.bme.mit.theta.analysis.expl.*;
 import hu.bme.mit.theta.analysis.expr.ExprStatePredicate;
 import hu.bme.mit.theta.analysis.expr.refinement.*;
@@ -55,8 +54,9 @@ public class XstsConfigBuilder {
 
 		DFS(ArgNodeComparators.combine(ArgNodeComparators.targetFirst(), ArgNodeComparators.dfs())),
 
-		// Astar doesn't use the comparator specified here
-		ASTAR(null);
+		// Astar uses multiple levels of heuristic
+		// 	=> this line is ignored
+		ASTAR(ArgNodeComparators.combine(ArgNodeComparators.targetFirst(), ArgNodeComparators.dfs()));
 
 		public final ArgNodeComparators.ArgNodeComparator comparator;
 
@@ -105,7 +105,7 @@ public class XstsConfigBuilder {
 	private final SolverFactory solverFactory;
 	private final Domain domain;
 	private final Refinement refinement;
-	private Search search = Search.BFS;
+	private Search search = Search.ASTAR;
 	private PredSplit predSplit = PredSplit.WHOLE;
 	private int maxEnum = 0;
 	private InitPrec initPrec = InitPrec.EMPTY;
@@ -172,9 +172,11 @@ public class XstsConfigBuilder {
 			}
 
 			final Predicate<XstsState<ExplState>> target = new XstsStatePredicate<ExplStatePredicate, ExplState>(new ExplStatePredicate(negProp, solver));
-			final Analysis<XstsState<ExplState>, XstsAction, ExplPrec> analysis = XstsAnalysis.create(ExplStmtAnalysis.create(solver, xsts.getInitFormula(), maxEnum));
+			final ExplStmtAnalysis analysisUnwrapped = ExplStmtAnalysis.create(solver, xsts.getInitFormula(), maxEnum);
+			final Analysis<XstsState<ExplState>, XstsAction, ExplPrec> analysis = XstsAnalysis.create(analysisUnwrapped);
 			final ArgBuilder<XstsState<ExplState>, XstsAction, ExplPrec> argBuilder = ArgBuilder.create(lts, analysis, target,
 					true);
+			final Function<? super XstsState<ExplState>, ?> projection = s -> 0;
 			final Abstractor<XstsState<ExplState>, XstsAction, ExplPrec> abstractor = BasicAbstractor.builder(argBuilder)
 					.waitlist(PriorityWaitlist.create(search.comparator))
 					.stopCriterion(refinement == Refinement.MULTI_SEQ ? StopCriterions.fullExploration()
@@ -211,11 +213,14 @@ public class XstsConfigBuilder {
 			SafetyChecker<XstsState<ExplState>, XstsAction, ExplPrec> checker;
 			switch (search) {
 				case ASTAR:
-					checker = AstarSafetyChecker.getAstarSafetyChecker(
-							argBuilder, refiner, analysis.getPartialOrd(), logger,
-							s -> 0,
-							refinement == Refinement.MULTI_SEQ
-					);
+					AstarCegarChecker.Type astarCegarCheckerType;
+					if (refinement == Refinement.MULTI_SEQ) {
+						astarCegarCheckerType = AstarCegarChecker.Type.FULL;
+					} else {
+						astarCegarCheckerType = AstarCegarChecker.Type.SEMI_ONDEMAND;
+					}
+					checker = AstarCegarChecker
+							.create(argBuilder, projection, refiner, logger, XstsOrd2.create(analysisUnwrapped.getPartialOrd()), astarCegarCheckerType);
 					break;
 				default:
 					checker = CegarChecker.create(abstractor, refiner, logger);
@@ -248,10 +253,12 @@ public class XstsConfigBuilder {
 			}
 
 			final Predicate<XstsState<PredState>> target = new XstsStatePredicate<ExprStatePredicate, PredState>(new ExprStatePredicate(negProp, solver));
-			final Analysis<XstsState<PredState>, XstsAction, PredPrec> analysis = XstsAnalysis.create(PredAnalysis.create(solver, predAbstractor,
-					xsts.getInitFormula()));
+			final PredAnalysis analysisUnwrapped = PredAnalysis.create(solver, predAbstractor,
+					xsts.getInitFormula());
+			final Analysis<XstsState<PredState>, XstsAction, PredPrec> analysis = XstsAnalysis.create(analysisUnwrapped);
 			final ArgBuilder<XstsState<PredState>, XstsAction, PredPrec> argBuilder = ArgBuilder.create(lts, analysis, target,
 					true);
+			final Function<? super XstsState<PredState>, ?> projection = s -> 0;
 			final Abstractor<XstsState<PredState>, XstsAction, PredPrec> abstractor = BasicAbstractor.builder(argBuilder)
 					.waitlist(PriorityWaitlist.create(search.comparator))
 					.stopCriterion(refinement == Refinement.MULTI_SEQ ? StopCriterions.fullExploration()
@@ -288,11 +295,14 @@ public class XstsConfigBuilder {
 			SafetyChecker<XstsState<PredState>, XstsAction, PredPrec> checker;
 			switch (search) {
 				case ASTAR:
-					checker = AstarSafetyChecker.getAstarSafetyChecker(
-							argBuilder, refiner, analysis.getPartialOrd(), logger,
-							s -> 0,
-							refinement == Refinement.MULTI_SEQ
-					);
+					AstarCegarChecker.Type astarCegarCheckerType;
+					if (refinement == Refinement.MULTI_SEQ) {
+						astarCegarCheckerType = AstarCegarChecker.Type.FULL;
+					} else {
+						astarCegarCheckerType = AstarCegarChecker.Type.SEMI_ONDEMAND;
+					}
+					checker = AstarCegarChecker
+							.create(argBuilder, projection, refiner, logger, XstsOrd2.create(analysisUnwrapped.getPartialOrd()), astarCegarCheckerType);
 					break;
 				default:
 					checker = CegarChecker.create(abstractor, refiner, logger);
@@ -345,6 +355,7 @@ public class XstsConfigBuilder {
 
 			final ArgBuilder<XstsState<Prod2State<ExplState, PredState>>, XstsAction, Prod2Prec<ExplPrec, PredPrec>> argBuilder = ArgBuilder.create(lts, analysis, target,
 					true);
+			final Function<? super XstsState<Prod2State<ExplState, PredState>>, ?> projection = s -> 0;
 			final Abstractor<XstsState<Prod2State<ExplState, PredState>>, XstsAction, Prod2Prec<ExplPrec, PredPrec>> abstractor = BasicAbstractor.builder(argBuilder)
 					.waitlist(PriorityWaitlist.create(search.comparator))
 					.stopCriterion(refinement == Refinement.MULTI_SEQ ? StopCriterions.fullExploration()
@@ -381,11 +392,14 @@ public class XstsConfigBuilder {
 			final SafetyChecker<XstsState<Prod2State<ExplState, PredState>>, XstsAction, Prod2Prec<ExplPrec, PredPrec>> checker;
 			switch (search) {
 				case ASTAR:
-					checker = AstarSafetyChecker.getAstarSafetyChecker(
-							argBuilder, refiner, analysis.getPartialOrd(), logger,
-							s -> 0,
-							refinement == Refinement.MULTI_SEQ
-					);
+					AstarCegarChecker.Type astarCegarCheckerType;
+					if (refinement == Refinement.MULTI_SEQ) {
+						astarCegarCheckerType = AstarCegarChecker.Type.FULL;
+					} else {
+						astarCegarCheckerType = AstarCegarChecker.Type.SEMI_ONDEMAND;
+					}
+					checker = AstarCegarChecker
+							.create(argBuilder, projection, refiner, logger, XstsOrd2.create(prod2Analysis.getPartialOrd()), astarCegarCheckerType);
 					break;
 				default:
 					checker = CegarChecker.create(abstractor, refiner, logger);

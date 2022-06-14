@@ -182,46 +182,47 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 
 				continue;
 			}
-			//if (!node.isSubsumed() && !node.isTarget()): check func body, achieve same program flow
 
-			// expand: recreate pruned nodes
-			if (!argNode.isExpanded()) {
-				Collection<ArgNode<S, A>> newNodes = argBuilder.expand(argNode, astarArg.prec);
-				astarArg.reachedSet.addAll(newNodes);
+			if (!argNode.isSubsumed() && !argNode.isTarget()) {
+				// expand: recreate pruned nodes
+				if (!argNode.isExpanded()) {
+					Collection<ArgNode<S, A>> newNodes = argBuilder.expand(argNode, astarArg.prec);
+					astarArg.reachedSet.addAll(newNodes);
+				}
+
+				// go over recreated and remained nodes
+				argNode.getOutEdges().forEach(outEdge -> {
+					ArgNode<S, A> succArgNode = outEdge.getTarget();
+					AstarNode<S, A> succAstarNode = astarArg.getArg(argNode);
+					AstarNode<S, A> providerAstarNode;
+
+					// expand: recreate pruned *astar* nodes
+					if (succAstarNode == null) {
+						providerAstarNode = findProviderAstarNode(succArgNode, outEdge.getAction(), astarNode, astarArg.parent);
+						succAstarNode = new AstarNode<>(succArgNode, providerAstarNode);
+						astarArg.put(succAstarNode);
+						astarArg.reachedSet.add(succArgNode);
+						findHeuristic(succAstarNode, astarArg, visualizerState);
+					} else {
+						providerAstarNode = succAstarNode.providerAstarNode;
+					}
+
+					if (providerAstarNode.getHeuristic().getType() == Distance.Type.INFINITE) {
+						return;
+					}
+
+					/*if (doneSet.contains(succAstarNode)) {
+						// either: reach through covering edge, or this reached through covering edge (multi init nodes)
+						assert depths.get(newAstarNode) <= depth + 1;
+					}*/
+
+					Distance distance = succAstarNode.getWeight(depth + 1);
+					if (!doneSet.contains(succAstarNode) && minWeights.get(succAstarNode) > distance.getValue()) {
+						waitlist.add(new Edge<>(astarNode, succAstarNode, depth + 1));
+						parents.put(succArgNode, argNode);
+					}
+				});
 			}
-
-			// go over recreated and remained nodes
-			argNode.getOutEdges().forEach(outEdge -> {
-				ArgNode<S, A> succArgNode = outEdge.getTarget();
-				AstarNode<S, A> succAstarNode = astarArg.getArg(argNode);
-				AstarNode<S, A> providerAstarNode;
-
-				// expand: recreate pruned *astar* nodes
-				if (succAstarNode == null) {
-					providerAstarNode = findProviderAstarNode(succArgNode, outEdge.getAction(), astarNode, astarArg.parent);
-					succAstarNode = new AstarNode<>(succArgNode, providerAstarNode);
-					astarArg.put(succAstarNode);
-					astarArg.reachedSet.add(succArgNode);
-					findHeuristic(succAstarNode, astarArg, visualizerState);
-				} else {
-					providerAstarNode = succAstarNode.providerAstarNode;
-				}
-
-				if (providerAstarNode.getHeuristic().getType() == Distance.Type.INFINITE) {
-					return;
-				}
-
-				/*if (doneSet.contains(succAstarNode)) {
-					// either: reach through covering edge, or this reached through covering edge (multi init nodes)
-					assert depths.get(newAstarNode) <= depth + 1;
-				}*/
-
-				Distance distance = succAstarNode.getWeight(depth + 1);
-				if (!doneSet.contains(succAstarNode) && minWeights.get(succAstarNode) > distance.getValue()) {
-					waitlist.add(new Edge<>(astarNode, succAstarNode, depth + 1));
-					parents.put(succArgNode, argNode);
-				}
-			});
 
 			// TODO: stopcriterion for children: can we be sure that if the parent of target is found first then target
 			//  would be found first if let the expanding continue?

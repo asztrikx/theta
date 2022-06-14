@@ -35,7 +35,7 @@ public final class ArgNode<S extends State, A extends Action> {
 
 	final ARG<S, A> arg;
 
-	int id;
+	private int id;
 	private final int depth;
 	private final boolean target;
 
