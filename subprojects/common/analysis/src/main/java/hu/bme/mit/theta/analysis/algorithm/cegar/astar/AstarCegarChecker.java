@@ -26,10 +26,7 @@ import hu.bme.mit.theta.analysis.Action;
 import hu.bme.mit.theta.analysis.Prec;
 import hu.bme.mit.theta.analysis.State;
 import hu.bme.mit.theta.analysis.PartialOrd;
-import hu.bme.mit.theta.analysis.algorithm.ARG;
-import hu.bme.mit.theta.analysis.algorithm.ArgBuilder;
-import hu.bme.mit.theta.analysis.algorithm.SafetyChecker;
-import hu.bme.mit.theta.analysis.algorithm.SafetyResult;
+import hu.bme.mit.theta.analysis.algorithm.*;
 import hu.bme.mit.theta.analysis.algorithm.cegar.Abstractor;
 import hu.bme.mit.theta.analysis.algorithm.cegar.AbstractorResult;
 import hu.bme.mit.theta.analysis.algorithm.cegar.Refiner;
@@ -52,6 +49,7 @@ public final class AstarCegarChecker<S extends State, A extends Action, P extend
 	private final Abstractor<S, A, P> abstractor;
 	private final Refiner<S, A, P> refiner;
 	private final Logger logger;
+	private final Function<? super S, ?> projection;
 
 	public enum Type {
 		FULL, SEMI_ONDEMAND
@@ -84,7 +82,7 @@ public final class AstarCegarChecker<S extends State, A extends Action, P extend
 		}
 		final Abstractor<S, A, P> abstractor = AstarAbstractor
 			.builder(argBuilder)
-			.projection(projection)
+			.projection(projection) //
 			.stopCriterion(stopCriterion)
 			.logger(logger)
 			.AstarArgStore(astarArgStore)
@@ -94,6 +92,7 @@ public final class AstarCegarChecker<S extends State, A extends Action, P extend
 		this.abstractor = checkNotNull(abstractor);
 		this.refiner = checkNotNull(refiner);
 		this.logger = checkNotNull(logger);
+		this.projection = projection;
 	}
 
 	public static <S extends State, A extends Action, P extends Prec> AstarCegarChecker<S, A, P> create(
@@ -122,10 +121,7 @@ public final class AstarCegarChecker<S extends State, A extends Action, P extend
 		do {
 			++iteration;
 
-			AstarArg<S, A, P> astarArg = AstarArg.create(arg, prec, null, astarArgStore.partialOrd);
-			// Set the remained AstarNodes parent
-			//	This can possibly be done during expand in next iteration
-			//astarArg.setParent();
+			AstarArg<S, A, P> astarArg = AstarCopier.createCopy(astarArgStore.getLast(), prec, astarArgStore.partialOrd, projection);
 			astarArgStore.add(astarArg);
 
 			logger.write(Level.MAINSTEP, "Iteration %d%n", iteration);
@@ -137,8 +133,7 @@ public final class AstarCegarChecker<S extends State, A extends Action, P extend
 
 			if (abstractorResult.isUnsafe()) {
 				// AstarArg has to be copied as arg will be modified after refinement
-				// prec refinement return new copy of Prec
-				ARG argNext = arg.copy();
+				ARG<S, A> argNext = ArgCopier.createCopy(arg);
 
 				logger.write(Level.MAINSTEP, "| Refining abstraction...%n");
 				final long refinerStartTime = stopwatch.elapsed(TimeUnit.MILLISECONDS);

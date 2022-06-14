@@ -41,7 +41,7 @@ public final class ARG<S extends State, A extends Action> {
 
 	private final Collection<ArgNode<S, A>> initNodes;
 	protected boolean initialized; // Set by ArgBuilder
-	private int nextId = 0;
+	int nextId = 0;
 	final PartialOrd<S> partialOrd;
 
 	private ARG(final PartialOrd<S> partialOrd) {
@@ -55,144 +55,6 @@ public final class ARG<S extends State, A extends Action> {
 	}
 
 	////
-
-	/**
-	 * copies ARG and their ArgNode shallowly (keeping action, state)
-	 * this should be checked every time ARG or ArgNode changes
-	 */
-	@Override
-	public Object clone() {
-		return cloneWithResult().argCopied;
-	}
-
-	public ARG copy() {
-		ARG argCopy = ARG.create(partialOrd);
-		argCopy.initialized = initialized;
-		argCopy.nextId = nextId;
-		// partial order set in ctor
-
-		// copy initNodes
-		Map<Integer, ArgNode<S, A>> visitedInCopy = new HashContainerFactory().createMap();
-		FifoWaitlist<ArgNode<S, A>> queue = FifoWaitlist.create();
-		FifoWaitlist<ArgNode<S, A>> queueForCopy = FifoWaitlist.create();
-		for (ArgNode<S, A> initNode : initNodes) {
-			ArgNode<S, A> argNodeCopy = argCopy.createInitNode(initNode.getState(), initNode.isTarget());
-
-			queue.add(initNode);
-			queueForCopy.add(argNodeCopy);
-
-			visitedInCopy.put(argNodeCopy.getId(), argNodeCopy);
-		}
-
-		// walk through ARG and copy nodes
-		while (!queue.isEmpty()) {
-			ArgNode<S, A> argNode = queue.remove();
-			ArgNode<S, A> argNodeCopy = queueForCopy.remove();
-
-			if (argNode.isCovered()) {
-				ArgNode<S, A> coveringNode = argNode.getCoveringNode().get();
-				if (visitedInCopy.containsKey(coveringNode.getId())) {
-					// (argNodeCopy's covering node is a shallow copy)
-					argNodeCopy.setCoveringNode(visitedInCopy.get(coveringNode.getId()));
-				}
-
-				// if covering node does not exists yet then cover will be handled after it is created
-				continue;
-			}
-
-			// Covered nodes may have been created before covering node
-			argNode.getCoveredNodes()
-				.filter(coveredNode -> visitedInCopy.containsKey(coveredNode.getId()))
-				.forEach(coveredNode -> {
-					System.out.println("Covering node created later");
-					assert(false);
-					ArgNode<S, A> coveredNodeCopy = visitedInCopy.get(coveredNode.getId());
-					coveredNodeCopy.setCoveringNode(argNode);
-				});
-
-			argNode.getOutEdges().forEach(edge -> {
-				argCopy.createSuccNode(argNodeCopy, edge.getAction(), edge.getTarget().getState(), edge.getTarget().isTarget());
-
-				queue.addAll(argNode.getSuccNodes());
-				queueForCopy.addAll(argNodeCopy.getSuccNodes());
-
-				visitedInCopy.put(argNodeCopy.getId(), argNodeCopy);
-			});
-		}
-
-		return argCopy;
-	}
-
-	public static final class ARGCopyResult<S extends State, A extends Action> {
-		public final ARG<S, A> argCopied;
-		public final Map<ArgNode<S, A>, ArgNode<S, A>> oldToNew;
-
-		public ARGCopyResult(final ARG<S, A> argCopied, final Map<ArgNode<S, A>, ArgNode<S, A>> oldToNew) {
-			this.argCopied = argCopied;
-			this.oldToNew = oldToNew;
-		}
-	}
-
-	public ARGCopyResult<S, A> cloneWithResult() {
-		ARG<S, A> arg = new ARG<>(partialOrd);
-		arg.initialized = initialized;
-		if (!initialized) {
-			return new ARGCopyResult<>(arg, new HashContainerFactory().createMap());
-		}
-
-		// clone ArgNodes and their connection
-		//	don't copy state as it can be large
-		//	don't use ArgBuilder as we already know the partially expanded state of ARG
-		Map<ArgNode<S, A>, ArgNode<S, A>> oldToNew = new HashContainerFactory().createMap();
-		for (ArgNode<S, A> currentInitArgNode: initNodes) {
-			ArgNode<S, A> newInitArgNode = arg.createInitNode(currentInitArgNode.getState(), currentInitArgNode.isTarget());
-			newInitArgNode.expanded = currentInitArgNode.expanded;
-			assert !newInitArgNode.isCovered();
-
-			oldToNew.put(currentInitArgNode, newInitArgNode);
-		}
-
-		walk(oldToNew.keySet(), (currentArgNode, distance) -> {
-			ArgNode<S, A> newArgNode = oldToNew.get(currentArgNode);
-			assert newArgNode != null;
-
-			// create new children from old node
-			currentArgNode.getOutEdges().forEach((ArgEdge<S, A> argEdge) -> {
-				ArgNode<S, A> currentSuccArgNode = argEdge.getTarget();
-				ArgNode<S, A> newSuccArgNode = arg.createSuccNode(newArgNode, argEdge.getAction(), currentSuccArgNode.getState(), currentSuccArgNode.isTarget());
-				newSuccArgNode.expanded = currentSuccArgNode.expanded;
-				if (currentSuccArgNode.isCovered()) {
-					assert currentSuccArgNode.coveringNode.isPresent();
-					ArgNode<S, A> currentCoveringNode = currentSuccArgNode.coveringNode.get();
-					ArgNode<S, A> newCoveringNode = oldToNew.get(currentCoveringNode);
-					if (newCoveringNode != null) {
-						newSuccArgNode.setCoveringNode(newCoveringNode);
-					} else {
-						assert currentCoveringNode.getParent().isPresent() &&
-								currentCoveringNode.getParent().get() == currentArgNode;
-					}
-				}
-				// covering node can be created before or at the same time (has the same parent) when covered node is
-				// 	in the latter case the covered node can be created first
-				//		first they both get added to arg
-				//		then the covered nodes get out of waitlist and close will get called on it
-				if (currentSuccArgNode.coveredNodes.size() != 0) {
-					for (ArgNode<S, A> currentSuccCoveredArgNode: currentSuccArgNode.coveredNodes) {
-						if (currentSuccCoveredArgNode.getCoveringNode().isEmpty()) {
-							ArgNode<S, A> newCoveredArgNode = oldToNew.get(currentSuccCoveredArgNode);
-							newCoveredArgNode.setCoveringNode(currentSuccArgNode);
-						}
-					}
-				}
-
-				assert !oldToNew.containsKey(currentSuccArgNode);
-				oldToNew.put(currentSuccArgNode, newSuccArgNode);
-			});
-			return false;
-		});
-
-		return new ARGCopyResult<>(arg, oldToNew);
-	}
 
 	public Stream<ArgNode<S, A>> getInitNodes() {
 		return initNodes.stream();
@@ -326,6 +188,7 @@ public final class ARG<S extends State, A extends Action> {
 	/**
 	 * Distances for argNodes which reached target even through covering.
 	 */
+	/*
 	public Map<ArgNode<S, A>, Integer> getDistances() {
 		final Map<ArgNode<S,A>, Integer> distances = new HashContainerFactory().createMap();
 		class DistanceSearchResult<S extends State, A extends Action> {
@@ -373,15 +236,7 @@ public final class ARG<S extends State, A extends Action> {
 
 		return distances;
 	}
-
-	/**
-	 * See walk with multiple roots
-	 */
-	public void walk(ArgNode<S, A> root, BiFunction<ArgNode<S, A>, Integer, Boolean> skip) {
-		Collection<ArgNode<S, A>> roots = new ArrayList<>();
-		roots.add(root);
-		walk(roots, skip);
-	}
+	*/
 
 	/**
 	 * Calls skip on all nodes reachable from root even through coverings.

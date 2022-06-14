@@ -35,7 +35,7 @@ public final class ArgNode<S extends State, A extends Action> {
 
 	final ARG<S, A> arg;
 
-	private final int id;
+	int id;
 	private final int depth;
 	private final boolean target;
 
@@ -60,6 +60,15 @@ public final class ArgNode<S extends State, A extends Action> {
 		coveringNode = Optional.empty();
 		coveredNodes = Containers.createSet();
 		expanded = false;
+	}
+
+	void copyFrom(final ArgNode<S, A> subject) {
+		// Others are either
+		//  - final
+		//  - already set
+		//  - managed by ARG
+		id = subject.id;
+		expanded = subject.expanded;
 	}
 
 	////

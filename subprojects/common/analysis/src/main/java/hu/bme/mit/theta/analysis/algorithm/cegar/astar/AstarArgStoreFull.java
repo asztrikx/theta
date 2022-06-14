@@ -7,7 +7,7 @@ import hu.bme.mit.theta.analysis.State;
 
 public class AstarArgStoreFull<S extends State, A extends Action, P extends Prec> extends AstarArgStore<S, A, P>  {
     public AstarArgStoreFull(final PartialOrd<S> partialOrd) {
-        super(partialOrd);
+        super(partialOrd, projection);
     }
 
     public void add(final AstarArg<S, A, P> astarArg) {

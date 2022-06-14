@@ -5,16 +5,17 @@ import hu.bme.mit.theta.analysis.PartialOrd;
 import hu.bme.mit.theta.analysis.State;
 import hu.bme.mit.theta.analysis.Prec;
 import hu.bme.mit.theta.analysis.algorithm.ARG;
+import hu.bme.mit.theta.analysis.algorithm.ArgEdge;
 import hu.bme.mit.theta.analysis.algorithm.ArgNode;
 import hu.bme.mit.theta.analysis.reachedset.Partition;
 import hu.bme.mit.theta.analysis.waitlist.PriorityWaitlist;
 import hu.bme.mit.theta.analysis.waitlist.Waitlist;
 import hu.bme.mit.theta.common.container.factory.HashContainerFactory;
-import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarNode.Distance;
-import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarNode.DistanceType;
 
 import javax.annotation.Nullable;
 import java.util.*;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -23,80 +24,63 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
     public final ARG<S, A> arg;
     public P prec;
     public AstarArg<S, A, P> parent;
-    public Search search;
 
     // contains init nodes as well
     //  TODO use partition
-    private Map<ArgNode<S, A>, AstarNode<S, A>> astarNodes = new HashContainerFactory().createMap();
-    private Map<ArgNode<S, A>, AstarNode<S, A>> astarInitNodes = new HashContainerFactory().createMap();
+    private final Map<ArgNode<S, A>, AstarNode<S, A>> astarNodes = new HashContainerFactory().createMap();
+    private final Map<ArgNode<S, A>, AstarNode<S, A>> astarInitNodes = new HashContainerFactory().createMap();
     private final PartialOrd<S> partialOrd;
     public int iteration = -1;
     // Covering ArgNode is searched from here
-    public Partition<ArgNode<S, A>, ?> reachedSet = Partition.of(n -> projection.apply(n.getState()));
+    public final Partition<ArgNode<S, A>, ?> reachedSet;
 
     public static class Search<S extends State, A extends Action> {
+        // We could already have started to explore a subgraph therefore do not use global doneSet variable
         public Set<AstarNode<S, A>> doneSet = new HashSet<>();
+        // Useful to know whether the current item is smaller than the one in the waitlist (if not in doneSet)
+        public Map<AstarNode<S, A>, Integer> minWeights = new HashMap<>();
+        // After we reach target we know the distance for all nodes between root and target
+        // which is visitable by parent entries
         public Map<ArgNode<S, A>, ArgNode<S, A>> parents = new HashContainerFactory().createMap();
         public Map<AstarNode<S, A>, Integer> depths = new HashContainerFactory().createMap();
-        public Waitlist<AstarNode<S, A>> waitlist = PriorityWaitlist.create(new AstarWaitlistComparator<>(depths));
+        public Waitlist<Edge<S, A>> waitlist = PriorityWaitlist.create(new AstarWaitlistComparator<>());
 
         public Search() {
             throw new RuntimeException(); // waitlist to ctor
         }
     }
 
-    private AstarArg(final ARG<S, A> arg, P prec, final AstarArg<S, A, P> parent, final PartialOrd<S> partialOrd) {
-        this.arg = checkNotNull(arg);
-        this.prec = prec;
-        this.parent = parent;
-        this.partialOrd = checkNotNull(partialOrd);
+    public static class Edge<S extends State, A extends Action> {
+        public AstarNode<S, A> start; // used for parent => could be ArgNode
+        public AstarNode<S, A> end;
+        public int depthFromAStartNode;
+
+        public Edge(@Nullable AstarNode<S, A> start, AstarNode<S, A> end, int depthFromAStartNode) {
+            this.start = start;
+            this.end = end;
+            this.depthFromAStartNode = depthFromAStartNode;
+        }
     }
 
-    public static <S extends State, A extends Action, P extends Prec> AstarArg<S, A, P> create(
-            final ARG<S, A> arg,
-            final P prec,
-            @Nullable final AstarArg<S, A, P> parent,
-            final PartialOrd<S> partialOrd
+    public AstarArg(
+            final ARG<S, A> arg, P prec, final PartialOrd<S> partialOrd,
+            final Function<? super S, ?> projection
     ) {
-        return new AstarArg<>(arg, prec, parent, partialOrd);
+        this.arg = checkNotNull(arg);
+        this.prec = prec;
+        this.partialOrd = checkNotNull(partialOrd);
+        this.reachedSet = Partition.of(n -> projection.apply(n.getState()));
     }
 
     public void setUnknownDistanceInfinite() {
         getAll().values().forEach(astarNode -> {
-            if (astarNode.distance.getType() != AstarNode.DistanceType.EXACT) {
-                astarNode.distance = new AstarNode.Distance(AstarNode.DistanceType.INFINITE);
+            if (astarNode.distance.getType() != Distance.Type.EXACT) {
+                astarNode.distance = new Distance(Distance.Type.INFINITE);
             }
         });
     }
 
-    public void updateDistancesInfinite(Collection<AstarNode<S, A>> froms) {
-        // for less concurrent memory usage
-        froms.forEach(this::updateDistancesInfinite);
-    }
-
-    public void updateDistancesInfinite(AstarNode<S, A> from) {
-        // if a cover edge pointed to a node reaching target then root would also have reached target in the first arg expand
-        // 	=> we wouldn't have gone back to this arg from this root
-        // ?????????? how about 3nd iteration
-
-        // "from"'s subgraph's nodes can be covering nodes: we can walk up from there until they have 1 child and mark as inf
-        //      it is not possible that we visit this region twice, proof: is it part of subgraph?
-        //          yes: ?
-        //          no: ? this is complicated without doneSet
-        throw new RuntimeException();
-
-        arg.walk(from.argNode, (argNode, integer) -> {
-            AstarNode<S, A> astarNode = get(argNode);
-
-            // if we reach a part where target is reachable then root should also reach it
-            assert(astarNode.distance.getType() != AstarNode.DistanceType.EXACT);
-            astarNode.distance = new AstarNode.Distance(AstarNode.DistanceType.INFINITE);
-
-            return false;
-        });
-    }
-
-    public void updateDistancesFromTarget(ArgNode<S, A> from, Map<ArgNode<S, A>, ArgNode<S, A>> parents) {
+    public void updateDistancesFromTargetUntil(ArgNode<S, A> target, Set<ArgNode<S, A>> until, Map<ArgNode<S, A>, ArgNode<S, A>> parents) {
         // A* property allows us to say that all nodes which was *involved in the search* and reaches target are
         // the closest to that target
 
@@ -104,39 +88,63 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
         //  do not follow *all* covering edge as those node were not involved in search
         //  however the path could go through several covering nodes
 
-        arg.walkUpParents(from, parents, (node, distance) -> {
-            get(node).distance = new Distance(DistanceType.EXACT, distance);
-            return true;
+        arg.walkUpParents(target, parents, (node, distance) -> {
+            get(node).distance = new Distance(Distance.Type.EXACT, distance);
+
+            return until.contains(node);
         });
     }
 
     // should be called on astarArg where covering can exists
-    public AstarNode<S, A> findAstarCoveringNode(ArgNode<S, A> argNode, @Nullable AstarNode<S, A> argNodeParent) {
+    // if init node: action, parentAstarNode can be null
+    public AstarNode<S, A> findProviderAstarNode(
+            ArgNode<S, A> argNode,
+            @Nullable A action,
+            @Nullable AstarNode<S, A> parentAstarNode,
+            AstarArg<S, A, P> astarArg
+    ) {
         // parent AstarArg does not exists
         if (parent == null) {
             return null;
         }
 
-        // covered node case
-        throw new RuntimeException();
-
-        // covering node should not be covered for optimization
-        throw new RuntimeException();
-
         // get candidates based on parent
         Stream<ArgNode<S, A>> coveringCandidates;
-        if (argNodeParent == null) {
-            coveringCandidates = parent.getAllInit().stream();
+        if (parentAstarNode != null) {
+            AstarNode<S, A> parentAstarCoveringNode = parentAstarNode.providerAstarNode;
+            // as parent's child is explored parent had to be in waitlist => distance exists => parent expanded / covered
+            assert parentAstarCoveringNode.distance.isKnown();
+            assert parentAstarCoveringNode.argNode.isExpanded() || parentAstarNode.argNode.isCovered();
+
+            // astar covering node can be covered after being set for astarNode
+            if (parentAstarCoveringNode.argNode.isCovered()) {
+                ArgNode<S, A> coveringNode = parentAstarCoveringNode.argNode.getCoveringNode().get();
+                // optimization
+                parentAstarNode.providerAstarNode = astarArg.get(coveringNode);
+                parentAstarCoveringNode = parentAstarNode.providerAstarNode;
+
+                assert parentAstarCoveringNode.distance.isKnown();
+                assert parentAstarCoveringNode.argNode.isExpanded();
+            }
+
+            coveringCandidates = parentAstarCoveringNode.providerAstarNode.argNode.getOutEdges()
+                .filter(edge -> edge.getAction().equals(action)) // equals works good?
+                .map(ArgEdge::getTarget);
         } else {
-            coveringCandidates = argNodeParent.coveringAstarNode.argNode.getSuccNodes();
+            coveringCandidates = parent.getAllInit().stream();
         }
 
         // filter based on partialOrd
-        coveringCandidates = coveringCandidates
-                .filter(coveringCandidate -> partialOrd.isLeq(argNode.getState(), coveringCandidate.getState()));
+        coveringCandidates = coveringCandidates.filter(coveringCandidate ->
+            partialOrd.isLeq(argNode.getState(), coveringCandidate.getState())
+        );
         Optional<ArgNode<S,A>> covering = coveringCandidates.findAny();
         assert covering.isPresent();
         return parent.get(covering.get());
+    }
+
+    public Stream<AstarNode<S, A>> getIncompleteNodes() {
+        return arg.getIncompleteNodes().map(this::get);
     }
 
     public void put(final AstarNode<S, A> astarNode) {

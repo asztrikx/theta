@@ -6,10 +6,12 @@ import hu.bme.mit.theta.analysis.State;
 import hu.bme.mit.theta.analysis.algorithm.ARG;
 import hu.bme.mit.theta.analysis.algorithm.ArgNode;
 import hu.bme.mit.theta.analysis.Prec;
+import hu.bme.mit.theta.analysis.reachedset.Partition;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 
 // AstarArgStore
 //  this should be a class as later we might make this abstract and create NoStore implementation
@@ -46,49 +48,6 @@ public class AstarArgStore<S extends State, A extends Action, P extends Prec> {
 
     public AstarArg<S, A, P> getLast() {
         return astarArgs.get(astarArgs.size() - 1);
-    }
-
-    public AstarArg<S, A, P> lastCopy() {
-        final AstarArg<S, A, P> astarArgLast = getLast();
-
-        // copy ARG
-        final ARG.ARGCopyResult<S, A> argCopyResult = astarArgLast.arg.cloneWithResult();
-        final ARG<S, A> argNew = argCopyResult.argCopied;
-        final Map<ArgNode<S, A>, ArgNode<S, A>> oldToNew = argCopyResult.oldToNew;
-
-        // new AstarArg
-        final AstarArg<S, A, P> astarArgNew = AstarArg.create(argNew, astarArgLast.prec, astarArgLast, partialOrd);
-
-        // do not copy heuristics as we will reach error in new arg
-        //  which will give more accurate heuristics for next arg
-
-        // init nodes
-        for (Map.Entry<ArgNode<S, A>, AstarNode<S, A>> entry : astarArgLast.getAllAstarInit().entrySet()) {
-            final ArgNode<S, A> argNodeLast = entry.getKey();
-            final ArgNode<S, A> argNodeNew = oldToNew.get(argNodeLast);
-            final AstarNode<S, A> astarNodeLast = entry.getValue();
-
-            final AstarNode<S, A> astarNodeNew = AstarNode.create(argNodeNew, astarNodeLast);
-            astarArgNew.putInit(astarNodeNew);
-            // do not add as it will be added when getAll is called
-            //  astarArgNew.put(astarNodeNew);
-        }
-
-        // nodes
-        for (Map.Entry<ArgNode<S, A>, AstarNode<S, A>> entry : astarArgLast.getAll().entrySet()) {
-            final ArgNode<S, A> argNodeLast = entry.getKey();
-            final ArgNode<S, A> argNodeNew = oldToNew.get(argNodeLast);
-            final AstarNode<S, A> astarNodeLast = entry.getValue();
-
-            final AstarNode<S, A> astarNodeNew = AstarNode.create(argNodeNew, astarNodeLast);
-            astarArgNew.put(astarNodeNew);
-        }
-
-        return astarArgNew;
-    }
-
-    public void addLastCopied() {
-        add(lastCopy());
     }
 
     public int getLastIteration() {
