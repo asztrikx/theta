@@ -97,7 +97,7 @@ public final class AstarArgVisualizer<S extends State, A extends Action, P exten
 
         for (final ArgNode<S1, A1> initNode : arg.getInitNodes().collect(Collectors.toSet())) {
             // we might be visualizing a "back" state from a child just expanded => there could be children which don't have yet AstarNodes
-            AstarNode<S1, A1> astarInitNode = astarArg.get(initNode);
+            AstarNode<S1, A1> astarInitNode = astarArg.getArg(initNode);
             if(astarInitNode != null) {
                 traverse(graph, astarInitNode, traversed, astarArg);
                 final NodeAttributes nAttributes = NodeAttributes.builder().label("").fillColor(FILL_COLOR)
@@ -147,7 +147,7 @@ public final class AstarArgVisualizer<S extends State, A extends Action, P exten
 
         for (final ArgEdge<S1, A1> edge : node.getOutEdges().collect(Collectors.toSet())) {
             // we might be visualizing a "back" state from a child just expanded => there could be children which don't have yet AstarNodes
-            AstarNode<S1, A1> astarNodeChild = astarArg.get(edge.getTarget());
+            AstarNode<S1, A1> astarNodeChild = astarArg.getArg(edge.getTarget());
             if(astarNodeChild != null){
                 traverse(graph, astarNodeChild, traversed, astarArg);
                 final String sourceId = NODE_ID_PREFIX + edge.getSource().getId();
@@ -160,7 +160,7 @@ public final class AstarArgVisualizer<S extends State, A extends Action, P exten
 
         if (node.getCoveringNode().isPresent()) {
             // we might be visualizing a "back" state from a child just expanded => there could be children which don't have yet AstarNodes
-            AstarNode<S1, A1> astarNodeChild = astarArg.get(node.getCoveringNode().get());
+            AstarNode<S1, A1> astarNodeChild = astarArg.getArg(node.getCoveringNode().get());
             if(astarNodeChild != null){
                 traverse(graph, astarNodeChild, traversed, astarArg);
                 final String sourceId = NODE_ID_PREFIX + node.getId();

@@ -55,18 +55,12 @@ public final class AstarCegarChecker<S extends State, A extends Action, P extend
 		FULL, SEMI_ONDEMAND
 	}
 
-	// Blocking
-	// TODO recheck where sibling cover node is a problem
-	// TODO check if covered => has to check coverer
-
 	final AstarArgStore<S, A, P> astarArgStore;
 
 	private AstarCegarChecker(
 			final ArgBuilder<S, A, P> argBuilder, final Function<? super S, ?> projection, final Refiner<S, A, P> refiner,
 			final PartialOrd<S> partialOrd, final Logger logger, final Type type
 	) {
-		// TODO NWT_IT_WP, UCB refinement doesn't work: java.lang.NullPointerException: Unsupported function 'bvule' in Z3 back-transformation.
-
 		StopCriterion<S, A> stopCriterion;
 		switch (type) {
 			case FULL:
@@ -87,6 +81,7 @@ public final class AstarCegarChecker<S extends State, A extends Action, P extend
 			.logger(logger)
 			.AstarArgStore(astarArgStore)
 			.type(type)
+			.partialOrder(partialOrd)
 			.build();
 
 		this.abstractor = checkNotNull(abstractor);

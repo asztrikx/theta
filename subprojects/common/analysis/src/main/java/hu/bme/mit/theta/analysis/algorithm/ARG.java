@@ -302,6 +302,7 @@ public final class ARG<S extends State, A extends Action> {
 		}
 	}
 
+	// parents: node -> parent
 	public void walkUpParents(ArgNode<S, A> start, Map<ArgNode<S, A>, ArgNode<S, A>> parents, BiFunction<ArgNode<S, A>, Integer, Boolean> skip) {
 		checkNotNull(start);
 		checkNotNull(skip);

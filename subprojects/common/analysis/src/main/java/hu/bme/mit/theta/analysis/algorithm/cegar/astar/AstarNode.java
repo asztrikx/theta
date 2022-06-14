@@ -13,7 +13,7 @@ public final class AstarNode<S extends hu.bme.mit.theta.analysis.State, A extend
     public AstarNode<S, A> providerAstarNode;
     public Distance distance;
 
-    // TODO this should be through astarArg as they are coupled together, this should be disabled (protected:)
+    //// TODO this should be through astarArg as they are coupled together, this should be disabled (protected:)
     // providerAstarNode: can be null if it is the first arg
     public AstarNode(final ArgNode<S, A> argNode, @Nullable final AstarNode<S, A> providerAstarNode) {
         this.argNode = checkNotNull(argNode);

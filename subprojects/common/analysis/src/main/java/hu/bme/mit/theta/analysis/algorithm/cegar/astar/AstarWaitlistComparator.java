@@ -2,7 +2,7 @@ package hu.bme.mit.theta.analysis.algorithm.cegar.astar;
 
 import hu.bme.mit.theta.analysis.Action;
 import hu.bme.mit.theta.analysis.State;
-import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarArg.Edge;
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarSearch.Edge;
 
 import java.util.Comparator;
 import java.util.Map;

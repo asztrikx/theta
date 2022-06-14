@@ -15,10 +15,16 @@ import java.util.function.BiConsumer;
  */
 public class ArgCopier {
     public static <S extends State, A extends Action> ARG<S, A> createCopy(ARG<S, A> arg) {
-        return createCopy(arg, (a,b)->{});
+        return createCopy(arg, (a,b) -> {}, (a,b) -> {});
     }
 
-    public static <S extends State, A extends Action> ARG<S, A> createCopy(ARG<S, A> arg, BiConsumer<ArgNode<S, A>, ArgNode<S, A>> translationHook) {
+    // translationHook: for all new node and it's copy node it will call with paramters (node, copy node)
+    // translationInitHook: for all new init node and it's copy init node it will call with parameters (init node, copy init node)
+    public static <S extends State, A extends Action> ARG<S, A> createCopy(
+            ARG<S, A> arg,
+            BiConsumer<ArgNode<S, A>, ArgNode<S, A>> translationHook,
+            BiConsumer<ArgNode<S, A>, ArgNode<S, A>> translationInitHook
+    ) {
         ARG<S, A> argCopy = ARG.create(arg.partialOrd);
 
         // Others are either
@@ -42,6 +48,8 @@ public class ArgCopier {
             handleCoveringEdges(initNode, initNodeCopy, shouldSetAsCoveringNode, currentToCopyMap);
 
             waitlist.add(new Visit<>(initNode, initNodeCopy));
+
+            translationInitHook.accept(initNode, initNodeCopy);
         });
 
         // walk through ARG and copy nodes
