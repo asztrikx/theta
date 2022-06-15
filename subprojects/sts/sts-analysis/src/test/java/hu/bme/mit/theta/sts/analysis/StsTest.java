@@ -87,6 +87,7 @@ public class StsTest {
 		StsConfig<? extends State, ? extends Action, ? extends Prec> config
 				= new StsConfigBuilder(domain, refinement, Z3SolverFactory.getInstance())
 				.logger(new ConsoleLogger(Logger.Level.VERBOSE))
+				.search(StsConfigBuilder.Search.ASTAR)
 				.build(sts);
 		Assert.assertEquals(isSafe, config.check().isSafe());
 	}

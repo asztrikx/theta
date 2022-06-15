@@ -129,6 +129,7 @@ public class CfaTest {
 		CfaConfig<? extends State, ? extends Action, ? extends Prec> config
 				= new CfaConfigBuilder(domain, refinement, Z3SolverFactory.getInstance())
 				.logger(new ConsoleLogger(Logger.Level.VERBOSE))
+				.search(CfaConfigBuilder.Search.ASTAR)
 				.build(cfa, cfa.getErrorLoc().get());
 		SafetyResult<? extends State, ? extends Action> result = config.check();
 		Assert.assertEquals(isSafe, result.isSafe());

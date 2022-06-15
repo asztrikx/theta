@@ -105,7 +105,7 @@ public class XstsConfigBuilder {
 	private final SolverFactory solverFactory;
 	private final Domain domain;
 	private final Refinement refinement;
-	private Search search = Search.ASTAR;
+	private Search search = Search.BFS;
 	private PredSplit predSplit = PredSplit.WHOLE;
 	private int maxEnum = 0;
 	private InitPrec initPrec = InitPrec.EMPTY;

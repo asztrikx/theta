@@ -235,7 +235,10 @@ public class XstsTest {
 			xsts = XstsDslManager.createXsts(inputStream);
 		}
 
-		final XstsConfig<?, ?, ?> configuration = new XstsConfigBuilder(domain, XstsConfigBuilder.Refinement.SEQ_ITP, Z3SolverFactory.getInstance()).initPrec(XstsConfigBuilder.InitPrec.CTRL).optimizeStmts(XstsConfigBuilder.OptimizeStmts.ON).predSplit(XstsConfigBuilder.PredSplit.CONJUNCTS).maxEnum(250).xstsMaxAtomCountFactory(new XstsNMaxAtomCountFactory(5)).logger(logger).build(xsts);
+		final XstsConfig<?, ?, ?> configuration = new XstsConfigBuilder(domain, XstsConfigBuilder.Refinement.SEQ_ITP, Z3SolverFactory.getInstance()).initPrec(XstsConfigBuilder.InitPrec.CTRL).optimizeStmts(XstsConfigBuilder.OptimizeStmts.ON).predSplit(XstsConfigBuilder.PredSplit.CONJUNCTS).maxEnum(250).xstsMaxAtomCountFactory(new XstsNMaxAtomCountFactory(5))
+				.logger(new ConsoleLogger(Level.VERBOSE))
+				.search(XstsConfigBuilder.Search.ASTAR)
+				.build(xsts);
 		final SafetyResult<?, ?> status = configuration.check();
 		if (safe) {
 			assertTrue(status.isSafe());
