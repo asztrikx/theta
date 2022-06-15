@@ -232,7 +232,9 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 	}
 
 	// return: whether stopCriterion stopped it
-	private boolean findDistance(AstarArg<S, A, P> astarArg, StopCriterion<S, A> stopCriterion, Collection<AstarNode<S, A>> startNodes) {
+	private boolean findDistance(
+			AstarArg<S, A, P> astarArg, StopCriterion<S, A> stopCriterion, Collection<AstarNode<S, A>> startNodes
+	) {
 		final ARG<S, A> arg = astarArg.arg;
 
 		logger.write(Level.INFO, "|  |  Starting ARG: %d nodes, %d incomplete, %d unsafe%n", arg.getNodes().count(),

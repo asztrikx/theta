@@ -16,6 +16,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -30,18 +31,13 @@ public class AstarVisualizer<S extends State, A extends Action, P extends Prec> 
         this.astarArgStore = astarArgStore;
     }
 
+    // getVisualizerState(Collection<...>) will have same erasure
     public static <S extends State, A extends Action> String getVisualizerState(Collection<AstarNode<S, A>> astarNodes) {
         Collection<ArgNode<S, A>> nodes = astarNodes.stream().map(startNode -> startNode.argNode).collect(Collectors.toList());
-        return getVisualizerState(nodes);
+        return getVisualizerStateILoveJava(nodes);
     }
 
-    public static <S extends State, A extends Action> String getVisualizerState(ArgNode<S, A> node) {
-        Collection<ArgNode<S, A>> startNodes = new ArrayList<>();
-        startNodes.add(node);
-        return getVisualizerState(startNodes);
-    }
-
-    public static <S extends State, A extends Action> String getVisualizerState(Collection<ArgNode<S, A>> nodes) {
+    public static <S extends State, A extends Action> String getVisualizerStateILoveJava(Collection<ArgNode<S, A>> nodes) {
         StringBuilder stringBuilder = new StringBuilder();
         nodes.forEach(startNode -> stringBuilder.append(String.format("N%d,", startNode.getId())));
         String built = stringBuilder.toString();

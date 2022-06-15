@@ -6,6 +6,8 @@ import hu.bme.mit.theta.analysis.algorithm.ArgNode;
 
 import javax.annotation.Nullable;
 
+import java.util.List;
+
 import static com.google.common.base.Preconditions.checkNotNull;
 
 public final class AstarNode<S extends hu.bme.mit.theta.analysis.State, A extends Action> {
@@ -42,7 +44,7 @@ public final class AstarNode<S extends hu.bme.mit.theta.analysis.State, A extend
     public String toString() {
         return String.format("(%s), %s",
                 getHeuristic().toString(),
-                AstarVisualizer.getVisualizerState(argNode)
+                AstarVisualizer.getVisualizerStateILoveJava(List.of(argNode))
         );
     }
 }
