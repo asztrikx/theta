@@ -15,8 +15,6 @@
  */
 package hu.bme.mit.theta.analysis.algorithm.cegar.astar;
 
-import static com.google.common.base.Preconditions.checkState;
-
 import hu.bme.mit.theta.analysis.Action;
 import hu.bme.mit.theta.analysis.PartialOrd;
 import hu.bme.mit.theta.analysis.Prec;
@@ -30,11 +28,12 @@ import hu.bme.mit.theta.analysis.algorithm.cegar.AbstractorResult;
 import hu.bme.mit.theta.analysis.algorithm.cegar.abstractor.StopCriterion;
 import hu.bme.mit.theta.analysis.algorithm.cegar.abstractor.StopCriterions;
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarCegarChecker.Type;
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarSearch.Edge;
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.argstore.AstarArgStore;
 import hu.bme.mit.theta.analysis.waitlist.Waitlist;
 import hu.bme.mit.theta.common.logging.Logger;
 import hu.bme.mit.theta.common.logging.Logger.Level;
 import hu.bme.mit.theta.common.logging.NullLogger;
-import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarSearch.Edge;
 
 import javax.annotation.Nullable;
 import java.util.*;
@@ -43,6 +42,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static com.google.common.base.Preconditions.checkNotNull;
+import static com.google.common.base.Preconditions.checkState;
 
 /**
  * Astar implementation for the abstractor, relying on an ArgBuilder.
@@ -239,7 +239,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 				arg.getIncompleteNodes().count(), arg.getUnsafeNodes().count());
 		logger.write(Level.SUBSTEP, "|  |  Building ARG...");
 		String visualizerState = AstarVisualizer.getVisualizerState(startNodes);
-		astarVisualizer.visualize(String.format("start %s", visualizerState), astarArg.iteration);
+		astarVisualizer.visualize(String.format("start %s", visualizerState), astarArgStore.getIndex(astarArg));
 
 		boolean found = false;
 		if (!stopCriterion.canStop(arg)) { // this is at max only for leftover nodes??
@@ -249,7 +249,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		logger.write(Level.SUBSTEP, "done%n");
 		logger.write(Level.INFO, "|  |  Finished AstarARG: %d nodes, %d incomplete, %d unsafe%n", arg.getNodes().count(),
 				arg.getIncompleteNodes().count(), arg.getUnsafeNodes().count());
-		astarVisualizer.visualize(String.format("end %s", visualizerState), astarArg.iteration);
+		astarVisualizer.visualize(String.format("end %s", visualizerState), astarArgStore.getIndex(astarArg));
 
 		return found;
 	}
@@ -285,7 +285,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		assert type != Type.FULL;
 
 		// visualize current before going back to previous astarArg
-		astarVisualizer.visualize(String.format("paused %s", visualizerState), astarArg.iteration);
+		astarVisualizer.visualize(String.format("paused %s", visualizerState), astarArgStore.getIndex(astarArg));
 
 		// get the heuristic with findDistance in parent arg
 		AstarNode<S, A> providerAstarNode = astarNode.providerAstarNode;
@@ -294,7 +294,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		assert astarNode.getHeuristic().isKnown();
 
 		// visualize current after going back to previous astarArg
-		astarVisualizer.visualize(String.format("resumed %s", visualizerState), astarArg.iteration);
+		astarVisualizer.visualize(String.format("resumed %s", visualizerState), astarArgStore.getIndex(astarArg));
 	}
 
 	// action, parentAstarNode: can be null when argNode is an init node

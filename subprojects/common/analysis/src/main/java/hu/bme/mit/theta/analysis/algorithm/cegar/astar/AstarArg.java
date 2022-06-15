@@ -26,7 +26,6 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
     private final Map<ArgNode<S, A>, AstarNode<S, A>> astarNodes = new HashContainerFactory().createMap();
     private final Map<ArgNode<S, A>, AstarNode<S, A>> astarInitNodes = new HashContainerFactory().createMap();
     private final PartialOrd<S> partialOrd;
-    public int iteration = -1;
     // Covering ArgNode is searched from here
     public final Partition<ArgNode<S, A>, ?> reachedSet;
 

@@ -34,6 +34,9 @@ import hu.bme.mit.theta.analysis.algorithm.cegar.RefinerResult;
 import hu.bme.mit.theta.analysis.algorithm.cegar.CegarStatistics;
 import hu.bme.mit.theta.analysis.algorithm.cegar.abstractor.StopCriterion;
 import hu.bme.mit.theta.analysis.algorithm.cegar.abstractor.StopCriterions;
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.argstore.AstarArgStore;
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.argstore.AstarArgStoreFull;
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.argstore.AstarArgStoreSemiOndemand;
 import hu.bme.mit.theta.common.Utils;
 import hu.bme.mit.theta.common.logging.Logger;
 import hu.bme.mit.theta.common.logging.NullLogger;
@@ -50,6 +53,7 @@ public final class AstarCegarChecker<S extends State, A extends Action, P extend
 	private final Refiner<S, A, P> refiner;
 	private final Logger logger;
 	private final Function<? super S, ?> projection;
+	private final PartialOrd<S> partialOrd;
 
 	public enum Type {
 		FULL, SEMI_ONDEMAND
@@ -64,11 +68,11 @@ public final class AstarCegarChecker<S extends State, A extends Action, P extend
 		StopCriterion<S, A> stopCriterion;
 		switch (type) {
 			case FULL:
-				this.astarArgStore = new AstarArgStoreFull<>(partialOrd);
+				this.astarArgStore = new AstarArgStoreFull<>();
 				stopCriterion = StopCriterions.fullExploration();
 				break;
 			case SEMI_ONDEMAND:
-				this.astarArgStore = new AstarArgStore<>(partialOrd);
+				this.astarArgStore = new AstarArgStoreSemiOndemand<>();
 				stopCriterion = StopCriterions.firstCex();
 				break;
 			default:
@@ -88,6 +92,7 @@ public final class AstarCegarChecker<S extends State, A extends Action, P extend
 		this.refiner = checkNotNull(refiner);
 		this.logger = checkNotNull(logger);
 		this.projection = projection;
+		this.partialOrd = partialOrd;
 	}
 
 	public static <S extends State, A extends Action, P extends Prec> AstarCegarChecker<S, A, P> create(
@@ -116,7 +121,7 @@ public final class AstarCegarChecker<S extends State, A extends Action, P extend
 		do {
 			++iteration;
 
-			AstarArg<S, A, P> astarArg = AstarCopier.createCopy(astarArgStore.getLast(), prec, astarArgStore.partialOrd, projection);
+			AstarArg<S, A, P> astarArg = AstarCopier.createCopy(astarArgStore.getLast(), prec, partialOrd, projection);
 			astarArgStore.add(astarArg);
 
 			logger.write(Level.MAINSTEP, "Iteration %d%n", iteration);

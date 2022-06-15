@@ -105,7 +105,7 @@ public class XstsConfigBuilder {
 	private final SolverFactory solverFactory;
 	private final Domain domain;
 	private final Refinement refinement;
-	private Search search = Search.BFS;
+	private Search search = Search.ASTAR;
 	private PredSplit predSplit = PredSplit.WHOLE;
 	private int maxEnum = 0;
 	private InitPrec initPrec = InitPrec.EMPTY;
@@ -172,6 +172,9 @@ public class XstsConfigBuilder {
 			}
 
 			final Predicate<XstsState<ExplState>> target = new XstsStatePredicate<ExplStatePredicate, ExplState>(new ExplStatePredicate(negProp, solver));
+			// TODO why was this here before (every occurance):
+			// final PredAnalysis analysisUnwrapped = PredAnalysis.create(solver, predAbstractor, xsts.getInitFormula());
+			// final Analysis<XstsState<PredState>, XstsAction, PredPrec> analysis = XstsAnalysis.create(analysisUnwrapped);
 			final Analysis<XstsState<ExplState>, XstsAction, ExplPrec> analysis = XstsAnalysis.create(ExplStmtAnalysis.create(solver, xsts.getInitFormula(), maxEnum));
 			final ArgBuilder<XstsState<ExplState>, XstsAction, ExplPrec> argBuilder = ArgBuilder.create(lts, analysis, target,
 					true);
@@ -211,6 +214,9 @@ public class XstsConfigBuilder {
 			SafetyChecker<XstsState<ExplState>, XstsAction, ExplPrec> checker;
 			switch (search) {
 				case ASTAR:
+					// TODO why...
+					// partialOrder: XstsOrd2.create(analysisUnwrapped.getPartialOrd())    (2 times)
+					// partialOrder: XstsOrd2.create(prod2Analysis.getPartialOrd())		   (1 times probaby typo)
 					checker = AstarSafetyChecker.getAstarSafetyChecker(
 							argBuilder, refiner, analysis.getPartialOrd(), logger,
 							s -> 0,

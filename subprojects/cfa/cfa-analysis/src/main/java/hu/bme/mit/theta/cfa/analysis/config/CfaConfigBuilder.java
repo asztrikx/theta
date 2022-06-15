@@ -182,7 +182,7 @@ public class CfaConfigBuilder {
 	private final SolverFactory solverFactory;
 	private final Domain domain;
 	private final Refinement refinement;
-	private Search search = Search.BFS;
+	private Search search = Search.ASTAR;
 	private PredSplit predSplit = PredSplit.WHOLE;
 	private PrecGranularity precGranularity = PrecGranularity.GLOBAL;
 	private Encoding encoding = Encoding.LBE;

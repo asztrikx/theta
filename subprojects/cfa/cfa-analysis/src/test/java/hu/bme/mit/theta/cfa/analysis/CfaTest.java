@@ -25,6 +25,8 @@ import hu.bme.mit.theta.cfa.CFA;
 import hu.bme.mit.theta.cfa.analysis.config.CfaConfig;
 import hu.bme.mit.theta.cfa.analysis.config.CfaConfigBuilder;
 import hu.bme.mit.theta.cfa.dsl.CfaDslManager;
+import hu.bme.mit.theta.common.logging.ConsoleLogger;
+import hu.bme.mit.theta.common.logging.Logger;
 import hu.bme.mit.theta.solver.z3.Z3SolverFactory;
 import org.junit.Assert;
 import org.junit.Test;
@@ -125,7 +127,9 @@ public class CfaTest {
 	public void test() throws IOException {
 		CFA cfa = CfaDslManager.createCfa(new FileInputStream(filePath));
 		CfaConfig<? extends State, ? extends Action, ? extends Prec> config
-				= new CfaConfigBuilder(domain, refinement, Z3SolverFactory.getInstance()).build(cfa, cfa.getErrorLoc().get());
+				= new CfaConfigBuilder(domain, refinement, Z3SolverFactory.getInstance())
+				.logger(new ConsoleLogger(Logger.Level.VERBOSE))
+				.build(cfa, cfa.getErrorLoc().get());
 		SafetyResult<? extends State, ? extends Action> result = config.check();
 		Assert.assertEquals(isSafe, result.isSafe());
 		if (result.isUnsafe()) {

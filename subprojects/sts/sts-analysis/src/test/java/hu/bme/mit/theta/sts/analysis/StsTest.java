@@ -4,6 +4,8 @@ import hu.bme.mit.theta.analysis.Action;
 import hu.bme.mit.theta.analysis.Prec;
 import hu.bme.mit.theta.analysis.State;
 import hu.bme.mit.theta.common.Utils;
+import hu.bme.mit.theta.common.logging.ConsoleLogger;
+import hu.bme.mit.theta.common.logging.Logger;
 import hu.bme.mit.theta.solver.z3.Z3SolverFactory;
 import hu.bme.mit.theta.sts.STS;
 import hu.bme.mit.theta.sts.aiger.AigerParser;
@@ -83,7 +85,9 @@ public class StsTest {
 			sts = Utils.singleElementOf(spec.getAllSts());
 		}
 		StsConfig<? extends State, ? extends Action, ? extends Prec> config
-				= new StsConfigBuilder(domain, refinement, Z3SolverFactory.getInstance()).build(sts);
+				= new StsConfigBuilder(domain, refinement, Z3SolverFactory.getInstance())
+				.logger(new ConsoleLogger(Logger.Level.VERBOSE))
+				.build(sts);
 		Assert.assertEquals(isSafe, config.check().isSafe());
 	}
 

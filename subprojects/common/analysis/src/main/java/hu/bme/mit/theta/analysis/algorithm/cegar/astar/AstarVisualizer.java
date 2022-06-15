@@ -4,6 +4,7 @@ import hu.bme.mit.theta.analysis.Action;
 import hu.bme.mit.theta.analysis.Prec;
 import hu.bme.mit.theta.analysis.State;
 import hu.bme.mit.theta.analysis.algorithm.ArgNode;
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.argstore.AstarArgStore;
 import hu.bme.mit.theta.analysis.utils.AstarArgVisualizer;
 import hu.bme.mit.theta.common.logging.Logger;
 import hu.bme.mit.theta.common.logging.NullLogger;
@@ -47,15 +48,17 @@ public class AstarVisualizer<S extends State, A extends Action, P extends Prec> 
         return built.substring(0, built.length() - 2);
     }
 
-    public void visualize(String state, int iteration) {
+    public void visualize(String state, int index) {
         checkNotNull(state);
 
         if (logger == NullLogger.getInstance()) {
             return;
         }
 
+        // To be consistent with Logger outputs iteration should start from 1 but for avoiding confusion during debugging
+        // this will start from 0
         StringBuilder title = new StringBuilder();
-        for (int i = astarArgStore.getLastIteration(); i >= iteration ; i--) {
+        for (int i = astarArgStore.size() - 1; i >= index ; i--) {
             title.append(String.format("%d.", i));
         }
         title.append(String.format(" %s", state));
@@ -73,7 +76,7 @@ public class AstarVisualizer<S extends State, A extends Action, P extends Prec> 
             assert subfiles != null;
             String filename = String.format("%s/%d∣ %s.png", directory.getCanonicalPath(), subfiles.length + 1, title);
 
-            GraphvizWriter.getInstance().writeFileAutoConvert(AstarArgVisualizer.getDefault().visualize(astarArgStore.getIteration(iteration), title.toString()), filename);
+            GraphvizWriter.getInstance().writeFileAutoConvert(AstarArgVisualizer.getDefault().visualize(astarArgStore.get(index), title.toString()), filename);
         } catch (IOException | InterruptedException e) {
             throw new RuntimeException(e);
         }
