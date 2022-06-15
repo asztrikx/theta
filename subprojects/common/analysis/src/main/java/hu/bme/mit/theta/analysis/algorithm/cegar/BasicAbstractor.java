@@ -15,13 +15,6 @@
  */
 package hu.bme.mit.theta.analysis.algorithm.cegar;
 
-import static com.google.common.base.Preconditions.checkNotNull;
-import static com.google.common.base.Preconditions.checkState;
-
-import java.util.Collection;
-import java.util.Collections;
-import java.util.function.Function;
-
 import hu.bme.mit.theta.analysis.Action;
 import hu.bme.mit.theta.analysis.Prec;
 import hu.bme.mit.theta.analysis.State;
@@ -35,8 +28,15 @@ import hu.bme.mit.theta.analysis.waitlist.FifoWaitlist;
 import hu.bme.mit.theta.analysis.waitlist.Waitlist;
 import hu.bme.mit.theta.common.Utils;
 import hu.bme.mit.theta.common.logging.Logger;
-import hu.bme.mit.theta.common.logging.NullLogger;
 import hu.bme.mit.theta.common.logging.Logger.Level;
+import hu.bme.mit.theta.common.logging.NullLogger;
+
+import java.util.Collection;
+import java.util.Collections;
+import java.util.function.Function;
+
+import static com.google.common.base.Preconditions.checkNotNull;
+import static com.google.common.base.Preconditions.checkState;
 
 /**
  * Basic implementation for the abstractor, relying on an ArgBuilder.

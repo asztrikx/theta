@@ -27,6 +27,9 @@ import hu.bme.mit.theta.analysis.State;
 import hu.bme.mit.theta.analysis.algorithm.ARG;
 import hu.bme.mit.theta.analysis.algorithm.SafetyChecker;
 import hu.bme.mit.theta.analysis.algorithm.SafetyResult;
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.filevisualizer.ArgFileVisualizer;
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.filevisualizer.AstarFileVisualizer;
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.filevisualizer.FileVisualizer;
 import hu.bme.mit.theta.common.Utils;
 import hu.bme.mit.theta.common.logging.Logger;
 import hu.bme.mit.theta.common.logging.NullLogger;
@@ -69,10 +72,14 @@ public final class CegarChecker<S extends State, A extends Action, P extends Pre
 		RefinerResult<S, A, P> refinerResult = null;
 		AbstractorResult abstractorResult = null;
 		final ARG<S, A> arg = abstractor.createArg();
+		// arg reference expected to stay the same
+		FileVisualizer fileVisualizer = new ArgFileVisualizer<>(logger, arg);
 		P prec = initPrec;
 		int iteration = 0;
 		do {
 			++iteration;
+
+			fileVisualizer.visualize("Bstart", iteration - 1);
 
 			logger.write(Level.MAINSTEP, "Iteration %d%n", iteration);
 			logger.write(Level.MAINSTEP, "| Checking abstraction...%n");
@@ -80,6 +87,8 @@ public final class CegarChecker<S extends State, A extends Action, P extends Pre
 			abstractorResult = abstractor.check(arg, prec);
 			abstractorTime += stopwatch.elapsed(TimeUnit.MILLISECONDS) - abstractorStartTime;
 			logger.write(Level.MAINSTEP, "| Checking abstraction done, result: %s%n", abstractorResult);
+
+			fileVisualizer.visualize("Bend", iteration - 1);
 
 			if (abstractorResult.isUnsafe()) {
 				logger.write(Level.MAINSTEP, "| Refining abstraction...%n");
