@@ -30,6 +30,7 @@ import hu.bme.mit.theta.analysis.algorithm.cegar.abstractor.StopCriterions;
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarCegarChecker.Type;
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarSearch.Edge;
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.argstore.AstarArgStore;
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.filevisualizer.AstarFileVisualizer;
 import hu.bme.mit.theta.analysis.waitlist.Waitlist;
 import hu.bme.mit.theta.common.logging.Logger;
 import hu.bme.mit.theta.common.logging.Logger.Level;
@@ -57,7 +58,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 	// We can't stop when a target node is children of a node because there might be another
 	private final Logger logger;
 	private final AstarArgStore<S, A, P> astarArgStore;
-	private final AstarVisualizer<S, A, P> astarVisualizer;
+	private final AstarFileVisualizer<S, A, P> astarFileVisualizer;
 	private final Type type;
 	private PartialOrd<S> partialOrd;
 
@@ -75,7 +76,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		this.logger = checkNotNull(logger);
 		this.astarArgStore = checkNotNull(astarArgStore);
 		this.type = type;
-		this.astarVisualizer = new AstarVisualizer<>(logger, astarArgStore);
+		this.astarFileVisualizer = new AstarFileVisualizer<>(logger, astarArgStore);
 		this.partialOrd = partialOrd;
 	}
 
@@ -90,7 +91,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 	}
 
 	// return: whether stopCriterion stopped it
-	private boolean findDistanceInner(
+	private void findDistanceInner(
 			AstarArg<S, A, P> astarArg,
 			StopCriterion<S, A> stopCriterion,
 			Collection<AstarNode<S, A>> startNodes,
@@ -134,17 +135,17 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 
 			// reached upper limit
 			if (depth >= upperLimitValue && upperLimitValue != -1) {
-				astarArg.updateDistancesFromTargetUntil(upperLimitAstarNode.argNode, startNodesNotAstar, parents);
+				astarArg.updateDistancesFromTargetUntil(upperLimitAstarNode, startNodesNotAstar, parents);
 				if (stopCriterion.canStop(astarArg.arg, List.of(astarNode.argNode))) {
-					return true;
+					return;
 				}
 			}
 
 			// reached target
 			if (argNode.isTarget()) {
-				astarArg.updateDistancesFromTargetUntil(argNode, startNodesNotAstar, parents);
+				astarArg.updateDistancesFromTargetUntil(astarNode, startNodesNotAstar, parents);
 				if (stopCriterion.canStop(astarArg.arg, List.of(astarNode.argNode))) {
-					return true;
+					return;
 				}
 				continue;
 			}
@@ -169,45 +170,39 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 			}
 
 			close(argNode, astarArg.reachedSet.get(argNode));
-			if (argNode.isCovered()) {
+			if (argNode.getCoveringNode().isPresent()) {
 				ArgNode<S, A> coveringNode = argNode.getCoveringNode().get();
-				AstarNode<S, A> coveringAstarNode = astarArg.getArg(coveringNode);
+				AstarNode<S, A> coveringAstarNode = astarArg.get(coveringNode);
 				findHeuristic(coveringAstarNode, astarArg, visualizerState);
 
-				// covering edge has 0 weight
-				// going over covering edge does not break heuristic monotonicity
-				waitlist.add(new Edge<>(astarNode, coveringAstarNode, depth));
-				parents.put(coveringNode, argNode);
+				// Covering edge has 0 weight
+				//// going over covering edge does not break heuristic monotonicity
+				addToWaitList(coveringAstarNode, astarNode, search, depth);
 				// covering node is already found therefore already in reachedSet
-
 				continue;
 			}
 
 			if (!argNode.isSubsumed() && !argNode.isTarget()) {
-				// expand: recreate pruned nodes
+				// expand: create nodes
 				if (!argNode.isExpanded()) {
-					Collection<ArgNode<S, A>> newNodes = argBuilder.expand(argNode, astarArg.prec);
-					astarArg.reachedSet.addAll(newNodes);
+					argBuilder.expand(argNode, astarArg.prec);
 				}
 
 				// go over recreated and remained nodes
 				argNode.getOutEdges().forEach(outEdge -> {
 					ArgNode<S, A> succArgNode = outEdge.getTarget();
-					AstarNode<S, A> succAstarNode = astarArg.getArg(argNode);
-					AstarNode<S, A> providerAstarNode;
+					AstarNode<S, A> succAstarNode = astarArg.get(succArgNode);
 
-					// expand: recreate pruned *astar* nodes
+					// expand: create astar nodes
 					if (succAstarNode == null) {
-						providerAstarNode = findProviderAstarNode(succArgNode, outEdge.getAction(), astarNode, astarArg.parent);
+						AstarNode<S, A> providerAstarNode = findProviderAstarNode(succArgNode, outEdge.getAction(), astarNode, astarArg.parent);
 						succAstarNode = new AstarNode<>(succArgNode, providerAstarNode);
 						astarArg.put(succAstarNode);
 						astarArg.reachedSet.add(succArgNode);
 						findHeuristic(succAstarNode, astarArg, visualizerState);
-					} else {
-						providerAstarNode = succAstarNode.providerAstarNode;
 					}
 
-					if (providerAstarNode.getHeuristic().getType() == Distance.Type.INFINITE) {
+					if (succAstarNode.getHeuristic().getType() == Distance.Type.INFINITE) {
 						return;
 					}
 
@@ -216,11 +211,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 						assert depths.get(newAstarNode) <= depth + 1;
 					}*/
 
-					Distance distance = succAstarNode.getWeight(depth + 1);
-					if (!doneSet.contains(succAstarNode) && minWeights.get(succAstarNode) > distance.getValue()) {
-						waitlist.add(new Edge<>(astarNode, succAstarNode, depth + 1));
-						parents.put(succArgNode, argNode);
-					}
+					addToWaitList(succAstarNode, astarNode, search, depth + 1);
 				});
 			}
 
@@ -228,11 +219,31 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 			//  would be found first if let the expanding continue?
 		}
 
-		return false;
+		// upper limit was not reached (no more nodes left)
+		if (upperLimitValue != -1) {
+			astarArg.updateDistancesFromTargetUntil(upperLimitAstarNode, startNodesNotAstar, parents);
+		}
+
+		return;
+	}
+
+	private void addToWaitList(AstarNode<S, A> astarNode, AstarNode<S, A> parentAstarNode, AstarSearch<S, A> search, int depth) {
+		Waitlist<Edge<S, A>> waitlist = search.waitlist;
+		Set<AstarNode<S, A>> doneSet = search.doneSet;
+		Map<AstarNode<S, A>, Integer> minWeights = search.minWeights;
+		Map<ArgNode<S, A>, ArgNode<S, A>> parents = search.parents;
+
+		Distance distance = astarNode.getWeight(depth);
+		if (!doneSet.contains(astarNode)) {
+			if (!minWeights.containsKey(astarNode) || minWeights.get(astarNode) > distance.getValue()) {
+				waitlist.add(new Edge<>(parentAstarNode, astarNode, depth));
+				parents.put(astarNode.argNode, parentAstarNode.argNode);
+			}
+		}
 	}
 
 	// return: whether stopCriterion stopped it
-	private boolean findDistance(
+	private void findDistance(
 			AstarArg<S, A, P> astarArg, StopCriterion<S, A> stopCriterion, Collection<AstarNode<S, A>> startNodes
 	) {
 		final ARG<S, A> arg = astarArg.arg;
@@ -240,20 +251,17 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		logger.write(Level.INFO, "|  |  Starting ARG: %d nodes, %d incomplete, %d unsafe%n", arg.getNodes().count(),
 				arg.getIncompleteNodes().count(), arg.getUnsafeNodes().count());
 		logger.write(Level.SUBSTEP, "|  |  Building ARG...");
-		String visualizerState = AstarVisualizer.getVisualizerState(startNodes);
-		astarVisualizer.visualize(String.format("start %s", visualizerState), astarArgStore.getIndex(astarArg));
+		String visualizerState = AstarFileVisualizer.getVisualizerState(startNodes);
+		astarFileVisualizer.visualize(String.format("start %s", visualizerState), astarArgStore.getIndex(astarArg));
 
-		boolean found = false;
 		if (!stopCriterion.canStop(arg)) { // this is at max only for leftover nodes??
-			found = findDistanceInner(astarArg, stopCriterion, startNodes, visualizerState);
+			findDistanceInner(astarArg, stopCriterion, startNodes, visualizerState);
 		}
 
 		logger.write(Level.SUBSTEP, "done%n");
 		logger.write(Level.INFO, "|  |  Finished AstarARG: %d nodes, %d incomplete, %d unsafe%n", arg.getNodes().count(),
 				arg.getIncompleteNodes().count(), arg.getUnsafeNodes().count());
-		astarVisualizer.visualize(String.format("end %s", visualizerState), astarArgStore.getIndex(astarArg));
-
-		return found;
+		astarFileVisualizer.visualize(String.format("end %s", visualizerState), astarArgStore.getIndex(astarArg));
 	}
 
 	private void initAstarArg(final AstarArg<S, A, P> astarArg) {
@@ -287,7 +295,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		assert type != Type.FULL;
 
 		// visualize current before going back to previous astarArg
-		astarVisualizer.visualize(String.format("paused %s", visualizerState), astarArgStore.getIndex(astarArg));
+		astarFileVisualizer.visualize(String.format("paused %s", visualizerState), astarArgStore.getIndex(astarArg));
 
 		// get the heuristic with findDistance in parent arg
 		AstarNode<S, A> providerAstarNode = astarNode.providerAstarNode;
@@ -296,7 +304,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		assert astarNode.getHeuristic().isKnown();
 
 		// visualize current after going back to previous astarArg
-		astarVisualizer.visualize(String.format("resumed %s", visualizerState), astarArgStore.getIndex(astarArg));
+		astarFileVisualizer.visualize(String.format("resumed %s", visualizerState), astarArgStore.getIndex(astarArg));
 	}
 
 	// action, parentAstarNode: can be null when argNode is an init node
@@ -336,7 +344,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 			if (parentProviderAstarNode.argNode.getCoveringNode().isPresent()) {
 				ArgNode<S, A> parentProviderCoveringNode = parentProviderAstarNode.argNode.getCoveringNode().get();
 				// This change will affect visualizer midpoint
-				parentProviderAstarNode = parentAstarNode.providerAstarNode = parentAstarArg.getArg(parentProviderCoveringNode);
+				parentProviderAstarNode = parentAstarNode.providerAstarNode = parentAstarArg.get(parentProviderCoveringNode);
 
 				assert parentProviderAstarNode.distance.isKnown();
 				assert parentProviderAstarNode.argNode.isExpanded();
@@ -348,7 +356,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 					.filter(edge -> edge.getAction().equals(action))
 					.map(ArgEdge::getTarget);
 			logger.write(Level.VERBOSE, "Count after filtering for action %d%n",
-					parentProviderAstarNode.argNode.getOutEdges().filter(edge -> edge.getAction().equals(action))
+					parentProviderAstarNode.argNode.getOutEdges().filter(edge -> edge.getAction().equals(action)).count()
 			);
 		}
 
@@ -358,7 +366,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		);
 		Optional<ArgNode<S,A>> providerNode = providerCandidates.findAny();
 		assert providerNode.isPresent();
-		return parentAstarArg.getArg(providerNode.get());
+		return parentAstarArg.get(providerNode.get());
 	}
 
 	@Override
@@ -389,14 +397,12 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		// found and isSafe is different: e.g. full expand
 		if (arg.isSafe()) {
 			// Arg may won't be expanded as we can get INFINITE heuristic avoiding expansion
-			// TODO verify
-			checkState(arg.isComplete(), "Returning incomplete ARG as safe");
+			//   therefore we don't need this: checkState(arg.isComplete(), "Returning incomplete ARG as safe");
 			return AbstractorResult.safe();
 		} else {
 			if (type == AstarCegarChecker.Type.FULL) {
 				astarArg.setUnknownDistanceInfinite();
 			}
-			// INFINITE heuristic nodes won't be expanded
 			return AbstractorResult.unsafe();
 		}
 	}

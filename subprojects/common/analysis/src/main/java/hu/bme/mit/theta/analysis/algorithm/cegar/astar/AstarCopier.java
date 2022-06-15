@@ -38,7 +38,7 @@ public class AstarCopier {
 			ArgNode<S, A> argNode = t.get1();
 			ArgNode<S, A> argNodeCopy = t.get2();
 
-			AstarNode<S, A> astarNode = astarArg.getArg(argNode);
+			AstarNode<S, A> astarNode = astarArg.get(argNode);
 			AstarNode<S, A> astarNodeCopy = new AstarNode<>(argNodeCopy, astarNode);
 
 			astarArgCopy.put(astarNodeCopy);

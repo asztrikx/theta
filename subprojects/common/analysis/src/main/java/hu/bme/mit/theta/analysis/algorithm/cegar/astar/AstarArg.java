@@ -48,7 +48,9 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
     }
 
     // parents: node -> parent
-    public void updateDistancesFromTargetUntil(ArgNode<S, A> target, Set<ArgNode<S, A>> until, Map<ArgNode<S, A>, ArgNode<S, A>> parents) {
+    public void updateDistancesFromTargetUntil(
+            AstarNode<S, A> target, Set<ArgNode<S, A>> until, Map<ArgNode<S, A>, ArgNode<S, A>> parents
+    ) {
         // TODO: rewrite comment
         // A* property allows us to say that all nodes which was *involved in the search* and reaches target are
         // the closest to that target
@@ -57,15 +59,22 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
         //  do not follow *all* covering edge as those node were not involved in search
         //  however the path could go through several covering nodes
 
-        arg.walkUpParents(target, parents, (node, distance) -> {
-            getArg(node).distance = new Distance(Distance.Type.EXACT, distance);
+        int startDistance;
+        if (target.distance.getType() == Distance.Type.EXACT) {
+            startDistance = target.distance.getValue();
+        } else {
+            startDistance = 0;
+        }
+
+        arg.walkUpParents(target.argNode, parents, (node, distance) -> {
+            get(node).distance = new Distance(Distance.Type.EXACT, distance + startDistance);
 
             return until.contains(node);
         });
     }
 
     public Stream<AstarNode<S, A>> getIncompleteNodes() {
-        return arg.getIncompleteNodes().map(this::getArg);
+        return arg.getIncompleteNodes().map(this::get);
     }
 
     public void put(final AstarNode<S, A> astarNode) {
@@ -76,7 +85,7 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
         return astarNodes.containsKey(argNode);
     }
 
-    public AstarNode<S, A> getArg(final ArgNode<S, A> argNode) {
+    public AstarNode<S, A> get(final ArgNode<S, A> argNode) {
         return astarNodes.get(argNode);
     }
 

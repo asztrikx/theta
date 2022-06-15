@@ -54,30 +54,35 @@ public final class AstarArgVisualizer<S extends State, A extends Action, P exten
 	private final Function<S, String> stateToString;
 	private final Function<A, String> actionToString;
 	private final Function<? super AstarNode<? extends S, ? extends A>, String> astarNodeToString;
+	private final Function<? super ArgNode<? extends S, ? extends A>, String> argNodeToString;
 
 	private static class LazyHolderDefault {
-		static final AstarArgVisualizer<State, Action, Prec> INSTANCE = new AstarArgVisualizer<>(s -> s.toString(), a -> a.toString(), n -> n.toString());
+		static final AstarArgVisualizer<State, Action, Prec> INSTANCE = new AstarArgVisualizer<>(s -> s.toString(), a -> a.toString(), n -> n.toString(), n -> n.toString());
 	}
 
 	private static class LazyHolderStructureOnly {
-		static final AstarArgVisualizer<State, Action, Prec> INSTANCE = new AstarArgVisualizer<>(s -> "", a -> "", n -> "");
+		static final AstarArgVisualizer<State, Action, Prec> INSTANCE = new AstarArgVisualizer<>(s -> "", a -> "", n -> "", n -> "");
 	}
 
-	public AstarArgVisualizer(
+	private AstarArgVisualizer(
 			final Function<S, String> stateToString,
 			final Function<A, String> actionToString,
-			final Function<? super AstarNode<? extends S, ? extends A>, String> astarNodeToString
+			final Function<? super AstarNode<? extends S, ? extends A>, String> astarNodeToString,
+			final Function<? super ArgNode<? extends S, ? extends A>, String> argNodeToString
 	) {
 		this.stateToString = stateToString;
 		this.actionToString = actionToString;
 		this.astarNodeToString = astarNodeToString;
+		this.argNodeToString = argNodeToString;
 	}
 
 	public static <S extends State, A extends Action, P extends Prec> AstarArgVisualizer<S, A, P> create(
 			final Function<S, String> stateToString,
 			final Function<A, String> actionToString,
-			final Function<? super AstarNode<? extends S, ? extends A>, String> astarNodeToString) {
-		return new AstarArgVisualizer<>(stateToString, actionToString, astarNodeToString);
+			final Function<? super AstarNode<? extends S, ? extends A>, String> astarNodeToString,
+			final Function<? super ArgNode<? extends S, ? extends A>, String> argNodeToString
+	) {
+		return new AstarArgVisualizer<>(stateToString, actionToString, astarNodeToString, argNodeToString);
 	}
 
 	public static AstarArgVisualizer<State, Action, Prec> getDefault() {
@@ -97,7 +102,7 @@ public final class AstarArgVisualizer<S extends State, A extends Action, P exten
 
 		for (final ArgNode<S1, A1> initNode : arg.getInitNodes().collect(Collectors.toSet())) {
 			// we might be visualizing a "back" state from a child just expanded => there could be children which don't have yet AstarNodes
-			AstarNode<S1, A1> astarInitNode = astarArg.getArg(initNode);
+			AstarNode<S1, A1> astarInitNode = astarArg.get(initNode);
 			if(astarInitNode != null) {
 				traverse(graph, astarInitNode, traversed, astarArg);
 				final NodeAttributes nAttributes = NodeAttributes.builder().label("").fillColor(FILL_COLOR)
@@ -131,10 +136,11 @@ public final class AstarArgVisualizer<S extends State, A extends Action, P exten
 		// node format: information about node and it's parent (if exists)
 		String parentLabel = "-";
 		if (astarNode.providerAstarNode != null) {
-			parentLabel = astarNodeToString.apply(astarNode.providerAstarNode);
+			parentLabel = argNodeToString.apply(astarNode.providerAstarNode.argNode);
 		}
-		String label = String.format("%s\\l%s\\l%s",
+		String label = String.format("%s\\l%s\\l%s\\l%s",
 				stateToString.apply(node.getState()),
+				String.format("ArgNode: %s", argNodeToString.apply(node)),
 				String.format("AstarNode: %s", astarNodeToString.apply(astarNode)),
 				String.format("Parent: %s", parentLabel)
 		);
@@ -146,8 +152,9 @@ public final class AstarArgVisualizer<S extends State, A extends Action, P exten
 		graph.addNode(nodeId, nAttributes);
 
 		for (final ArgEdge<S1, A1> edge : node.getOutEdges().collect(Collectors.toSet())) {
-			// we might be visualizing a "back" state from a child just expanded => there could be children which don't have yet AstarNodes
-			AstarNode<S1, A1> astarNodeChild = astarArg.getArg(edge.getTarget());
+			// We might be searching for provider node for children nodes created by expand.
+			// In that case a visualization will be made of that graph, but those children not have AstarNode because of the latter.
+			AstarNode<S1, A1> astarNodeChild = astarArg.get(edge.getTarget());
 			if(astarNodeChild != null){
 				traverse(graph, astarNodeChild, traversed, astarArg);
 				final String sourceId = NODE_ID_PREFIX + edge.getSource().getId();
@@ -160,7 +167,7 @@ public final class AstarArgVisualizer<S extends State, A extends Action, P exten
 
 		if (node.getCoveringNode().isPresent()) {
 			// we might be visualizing a "back" state from a child just expanded => there could be children which don't have yet AstarNodes
-			AstarNode<S1, A1> astarNodeChild = astarArg.getArg(node.getCoveringNode().get());
+			AstarNode<S1, A1> astarNodeChild = astarArg.get(node.getCoveringNode().get());
 			if(astarNodeChild != null){
 				traverse(graph, astarNodeChild, traversed, astarArg);
 				final String sourceId = NODE_ID_PREFIX + node.getId();
@@ -171,5 +178,4 @@ public final class AstarArgVisualizer<S extends State, A extends Action, P exten
 			}
 		}
 	}
-
 }

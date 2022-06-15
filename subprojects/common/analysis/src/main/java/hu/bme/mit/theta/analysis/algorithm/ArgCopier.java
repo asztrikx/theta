@@ -27,12 +27,6 @@ public class ArgCopier {
     ) {
         ARG<S, A> argCopy = ARG.create(arg.partialOrd);
 
-        // Others are either
-        //  - final
-        //  - already set
-        argCopy.initialized = arg.initialized;
-        argCopy.nextId = arg.nextId;
-
         // BFS: no need to store visited nodes as ARG is a tree as long as we don't visit covering edges
         Waitlist<Visit<S, A>> waitlist = FifoWaitlist.create();
 
@@ -66,7 +60,7 @@ public class ArgCopier {
                 ArgNode<S, A> succArgNodeCopy = argCopy.createSuccNode(argNodeCopy, edge.getAction(), edge.getTarget().getState(), edge.getTarget().isTarget());
                 succArgNodeCopy.copyFrom(succArgNode);
 
-                handleCoveringEdges(argNode, argNodeCopy, shouldSetAsCoveringNode, currentToCopyMap);
+                handleCoveringEdges(succArgNode, succArgNodeCopy, shouldSetAsCoveringNode, currentToCopyMap);
 
                 waitlist.add(new Visit<>(succArgNode, succArgNodeCopy));
             });
@@ -76,6 +70,13 @@ public class ArgCopier {
             ArgNode<S, A> coveredNodeCopy = currentToCopyMap.get(coveredNode);
             coveredNodeCopy.setCoveringNode(coveringNodeCopy);
         });
+
+        // Copy nextId after copy happened as other createSuccNode would increase nextId to double
+        // Others are either
+        //  - final
+        //  - already set
+        argCopy.initialized = arg.initialized;
+        argCopy.nextId = arg.nextId;
 
         return argCopy;
     }
@@ -96,10 +97,10 @@ public class ArgCopier {
             Map<ArgNode<S, A>, ArgNode<S, A>> shouldSetAsCoveringNode,
             Map<ArgNode<S, A>, ArgNode<S, A>> currentToCopyMap
     ) {
-        argNode.getCoveredNodes().forEach(coveredNode -> {
-            shouldSetAsCoveringNode.put(coveredNode, argNodeCopy);
-        });
+        // covering node: save which to cover
+        argNode.getCoveredNodes().forEach(coveredNode -> shouldSetAsCoveringNode.put(coveredNode, argNodeCopy));
 
+        // covered node: save (node, node copy)
         if (argNode.isCovered()) {
             currentToCopyMap.put(argNode, argNodeCopy);
         }

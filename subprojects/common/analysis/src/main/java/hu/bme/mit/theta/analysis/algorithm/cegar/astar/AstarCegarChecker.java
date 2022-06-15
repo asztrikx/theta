@@ -117,11 +117,11 @@ public final class AstarCegarChecker<S extends State, A extends Action, P extend
 		AbstractorResult abstractorResult = null;
 		ARG<S, A> arg = abstractor.createArg();
 		P prec = initPrec;
+		AstarArg<S, A, P> astarArg = new AstarArg<>(arg, prec, partialOrd, projection);
 		int iteration = 0;
 		do {
 			++iteration;
 
-			AstarArg<S, A, P> astarArg = AstarCopier.createCopy(astarArgStore.getLast(), prec, partialOrd, projection);
 			astarArgStore.add(astarArg);
 
 			logger.write(Level.MAINSTEP, "Iteration %d%n", iteration);
@@ -133,18 +133,18 @@ public final class AstarCegarChecker<S extends State, A extends Action, P extend
 
 			if (abstractorResult.isUnsafe()) {
 				// AstarArg has to be copied as arg will be modified after refinement
-				ARG<S, A> argNext = ArgCopier.createCopy(arg);
+				astarArg = AstarCopier.createCopy(astarArgStore.getLast(), prec, partialOrd, projection);
+				arg = astarArg.arg;
 
 				logger.write(Level.MAINSTEP, "| Refining abstraction...%n");
 				final long refinerStartTime = stopwatch.elapsed(TimeUnit.MILLISECONDS);
-				refinerResult = refiner.refine(argNext, prec);
+				refinerResult = refiner.refine(arg, prec);
 				refinerTime += stopwatch.elapsed(TimeUnit.MILLISECONDS) - refinerStartTime;
 				logger.write(Level.MAINSTEP, "Refining abstraction done, result: %s%n", refinerResult);
 
 				if (refinerResult.isSpurious()) {
 					// Pruned version of an ARG is the next iteration of ARG.
 					prec = refinerResult.asSpurious().getRefinedPrec();
-					arg = argNext;
 				}
 			}
 		} while (!abstractorResult.isSafe() && !refinerResult.isUnsafe());

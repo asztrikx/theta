@@ -42,9 +42,9 @@ public final class AstarNode<S extends hu.bme.mit.theta.analysis.State, A extend
 
     @Override
     public String toString() {
-        return String.format("(%s), %s",
+        return String.format("H(%s), D(%s)",
                 getHeuristic().toString(),
-                AstarVisualizer.getVisualizerStateILoveJava(List.of(argNode))
+                distance.toString()
         );
     }
 }

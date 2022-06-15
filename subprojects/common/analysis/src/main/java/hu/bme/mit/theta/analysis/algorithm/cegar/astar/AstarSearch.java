@@ -20,12 +20,10 @@ public class AstarSearch<S extends State, A extends Action> {
 	public Map<AstarNode<S, A>, Integer> minWeights = new HashMap<>();
 	// After we reach target we know the distance for all nodes between root and target
 	// which is visitable by parent entries
+	// node -> parent
 	public Map<ArgNode<S, A>, ArgNode<S, A>> parents = new HashContainerFactory().createMap();
 	////public Map<AstarNode<S, A>, Integer> depths = new HashContainerFactory().createMap();
 	public Waitlist<Edge<S, A>> waitlist = PriorityWaitlist.create(new AstarWaitlistComparator<>());
-
-	public AstarSearch() {
-	}
 
 	public static class Edge<S extends State, A extends Action> {
 		public AstarNode<S, A> start;

@@ -20,13 +20,16 @@ import static com.google.common.base.Preconditions.checkNotNull;
 
 import java.util.ArrayList;
 import java.util.Collection;
+
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.filevisualizer.AstarFileVisualizer;
 import hu.bme.mit.theta.common.container.Containers;
+
+import java.util.List;
 import java.util.Optional;
 import java.util.stream.Stream;
 
 import hu.bme.mit.theta.analysis.Action;
 import hu.bme.mit.theta.analysis.State;
-import hu.bme.mit.theta.common.Utils;
 
 public final class ArgNode<S extends State, A extends Action> {
 
@@ -289,7 +292,7 @@ public final class ArgNode<S extends State, A extends Action> {
 
 	@Override
 	public String toString() {
-		return Utils.lispStringBuilder("ArgNode").add(id).body().add(state).toString();
+		//return Utils.lispStringBuilder("ArgNode").add(id).body().add(state).toString();
+		return AstarFileVisualizer.getVisualizerStateILoveJava(List.of(this));
 	}
-
 }
