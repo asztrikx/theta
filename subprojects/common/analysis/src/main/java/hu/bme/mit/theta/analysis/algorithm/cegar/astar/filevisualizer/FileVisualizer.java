@@ -1,8 +1,9 @@
-package hu.bme.mit.theta.analysis.algorithm.cegar.astar;
+package hu.bme.mit.theta.analysis.algorithm.cegar.astar.filevisualizer;
 
 import hu.bme.mit.theta.analysis.Action;
 import hu.bme.mit.theta.analysis.State;
 import hu.bme.mit.theta.analysis.algorithm.ArgNode;
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarNode;
 import hu.bme.mit.theta.common.logging.Logger;
 import hu.bme.mit.theta.common.logging.NullLogger;
 import hu.bme.mit.theta.common.visualization.Graph;
@@ -43,19 +44,6 @@ public abstract class FileVisualizer {
 		} catch (IOException e) {
 			throw new RuntimeException(e);
 		}
-	}
-
-	// getVisualizerState(Collection<...>) will have same erasure
-	public static <S extends State, A extends Action> String getVisualizerState(Collection<AstarNode<S, A>> astarNodes) {
-		Collection<ArgNode<S, A>> nodes = astarNodes.stream().map(startNode -> startNode.argNode).collect(Collectors.toList());
-		return getVisualizerStateILoveJava(nodes);
-	}
-
-	public static <S extends State, A extends Action> String getVisualizerStateILoveJava(Collection<ArgNode<S, A>> nodes) {
-		StringBuilder stringBuilder = new StringBuilder();
-		nodes.forEach(startNode -> stringBuilder.append(String.format("N%d,", startNode.getId())));
-		String built = stringBuilder.toString();
-		return built.substring(0, built.length() - 1);
 	}
 
 	public abstract void visualize(String state, int index);

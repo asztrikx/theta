@@ -1,4 +1,4 @@
-package hu.bme.mit.theta.analysis.algorithm.cegar.astar;
+package hu.bme.mit.theta.analysis.algorithm.cegar.astar.filevisualizer;
 
 import hu.bme.mit.theta.analysis.Action;
 import hu.bme.mit.theta.analysis.State;
