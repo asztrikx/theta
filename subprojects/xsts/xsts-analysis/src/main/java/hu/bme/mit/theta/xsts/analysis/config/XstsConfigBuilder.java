@@ -178,11 +178,6 @@ public class XstsConfigBuilder {
 			final Analysis<XstsState<ExplState>, XstsAction, ExplPrec> analysis = XstsAnalysis.create(ExplStmtAnalysis.create(solver, xsts.getInitFormula(), maxEnum));
 			final ArgBuilder<XstsState<ExplState>, XstsAction, ExplPrec> argBuilder = ArgBuilder.create(lts, analysis, target,
 					true);
-			final Abstractor<XstsState<ExplState>, XstsAction, ExplPrec> abstractor = BasicAbstractor.builder(argBuilder)
-					.waitlist(PriorityWaitlist.create(search.comparator))
-					.stopCriterion(refinement == Refinement.MULTI_SEQ ? StopCriterions.fullExploration()
-							: StopCriterions.firstCex())
-					.logger(logger).build();
 
 			Refiner<XstsState<ExplState>, XstsAction, ExplPrec> refiner = null;
 
@@ -224,6 +219,11 @@ public class XstsConfigBuilder {
 					);
 					break;
 				default:
+					final Abstractor<XstsState<ExplState>, XstsAction, ExplPrec> abstractor = BasicAbstractor.builder(argBuilder)
+							.waitlist(PriorityWaitlist.create(search.comparator))
+							.stopCriterion(refinement == Refinement.MULTI_SEQ ? StopCriterions.fullExploration()
+									: StopCriterions.firstCex())
+							.logger(logger).build();
 					checker = CegarChecker.create(abstractor, refiner, logger);
 			}
 
@@ -258,11 +258,6 @@ public class XstsConfigBuilder {
 					xsts.getInitFormula()));
 			final ArgBuilder<XstsState<PredState>, XstsAction, PredPrec> argBuilder = ArgBuilder.create(lts, analysis, target,
 					true);
-			final Abstractor<XstsState<PredState>, XstsAction, PredPrec> abstractor = BasicAbstractor.builder(argBuilder)
-					.waitlist(PriorityWaitlist.create(search.comparator))
-					.stopCriterion(refinement == Refinement.MULTI_SEQ ? StopCriterions.fullExploration()
-							: StopCriterions.firstCex())
-					.logger(logger).build();
 
 			ExprTraceChecker<ItpRefutation> exprTraceChecker = null;
 			switch (refinement) {
@@ -301,6 +296,11 @@ public class XstsConfigBuilder {
 					);
 					break;
 				default:
+					final Abstractor<XstsState<PredState>, XstsAction, PredPrec> abstractor = BasicAbstractor.builder(argBuilder)
+							.waitlist(PriorityWaitlist.create(search.comparator))
+							.stopCriterion(refinement == Refinement.MULTI_SEQ ? StopCriterions.fullExploration()
+									: StopCriterions.firstCex())
+							.logger(logger).build();
 					checker = CegarChecker.create(abstractor, refiner, logger);
 			}
 
@@ -351,11 +351,6 @@ public class XstsConfigBuilder {
 
 			final ArgBuilder<XstsState<Prod2State<ExplState, PredState>>, XstsAction, Prod2Prec<ExplPrec, PredPrec>> argBuilder = ArgBuilder.create(lts, analysis, target,
 					true);
-			final Abstractor<XstsState<Prod2State<ExplState, PredState>>, XstsAction, Prod2Prec<ExplPrec, PredPrec>> abstractor = BasicAbstractor.builder(argBuilder)
-					.waitlist(PriorityWaitlist.create(search.comparator))
-					.stopCriterion(refinement == Refinement.MULTI_SEQ ? StopCriterions.fullExploration()
-							: StopCriterions.firstCex())
-					.logger(logger).build();
 
 			Refiner<XstsState<Prod2State<ExplState, PredState>>, XstsAction, Prod2Prec<ExplPrec, PredPrec>> refiner = null;
 
@@ -394,6 +389,11 @@ public class XstsConfigBuilder {
 					);
 					break;
 				default:
+					final Abstractor<XstsState<Prod2State<ExplState, PredState>>, XstsAction, Prod2Prec<ExplPrec, PredPrec>> abstractor = BasicAbstractor.builder(argBuilder)
+							.waitlist(PriorityWaitlist.create(search.comparator))
+							.stopCriterion(refinement == Refinement.MULTI_SEQ ? StopCriterions.fullExploration()
+									: StopCriterions.firstCex())
+							.logger(logger).build();
 					checker = CegarChecker.create(abstractor, refiner, logger);
 			}
 

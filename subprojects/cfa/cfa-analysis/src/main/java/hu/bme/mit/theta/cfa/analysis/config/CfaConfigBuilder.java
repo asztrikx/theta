@@ -246,11 +246,6 @@ public class CfaConfigBuilder {
 			final ArgBuilder<CfaState<ExplState>, CfaAction, CfaPrec<ExplPrec>> argBuilder = ArgBuilder.create(lts,
 					analysis, s -> s.getLoc().equals(errLoc), true);
 			final Function<? super CfaState<ExplState>, ?> projection = CfaState::getLoc;
-			final Abstractor<CfaState<ExplState>, CfaAction, CfaPrec<ExplPrec>> abstractor = BasicAbstractor
-					.builder(argBuilder).projection(projection)
-					.waitlist(PriorityWaitlist.create(search.getComp(cfa, errLoc)))
-					.stopCriterion(refinement == Refinement.MULTI_SEQ ? StopCriterions.fullExploration()
-							: StopCriterions.firstCex()).logger(logger).build();
 
 			Refiner<CfaState<ExplState>, CfaAction, CfaPrec<ExplPrec>> refiner;
 
@@ -358,6 +353,11 @@ public class CfaConfigBuilder {
 					);
 					break;
 				default:
+					final Abstractor<CfaState<ExplState>, CfaAction, CfaPrec<ExplPrec>> abstractor = BasicAbstractor
+							.builder(argBuilder).projection(projection)
+							.waitlist(PriorityWaitlist.create(search.getComp(cfa, errLoc)))
+							.stopCriterion(refinement == Refinement.MULTI_SEQ ? StopCriterions.fullExploration()
+									: StopCriterions.firstCex()).logger(logger).build();
 					checker = CegarChecker.create(abstractor, refiner, logger);
 			}
 
@@ -397,11 +397,6 @@ public class CfaConfigBuilder {
 			final ArgBuilder<CfaState<PredState>, CfaAction, CfaPrec<PredPrec>> argBuilder = ArgBuilder.create(lts,
 					analysis, s -> s.getLoc().equals(errLoc), true);
 			final Function<? super CfaState<PredState>, ?> projection = CfaState::getLoc;
-			final Abstractor<CfaState<PredState>, CfaAction, CfaPrec<PredPrec>> abstractor = BasicAbstractor
-					.builder(argBuilder).projection(projection)
-					.waitlist(PriorityWaitlist.create(search.getComp(cfa, errLoc)))
-					.stopCriterion(refinement == Refinement.MULTI_SEQ ? StopCriterions.fullExploration()
-							: StopCriterions.firstCex()).logger(logger).build();
 
 			ExprTraceChecker<ItpRefutation> exprTraceChecker;
 			switch (refinement) {
@@ -469,6 +464,11 @@ public class CfaConfigBuilder {
 					);
 					break;
 				default:
+					final Abstractor<CfaState<PredState>, CfaAction, CfaPrec<PredPrec>> abstractor = BasicAbstractor
+							.builder(argBuilder).projection(projection)
+							.waitlist(PriorityWaitlist.create(search.getComp(cfa, errLoc)))
+							.stopCriterion(refinement == Refinement.MULTI_SEQ ? StopCriterions.fullExploration()
+									: StopCriterions.firstCex()).logger(logger).build();
 					checker = CegarChecker.create(abstractor, refiner, logger);
 			}
 

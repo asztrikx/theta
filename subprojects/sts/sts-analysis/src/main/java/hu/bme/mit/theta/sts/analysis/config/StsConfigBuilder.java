@@ -164,11 +164,6 @@ public final class StsConfigBuilder {
 			final Analysis<ExplState, ExprAction, ExplPrec> analysis = ExplAnalysis.create(solver, init);
 			final ArgBuilder<ExplState, StsAction, ExplPrec> argBuilder = ArgBuilder.create(lts, analysis, target,
 					true);
-			final Abstractor<ExplState, StsAction, ExplPrec> abstractor = BasicAbstractor.builder(argBuilder)
-					.waitlist(PriorityWaitlist.create(search.comparator))
-					.stopCriterion(refinement == Refinement.MULTI_SEQ ? StopCriterions.fullExploration()
-							: StopCriterions.firstCex())
-					.logger(logger).build();
 
 			Refiner<ExplState, StsAction, ExplPrec> refiner = null;
 
@@ -208,6 +203,11 @@ public final class StsConfigBuilder {
 					);
 					break;
 				default:
+					final Abstractor<ExplState, StsAction, ExplPrec> abstractor = BasicAbstractor.builder(argBuilder)
+							.waitlist(PriorityWaitlist.create(search.comparator))
+							.stopCriterion(refinement == Refinement.MULTI_SEQ ? StopCriterions.fullExploration()
+									: StopCriterions.firstCex())
+							.logger(logger).build();
 					checker = CegarChecker.create(abstractor, refiner, logger);
 			}
 
@@ -234,11 +234,6 @@ public final class StsConfigBuilder {
 					init);
 			final ArgBuilder<PredState, StsAction, PredPrec> argBuilder = ArgBuilder.create(lts, analysis, target,
 					true);
-			final Abstractor<PredState, StsAction, PredPrec> abstractor = BasicAbstractor.builder(argBuilder)
-					.waitlist(PriorityWaitlist.create(search.comparator))
-					.stopCriterion(refinement == Refinement.MULTI_SEQ ? StopCriterions.fullExploration()
-							: StopCriterions.firstCex())
-					.logger(logger).build();
 
 			ExprTraceChecker<ItpRefutation> exprTraceChecker = null;
 			switch (refinement) {
@@ -277,6 +272,11 @@ public final class StsConfigBuilder {
 					);
 					break;
 				default:
+					final Abstractor<PredState, StsAction, PredPrec> abstractor = BasicAbstractor.builder(argBuilder)
+							.waitlist(PriorityWaitlist.create(search.comparator))
+							.stopCriterion(refinement == Refinement.MULTI_SEQ ? StopCriterions.fullExploration()
+									: StopCriterions.firstCex())
+							.logger(logger).build();
 					checker = CegarChecker.create(abstractor, refiner, logger);
 			}
 
