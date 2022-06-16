@@ -31,7 +31,9 @@ public class ArgCopier {
         Waitlist<Visit<S, A>> waitlist = FifoWaitlist.create();
 
         // Covering node handle: one end of the edge may not exist
+        // (covered ArgNode, covering ArgNode copy)
         Map<ArgNode<S, A>, ArgNode<S, A>> shouldSetAsCoveringNode = new HashContainerFactory().createMap();
+        // (ArgNode, ArgNode copy)
         Map<ArgNode<S, A>, ArgNode<S, A>> currentToCopyMap = new HashContainerFactory().createMap();
 
         // copy initNodes
@@ -57,7 +59,7 @@ public class ArgCopier {
 
             argNode.getOutEdges().forEach(edge -> {
                 ArgNode<S, A> succArgNode = edge.getTarget();
-                ArgNode<S, A> succArgNodeCopy = argCopy.createSuccNode(argNodeCopy, edge.getAction(), edge.getTarget().getState(), edge.getTarget().isTarget());
+                ArgNode<S, A> succArgNodeCopy = argCopy.createSuccNode(argNodeCopy, edge.getAction(), succArgNode.getState(), succArgNode.isTarget());
                 succArgNodeCopy.copyFrom(succArgNode);
 
                 handleCoveringEdges(succArgNode, succArgNodeCopy, shouldSetAsCoveringNode, currentToCopyMap);

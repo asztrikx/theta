@@ -198,14 +198,19 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 						succAstarNode = new AstarNode<>(succArgNode, providerAstarNode);
 						astarArg.put(succAstarNode);
 						astarArg.reachedSet.add(succArgNode);
-						findHeuristic(succAstarNode, astarArg);
 					}
+
+					// already existing succAstarNode
+					// 		although we only add leaves to startAstarNodes and findHeuristic is called upon them
+					//		they may get covered with a non leaf which has succAstarNode (from copy)
+					//		but it's provider doesn't have distance, therefore there is no heuristic
+					findHeuristic(succAstarNode, astarArg);
 
 					if (succAstarNode.getHeuristic().getType() == Distance.Type.INFINITE) {
 						return;
 					}
 
-					/*if (doneSet.contains(succAstarNode)) {
+					/* if (doneSet.contains(succAstarNode)) { // we don't find a shorter path later
 						// either: reach through covering edge, or this reached through covering edge (multi init nodes)
 						assert depths.get(newAstarNode) <= depth + 1;
 					}*/
@@ -223,7 +228,41 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 			astarArg.updateDistancesFromTargetUntil(upperLimitAstarNode, startNodes, parents);
 		}
 
-		return;
+		// If we are looking for n targets then it is possible that we reached [1,n) target when reaching this line
+
+		// TODO: findHeuristic? call updateDistancesFromRootInfinite
+
+		// TODO: completed leaf nodes with no distance we should walk up and set infinite distance until all other children have infinite distance
+		// otherwise we could visit it many times
+		// e.g.
+		// 		b,d,f is target
+		//		- nodes don't matter in this case
+		//		we call findHeuristic on a,c,e
+		//		e-g is visited 3 times
+		//
+		//	The edges closer to the left side will enter waitlist first
+		//     a
+		//    | \
+		//    -  c
+		//	  | | \
+		//	  - -  e
+		//	  | | | \
+		//	  - - -  g (no more children)
+		//    | | |
+		//    b d f
+
+		//
+		// TODO what about loops (covering edge)
+		// Covering edge to its ascendant: we
+		//      -
+		//     / |
+		//    -  a <- -
+		//       |      \
+		//       b      |
+		//       |      |
+		//       c - - /
+		//       |
+		//      (there can be other children)
 	}
 
 	private void addToWaitList(AstarNode<S, A> astarNode, AstarNode<S, A> parentAstarNode, AstarSearch<S, A> search, int depth) {
@@ -241,7 +280,6 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		}
 	}
 
-	// return: whether stopCriterion stopped it
 	private void findDistance(
 			AstarArg<S, A, P> astarArg, StopCriterion<S, A> stopCriterion, Collection<AstarNode<S, A>> startAstarNodes,
 			String visualizerState
@@ -256,6 +294,12 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		if (!stopCriterion.canStop(arg)) { // this is at max only for leftover nodes??
 			findDistanceInner(astarArg, stopCriterion, startAstarNodes);
 		}
+
+		// Infinite distance for startNodes that didn't reach target
+		//		A non startNode can be a covering node therefore we have to set them as well
+		startAstarNodes.stream()
+				.filter(a -> !a.distance.isKnown())
+				.forEach(astarArg::updateDistancesFromRootInfinite);
 
 		logger.write(Level.SUBSTEP, "done%n");
 		logger.write(Level.INFO, "|  |  Finished AstarARG: %d nodes, %d incomplete, %d unsafe%n", arg.getNodes().count(),
@@ -279,7 +323,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		});
 	}
 
-	// astarNode should already have coveringNode
+	//// astarNode should already have coveringNode
 	// astarArg: the one in which for a node we look for heuristic
 	private void findHeuristic(AstarNode<S, A> astarNode, AstarArg<S, A, P> astarArg) {
 		// no previous astar arg exists: getHeuristic returns (EXACT, 0)
@@ -337,8 +381,9 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 			// 		therefore it's heuristic is known
 			// 		therefore it's provider's distance is known
 			assert parentProviderAstarNode.distance.isKnown();
+			// 		therefore it's heuristic is known
 			//		therefore it must be expanded or covered
-			assert parentProviderAstarNode.argNode.isExpanded() || parentAstarNode.argNode.isCovered();
+			assert parentProviderAstarNode.argNode.isExpanded() || parentProviderAstarNode.argNode.isCovered();
 
 			// Although we don't choose covered provider node after it has been set it still can be covered
 			// (when the provider node is a fresh node and not have)
@@ -407,6 +452,10 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 			}
 			return AbstractorResult.unsafe();
 		}
+	}
+
+	private void debug(AstarArg<S, A, P> astarArg) {
+		astarFileVisualizer.visualize("debug", astarArgStore.getIndex(astarArg));
 	}
 
 	private void close(final ArgNode<S, A> node, final Collection<ArgNode<S, A>> candidates) {

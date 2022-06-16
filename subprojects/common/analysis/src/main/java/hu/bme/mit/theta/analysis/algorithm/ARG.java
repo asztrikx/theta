@@ -80,6 +80,16 @@ public final class ARG<S extends State, A extends Action> {
 		return getInitNodes().flatMap(ArgNode::unexcludedDescendants).filter(n -> !n.isExpanded());
 	}
 
+	public Stream<ArgNode<S, A>> getCompleteNodes() {
+		// TODO what is unexcludedDescendants (call chain is weird)
+		return getInitNodes().flatMap(ArgNode::unexcludedDescendants).filter(ArgNode::isExpanded);
+	}
+
+	public Stream<ArgNode<S, A>> getCompleteLeafNodes() {
+		// TODO what is unexcludedDescendants (call chain is weird)
+		return getInitNodes().flatMap(ArgNode::unexcludedDescendants).filter(n -> n.isExpanded() && n.getSuccNodes().findAny().isEmpty() && !n.isCovered());
+	}
+
 	////
 
 	/**
@@ -190,9 +200,9 @@ public final class ARG<S extends State, A extends Action> {
 	}
 
 	/**
-	 * Calls skip on all nodes reachable from root even through coverings.
-	 * If skip returns true then the children of the ArgNode is not added to waitlist
-	 * ArgNode and it's distance from root is given to consumer.
+	 * Calls skip on all nodes reachable from root even through covering edges.
+	 * If skip returns true then the children of the ArgNode is not added to waitlist.
+	 * ArgNode and it's distance from a root is given to skip().
 	 */
 	public void walk(Collection<ArgNode<S, A>> roots, BiFunction<ArgNode<S, A>, Integer, Boolean> skip) {
 		for (ArgNode<S, A> root : roots) {
@@ -200,35 +210,37 @@ public final class ARG<S extends State, A extends Action> {
 		}
 		checkNotNull(skip);
 
-		class Result<S extends State, A extends Action> {
+		class Visit {
 			final public ArgNode<S, A> argNode;
 			final public int distance;
 
-			public Result(ArgNode<S, A> argNode, int distance) {
+			public Visit(ArgNode<S, A> argNode, int distance) {
 				this.argNode = argNode;
 				this.distance = distance;
 			}
 		}
 
 		Set<ArgNode<S, A>> doneSet = new HashContainerFactory().createSet();
-		Waitlist<Result<S, A>> waitlist = FifoWaitlist.create();
+		Waitlist<Visit> waitlist = FifoWaitlist.create();
 		for (ArgNode<S, A> root : roots) {
-			waitlist.add(new Result<>(root, 0));
+			waitlist.add(new Visit(root, 0));
 		}
 
-		Result<S, A> coveringResult = null;
+		// Covering edge has zero weight which would break BFS if we did not push it to its correct place in waitlist
+		//	e.g. to the front which is always a correct place
+		Visit coveringVisit = null;
 		while (!waitlist.isEmpty()) {
-			Result<S, A> result;
-			if (coveringResult == null) {
-				result = waitlist.remove();
+			Visit visit;
+			if (coveringVisit == null) {
+				visit = waitlist.remove();
 			} else {
-				result = coveringResult;
-				coveringResult = null;
+				visit = coveringVisit;
+				coveringVisit = null;
 			}
-			ArgNode<S, A> argNode = result.argNode;
-			int distance = result.distance;
+			ArgNode<S, A> argNode = visit.argNode;
+			int distance = visit.distance;
 
-			// covering edges can point to 2 non-disjoint subgraph => revisiting can happen
+			// covering edges can point to already visited ArgNode
 			if (doneSet.contains(argNode)) {
 				continue;
 			}
@@ -239,16 +251,17 @@ public final class ARG<S extends State, A extends Action> {
 				continue;
 			}
 
-			// covered
+			// covered: add to front of waitlist
 			if (argNode.getCoveringNode().isPresent()) {
 				ArgNode<S, A> coveringNode = argNode.getCoveringNode().get();
-				coveringResult = new Result<>(coveringNode, distance);
-				// do not add to waitlist as it would violate bfs property of monotone distances in queue
+				coveringVisit = new Visit(coveringNode, distance);
 				continue;
 			}
 
 			argNode.getSuccNodes().forEach(succNode -> {
-				waitlist.add(new Result<>(succNode, distance + 1));
+				if (!doneSet.contains(succNode)) {
+					waitlist.add(new Visit(succNode, distance + 1));
+				}
 			});
 		}
 	}
@@ -265,8 +278,13 @@ public final class ARG<S extends State, A extends Action> {
 				break;
 			}
 
-			distance++;
-			current = parents.get(current);
+			ArgNode<S, A> parent = parents.get(current);
+			if (current.inEdge.isPresent() && current.inEdge.get().getSource() == parent) {
+				distance++;
+			} else {
+				assert current.coveredNodes.contains(parent);
+			}
+			current = parent;
 		}
 	}
 

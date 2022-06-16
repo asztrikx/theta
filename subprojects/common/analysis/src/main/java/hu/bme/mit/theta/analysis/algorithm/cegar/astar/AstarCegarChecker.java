@@ -140,13 +140,14 @@ public final class AstarCegarChecker<S extends State, A extends Action, P extend
 				logger.write(Level.MAINSTEP, "| Refining abstraction...%n");
 				final long refinerStartTime = stopwatch.elapsed(TimeUnit.MILLISECONDS);
 				refinerResult = refiner.refine(arg, prec);
+				astarArg.pruneApply();
 				refinerTime += stopwatch.elapsed(TimeUnit.MILLISECONDS) - refinerStartTime;
 				logger.write(Level.MAINSTEP, "Refining abstraction done, result: %s%n", refinerResult);
 
 				if (refinerResult.isSpurious()) {
 					// Pruned version of an ARG is the next iteration of ARG.
 					prec = refinerResult.asSpurious().getRefinedPrec();
-					// astarArg.prec = prec; // TODO remove this after figured out how can cover be from other arg
+					astarArg.prec = prec;
 				}
 			}
 		} while (!abstractorResult.isSafe() && !refinerResult.isUnsafe());

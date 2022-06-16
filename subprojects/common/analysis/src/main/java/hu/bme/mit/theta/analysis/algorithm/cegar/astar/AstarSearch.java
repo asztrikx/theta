@@ -18,8 +18,8 @@ public class AstarSearch<S extends State, A extends Action> {
 	public Set<AstarNode<S, A>> doneSet = new HashSet<>();
 	// Useful to know whether the current item is smaller than the one in the waitlist (if not in doneSet)
 	public Map<AstarNode<S, A>, Integer> minWeights = new HashMap<>();
-	// After we reach target we know the distance for all nodes between root and target
-	// which is visitable by parent entries
+	// After we reach target we know the distance for all nodes between root and target which is visitable by parent entries
+	// This is needed because with covering edges there can be multiple in-edges
 	// node -> parent
 	public Map<ArgNode<S, A>, ArgNode<S, A>> parents = new HashContainerFactory().createMap();
 	////public Map<AstarNode<S, A>, Integer> depths = new HashContainerFactory().createMap();

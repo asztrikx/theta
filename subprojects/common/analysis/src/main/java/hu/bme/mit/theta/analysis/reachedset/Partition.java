@@ -30,7 +30,7 @@ import java.util.stream.Stream;
 public final class Partition<T, K> {
 
 	private final Function<? super T, ? extends K> projection;
-	private final Map<K, List<T>> classes;
+	private Map<K, List<T>> classes;
 
 	private Partition(final Function<? super T, ? extends K> projection) {
 		this.projection = checkNotNull(projection);
@@ -63,4 +63,7 @@ public final class Partition<T, K> {
 		return partition;
 	}
 
+	public void clear() {
+		classes = Containers.createMap();
+	}
 }

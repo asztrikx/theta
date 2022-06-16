@@ -45,7 +45,7 @@ public class AstarCopier {
 			if (newInitNodes.contains(argNodeCopy)) {
 				astarArgCopy.putInit(astarNodeCopy);
 			}
-			astarArg.reachedSet.add(astarNodeCopy.argNode);
+			astarArgCopy.reachedSet.add(astarNodeCopy.argNode);
 		});
 
 		return astarArgCopy;
