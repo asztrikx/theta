@@ -94,8 +94,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 	private void findDistanceInner(
 			AstarArg<S, A, P> astarArg,
 			StopCriterion<S, A> stopCriterion,
-			Collection<AstarNode<S, A>> startNodes,
-			String visualizerState
+			Collection<AstarNode<S, A>> startAstarNodes
 	) {
 		// create search
 		AstarSearch<S, A> search = new AstarSearch<>();
@@ -107,16 +106,16 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 
 		// Waitlist requires heuristic for nodes
 		// 	  node for which distance we are going back may not have heuristic
-		startNodes.forEach(startNode -> findHeuristic(startNode, astarArg, visualizerState));
-		startNodes = startNodes.stream()
+		startAstarNodes.forEach(startNode -> findHeuristic(startNode, astarArg));
+		startAstarNodes = startAstarNodes.stream()
 				// Occurrence: node hasn't been expanded as it had infinite heuristic and is copied to new arg
 				.filter(startNode -> startNode.getHeuristic().getType() != Distance.Type.INFINITE)
 				.collect(Collectors.toList());
 
-		Set<ArgNode<S, A>> startNodesNotAstar = startNodes.stream().map(astarNode -> astarNode.argNode).collect(Collectors.toSet());
+		Set<ArgNode<S, A>> startNodes = startAstarNodes.stream().map(astarNode -> astarNode.argNode).collect(Collectors.toSet());
 
 		// start nodes to search
-		startNodes.forEach(startNode -> waitlist.add(new Edge<>(null, startNode, 0)));
+		startAstarNodes.forEach(startNode -> waitlist.add(new Edge<>(null, startNode, 0)));
 
 		int upperLimitValue = -1;
 		AstarNode<S, A> upperLimitAstarNode = null;
@@ -135,7 +134,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 
 			// reached upper limit
 			if (depth >= upperLimitValue && upperLimitValue != -1) {
-				astarArg.updateDistancesFromTargetUntil(upperLimitAstarNode, startNodesNotAstar, parents);
+				astarArg.updateDistancesFromTargetUntil(upperLimitAstarNode, startNodes, parents);
 				if (stopCriterion.canStop(astarArg.arg, List.of(astarNode.argNode))) {
 					return;
 				}
@@ -143,7 +142,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 
 			// reached target
 			if (argNode.isTarget()) {
-				astarArg.updateDistancesFromTargetUntil(astarNode, startNodesNotAstar, parents);
+				astarArg.updateDistancesFromTargetUntil(astarNode, startNodes, parents);
 				if (stopCriterion.canStop(astarArg.arg, List.of(astarNode.argNode))) {
 					return;
 				}
@@ -173,7 +172,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 			if (argNode.getCoveringNode().isPresent()) {
 				ArgNode<S, A> coveringNode = argNode.getCoveringNode().get();
 				AstarNode<S, A> coveringAstarNode = astarArg.get(coveringNode);
-				findHeuristic(coveringAstarNode, astarArg, visualizerState);
+				findHeuristic(coveringAstarNode, astarArg);
 
 				// Covering edge has 0 weight
 				//// going over covering edge does not break heuristic monotonicity
@@ -199,7 +198,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 						succAstarNode = new AstarNode<>(succArgNode, providerAstarNode);
 						astarArg.put(succAstarNode);
 						astarArg.reachedSet.add(succArgNode);
-						findHeuristic(succAstarNode, astarArg, visualizerState);
+						findHeuristic(succAstarNode, astarArg);
 					}
 
 					if (succAstarNode.getHeuristic().getType() == Distance.Type.INFINITE) {
@@ -221,7 +220,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 
 		// upper limit was not reached (no more nodes left)
 		if (upperLimitValue != -1) {
-			astarArg.updateDistancesFromTargetUntil(upperLimitAstarNode, startNodesNotAstar, parents);
+			astarArg.updateDistancesFromTargetUntil(upperLimitAstarNode, startNodes, parents);
 		}
 
 		return;
@@ -244,24 +243,24 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 
 	// return: whether stopCriterion stopped it
 	private void findDistance(
-			AstarArg<S, A, P> astarArg, StopCriterion<S, A> stopCriterion, Collection<AstarNode<S, A>> startNodes
+			AstarArg<S, A, P> astarArg, StopCriterion<S, A> stopCriterion, Collection<AstarNode<S, A>> startAstarNodes,
+			String visualizerState
 	) {
 		final ARG<S, A> arg = astarArg.arg;
 
 		logger.write(Level.INFO, "|  |  Starting ARG: %d nodes, %d incomplete, %d unsafe%n", arg.getNodes().count(),
 				arg.getIncompleteNodes().count(), arg.getUnsafeNodes().count());
 		logger.write(Level.SUBSTEP, "|  |  Building ARG...");
-		String visualizerState = AstarFileVisualizer.getVisualizerState(startNodes);
-		astarFileVisualizer.visualize(String.format("start %s", visualizerState), astarArgStore.getIndex(astarArg));
+		astarFileVisualizer.visualize(String.format("start%s", visualizerState), astarArgStore.getIndex(astarArg));
 
 		if (!stopCriterion.canStop(arg)) { // this is at max only for leftover nodes??
-			findDistanceInner(astarArg, stopCriterion, startNodes, visualizerState);
+			findDistanceInner(astarArg, stopCriterion, startAstarNodes);
 		}
 
 		logger.write(Level.SUBSTEP, "done%n");
 		logger.write(Level.INFO, "|  |  Finished AstarARG: %d nodes, %d incomplete, %d unsafe%n", arg.getNodes().count(),
 				arg.getIncompleteNodes().count(), arg.getUnsafeNodes().count());
-		astarFileVisualizer.visualize(String.format("end %s", visualizerState), astarArgStore.getIndex(astarArg));
+		astarFileVisualizer.visualize(String.format("end%s", visualizerState), astarArgStore.getIndex(astarArg));
 	}
 
 	private void initAstarArg(final AstarArg<S, A, P> astarArg) {
@@ -282,7 +281,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 
 	// astarNode should already have coveringNode
 	// astarArg: the one in which for a node we look for heuristic
-	private void findHeuristic(AstarNode<S, A> astarNode, AstarArg<S, A, P> astarArg, String visualizerState) {
+	private void findHeuristic(AstarNode<S, A> astarNode, AstarArg<S, A, P> astarArg) {
 		// no previous astar arg exists: getHeuristic returns (EXACT, 0)
 		if (astarArg.parent == null) {
 			return;
@@ -295,12 +294,15 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		assert type != Type.FULL;
 
 		// visualize current before going back to previous astarArg
+		String visualizerState = AstarFileVisualizer.getVisualizerState(List.of(astarNode));
 		astarFileVisualizer.visualize(String.format("paused %s", visualizerState), astarArgStore.getIndex(astarArg));
 
 		// get the heuristic with findDistance in parent arg
 		AstarNode<S, A> providerAstarNode = astarNode.providerAstarNode;
 		AstarArg<S, A, P> parentAstarArg = astarArg.parent;
-		findDistance(parentAstarArg, new AstarDistanceKnown<>(providerAstarNode), List.of(providerAstarNode));
+
+		String visualizerStateProvider = " " + AstarFileVisualizer.getVisualizerState(List.of(astarNode.providerAstarNode));
+		findDistance(parentAstarArg, new AstarDistanceKnown<>(providerAstarNode), List.of(providerAstarNode), visualizerStateProvider);
 		assert astarNode.getHeuristic().isKnown();
 
 		// visualize current after going back to previous astarArg
@@ -391,8 +393,8 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 
 		//// parents + (parents & covering edges) make this difficult: arg.getIncompleteNodes().map(astarArg::get).filter(n -> n.distance.getType() != DistanceType.INFINITE)
 		//// 		add to reachedSet if implemented
-		Collection<AstarNode<S, A>> incompleteNodes = astarArg.getIncompleteNodes().collect(Collectors.toList());
-		findDistance(astarArg, initialStopCriterion, incompleteNodes);
+		Collection<AstarNode<S, A>> incompleteAstarNodes = astarArg.getIncompleteNodes().collect(Collectors.toList());
+		findDistance(astarArg, initialStopCriterion, incompleteAstarNodes, "");
 
 		// found and isSafe is different: e.g. full expand
 		if (arg.isSafe()) {

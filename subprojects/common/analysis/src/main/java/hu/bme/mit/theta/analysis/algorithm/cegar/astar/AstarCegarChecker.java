@@ -133,6 +133,7 @@ public final class AstarCegarChecker<S extends State, A extends Action, P extend
 
 			if (abstractorResult.isUnsafe()) {
 				// AstarArg has to be copied as arg will be modified after refinement
+				// TODO Prec is bad
 				astarArg = AstarCopier.createCopy(astarArgStore.getLast(), prec, partialOrd, projection);
 				arg = astarArg.arg;
 
@@ -145,6 +146,7 @@ public final class AstarCegarChecker<S extends State, A extends Action, P extend
 				if (refinerResult.isSpurious()) {
 					// Pruned version of an ARG is the next iteration of ARG.
 					prec = refinerResult.asSpurious().getRefinedPrec();
+					// astarArg.prec = prec; // TODO remove this after figured out how can cover be from other arg
 				}
 			}
 		} while (!abstractorResult.isSafe() && !refinerResult.isUnsafe());
