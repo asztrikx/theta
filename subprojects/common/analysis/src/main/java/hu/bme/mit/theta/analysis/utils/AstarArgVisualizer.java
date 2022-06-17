@@ -15,29 +15,27 @@
  */
 package hu.bme.mit.theta.analysis.utils;
 
-import static hu.bme.mit.theta.common.visualization.Alignment.LEFT;
-import static hu.bme.mit.theta.common.visualization.Shape.RECTANGLE;
-
-import java.awt.Color;
-
-import hu.bme.mit.theta.analysis.Prec;
-import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarArg;
-import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarNode;
-import hu.bme.mit.theta.common.container.Containers;
-
-import java.util.Set;
-import java.util.function.Function;
-import java.util.stream.Collectors;
-
 import hu.bme.mit.theta.analysis.Action;
+import hu.bme.mit.theta.analysis.Prec;
 import hu.bme.mit.theta.analysis.State;
 import hu.bme.mit.theta.analysis.algorithm.ARG;
 import hu.bme.mit.theta.analysis.algorithm.ArgEdge;
 import hu.bme.mit.theta.analysis.algorithm.ArgNode;
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarArg;
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarNode;
+import hu.bme.mit.theta.common.container.Containers;
 import hu.bme.mit.theta.common.visualization.EdgeAttributes;
 import hu.bme.mit.theta.common.visualization.Graph;
 import hu.bme.mit.theta.common.visualization.LineStyle;
 import hu.bme.mit.theta.common.visualization.NodeAttributes;
+
+import java.awt.*;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+
+import static hu.bme.mit.theta.common.visualization.Alignment.LEFT;
+import static hu.bme.mit.theta.common.visualization.Shape.RECTANGLE;
 
 public final class AstarArgVisualizer<S extends State, A extends Action, P extends Prec> {
 
@@ -105,8 +103,9 @@ public final class AstarArgVisualizer<S extends State, A extends Action, P exten
 			AstarNode<S1, A1> astarInitNode = astarArg.get(initNode);
 			if(astarInitNode != null) {
 				traverse(graph, astarInitNode, traversed, astarArg);
+
 				final NodeAttributes nAttributes = NodeAttributes.builder().label("").fillColor(FILL_COLOR)
-						.lineColor(FILL_COLOR).lineStyle(SUCC_EDGE_STYLE).peripheries(1).build();
+						.lineColor(FILL_COLOR).lineStyle(getLineStyle(astarInitNode)).peripheries(1).build();
 				graph.addNode(PHANTOM_INIT_ID + initNode.getId(), nAttributes);
 				final EdgeAttributes eAttributes = EdgeAttributes.builder().label("").color(LINE_COLOR)
 						.lineStyle(SUCC_EDGE_STYLE).build();
@@ -115,6 +114,14 @@ public final class AstarArgVisualizer<S extends State, A extends Action, P exten
 		}
 
 		return graph;
+	}
+
+	private <S1 extends S, A1 extends A, P1 extends P> LineStyle getLineStyle(AstarNode<S1, A1> astarNode) {
+		if (astarNode.argNode.isExpanded() && astarNode.argNode.getSuccNodes().findAny().isEmpty()) {
+			return LineStyle.DASHED;
+		} else {
+			return LineStyle.NORMAL;
+		}
 	}
 
 	private <S1 extends S, A1 extends A, P1 extends P> void traverse(
@@ -130,7 +137,6 @@ public final class AstarArgVisualizer<S extends State, A extends Action, P exten
 			traversed.add(node);
 		}
 		final String nodeId = NODE_ID_PREFIX + node.getId();
-		final LineStyle lineStyle = SUCC_EDGE_STYLE;
 		final int peripheries = node.isTarget() ? 2 : 1;
 
 		// node format: information about node and it's parent (if exists)
@@ -147,7 +153,7 @@ public final class AstarArgVisualizer<S extends State, A extends Action, P exten
 
 		final NodeAttributes nAttributes = NodeAttributes.builder().label(label)
 				.alignment(LEFT).shape(RECTANGLE).font(FONT).fillColor(FILL_COLOR).lineColor(LINE_COLOR)
-				.lineStyle(lineStyle).peripheries(peripheries).build();
+				.lineStyle(getLineStyle(astarNode)).peripheries(peripheries).build();
 
 		graph.addNode(nodeId, nAttributes);
 
