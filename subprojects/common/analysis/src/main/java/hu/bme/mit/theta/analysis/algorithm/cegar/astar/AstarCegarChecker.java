@@ -133,7 +133,6 @@ public final class AstarCegarChecker<S extends State, A extends Action, P extend
 
 			if (abstractorResult.isUnsafe()) {
 				// AstarArg has to be copied as arg will be modified after refinement
-				// TODO Prec is bad
 				astarArg = AstarCopier.createCopy(astarArgStore.getLast(), prec, partialOrd, projection);
 				arg = astarArg.arg;
 

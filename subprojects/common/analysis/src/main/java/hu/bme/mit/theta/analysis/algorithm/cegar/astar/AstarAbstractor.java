@@ -230,9 +230,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 
 		// If we are looking for n targets then it is possible that we reached [1,n) target when reaching this line
 
-		// TODO: findHeuristic? call updateDistancesFromRootInfinite
-
-		// TODO: completed leaf nodes with no distance we should walk up and set infinite distance until all other children have infinite distance
+		// TODO: optimalization: completed leaf nodes with no distance we should walk up and set infinite distance until all other children have infinite distance
 		// otherwise we could visit it many times
 		// e.g.
 		// 		b,d,f is target
@@ -252,7 +250,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		//    b d f
 
 		//
-		// TODO what about loops (covering edge)
+		// TODO (same) what about loops (covering edge)
 		// Covering edge to its ascendant: we
 		//      -
 		//     / |
@@ -263,6 +261,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		//       c - - /
 		//       |
 		//      (there can be other children)
+		// maybe:  ancestors().noneMatch(n -> n.equals(node) || n.isSubsumed());
 	}
 
 	private void addToWaitList(AstarNode<S, A> astarNode, AstarNode<S, A> parentAstarNode, AstarSearch<S, A> search, int depth) {
@@ -291,9 +290,10 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		logger.write(Level.SUBSTEP, "|  |  Building ARG...");
 		astarFileVisualizer.visualize(String.format("start%s", visualizerState), astarArgStore.getIndex(astarArg));
 
-		if (!stopCriterion.canStop(arg)) { // this is at max only for leftover nodes??
+		// TODO: is this only for init nodes? if so delete it (DRY for target distance update)
+		//if (!stopCriterion.canStop(arg)) {
 			findDistanceInner(astarArg, stopCriterion, startAstarNodes);
-		}
+		//}
 
 		// Infinite distance for startNodes that didn't reach target
 		//		A non startNode can be a covering node therefore we have to set them as well
@@ -323,13 +323,14 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		});
 	}
 
-	//// astarNode should already have coveringNode
+	// astarNode: should already have providerNode if not in the first arg
 	// astarArg: the one in which for a node we look for heuristic
 	private void findHeuristic(AstarNode<S, A> astarNode, AstarArg<S, A, P> astarArg) {
 		// no previous astar arg exists: getHeuristic returns (EXACT, 0)
 		if (astarArg.parent == null) {
 			return;
 		}
+		checkNotNull(astarNode.providerAstarNode);
 
 		// already know provider node's distance
 		if (astarNode.getHeuristic().isKnown()) {
@@ -366,7 +367,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		}
 
 		// Parent of argNode should be given
-		assert !parentAstarArg.containsArg(argNode);
+		assert !parentAstarArg.containsArg(argNode); // TODO maybe change to astarArg
 
 		Stream<ArgNode<S, A>> providerCandidates;
 
@@ -375,6 +376,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 			providerCandidates = parentAstarArg.getAllInitArg().stream();
 		} else {
 			AstarNode<S, A> parentProviderAstarNode = parentAstarNode.providerAstarNode;
+			ArgNode<S, A> parentProviderNode = parentProviderAstarNode.argNode;
 			//// as parent's child is explored parent had to be in waitlist => distance exists => parent expanded / covered
 
 			// parentAstarNode had to be in waitlist
@@ -383,27 +385,34 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 			assert parentProviderAstarNode.distance.isKnown();
 			// 		therefore it's heuristic is known
 			//		therefore it must be expanded or covered
-			assert parentProviderAstarNode.argNode.isExpanded() || parentProviderAstarNode.argNode.isCovered();
+			assert parentProviderNode.isExpanded() || parentProviderNode.isCovered() || parentProviderNode.isTarget();
 
 			// Although we don't choose covered provider node after it has been set it still can be covered
 			// (when the provider node is a fresh node and not have)
 			// The node's children are at the covering node
-			if (parentProviderAstarNode.argNode.getCoveringNode().isPresent()) {
-				ArgNode<S, A> parentProviderCoveringNode = parentProviderAstarNode.argNode.getCoveringNode().get();
+			if (parentProviderNode.getCoveringNode().isPresent()) {
+				ArgNode<S, A> parentProviderCoveringNode = parentProviderNode.getCoveringNode().get();
 				// This change will affect visualizer midpoint
 				parentProviderAstarNode = parentAstarNode.providerAstarNode = parentAstarArg.get(parentProviderCoveringNode);
 
 				assert parentProviderAstarNode.distance.isKnown();
-				assert parentProviderAstarNode.argNode.isExpanded();
+				assert parentProviderNode.isExpanded();
 			}
 
-			logger.write(Level.VERBOSE, "Count before filtering for action %d%n", parentProviderAstarNode.argNode.getOutEdges().count());
-			providerCandidates = parentProviderAstarNode.argNode.getOutEdges()
-					// TODO test if equals work
+			// Testing
+			/*if (parentProviderNode.isTarget()) {
+				var newNodes = argBuilder.expand(parentProviderNode, parentAstarArg.prec);
+				assert newNodes.size() == 1;
+				providerCandidates = newNodes.stream();
+			} else {*/
+				providerCandidates = Stream.of();
+			//}
+
+			providerCandidates = Stream.concat(
+					parentProviderNode.getOutEdges()
 					.filter(edge -> edge.getAction().equals(action))
-					.map(ArgEdge::getTarget);
-			logger.write(Level.VERBOSE, "Count after filtering for action %d%n",
-					parentProviderAstarNode.argNode.getOutEdges().filter(edge -> edge.getAction().equals(action)).count()
+					.map(ArgEdge::getTarget),
+					providerCandidates
 			);
 		}
 

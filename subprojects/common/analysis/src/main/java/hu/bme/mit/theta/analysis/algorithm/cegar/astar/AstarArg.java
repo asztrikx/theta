@@ -68,7 +68,14 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
         }
 
         arg.walkUpParents(target.argNode, parents, (node, distance) -> {
-            get(node).distance = new Distance(Distance.Type.EXACT, distance + startDistance);
+            AstarNode<S, A> astarNode = get(node);
+
+            // Multiple targets can be visited during a check, therefore we should only keep distances from the first found target
+            if (astarNode.distance.getType() != Distance.Type.EXACT) {
+                astarNode.distance = new Distance(Distance.Type.EXACT, distance + startDistance);
+            } else {
+                assert astarNode.distance.getValue() <= distance + startDistance;
+            }
 
             return until.contains(node);
         });
