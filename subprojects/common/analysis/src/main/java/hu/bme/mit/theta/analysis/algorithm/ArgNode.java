@@ -18,14 +18,11 @@ package hu.bme.mit.theta.analysis.algorithm;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 
-import java.util.ArrayList;
-import java.util.Collection;
+import java.util.*;
 
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.filevisualizer.AstarFileVisualizer;
 import hu.bme.mit.theta.common.container.Containers;
 
-import java.util.List;
-import java.util.Optional;
 import java.util.stream.Stream;
 
 import hu.bme.mit.theta.analysis.Action;
@@ -52,6 +49,8 @@ public final class ArgNode<S extends State, A extends Action> {
 
 	boolean expanded; // Set by ArgBuilder
 
+	Collection<A> loops;
+
 	ArgNode(final ARG<S, A> arg, final S state, final int id, final int depth, final boolean target) {
 		this.arg = arg;
 		this.state = state;
@@ -63,6 +62,7 @@ public final class ArgNode<S extends State, A extends Action> {
 		coveringNode = Optional.empty();
 		coveredNodes = Containers.createSet();
 		expanded = false;
+		loops = Containers.createSet();
 	}
 
 	void copyFrom(final ArgNode<S, A> subject) {
@@ -72,6 +72,7 @@ public final class ArgNode<S extends State, A extends Action> {
 		//  - managed by ARG
 		id = subject.id;
 		expanded = subject.expanded;
+		loops = Containers.createSet(subject.loops);
 	}
 
 	////
@@ -97,8 +98,11 @@ public final class ArgNode<S extends State, A extends Action> {
 		this.state = state;
 	}
 
+	// node: what we want to cover
 	public boolean mayCover(final ArgNode<S, A> node) {
 		if (arg.partialOrd.isLeq(node.getState(), this.getState())) {
+			// TODO: why do we check n.isSubsumed()
+			// TODO: why don't we cover with ancestors?
 			return ancestors().noneMatch(n -> n.equals(node) || n.isSubsumed());
 		} else {
 			return false;
@@ -125,12 +129,17 @@ public final class ArgNode<S extends State, A extends Action> {
 		coveredNodes.clear();
 	}
 
+	// node: who we cover with
 	public void cover(final ArgNode<S, A> node) {
 		checkArgument(!node.isExcluded(), "Node is not excluded");
 		final Collection<ArgNode<S, A>> oldCoveredNodes = new ArrayList<>(coveredNodes);
-		descendants().forEach(ArgNode::clearCoveredNodes);
+		descendants().forEach(ArgNode::clearCoveredNodes); // TODO why is this sound, do we need to modify parents
 		setCoveringNode(node);
 		oldCoveredNodes.forEach(n -> n.setCoveringNode(node));
+	}
+
+	public void addLoop(A action) {
+		loops.add(action);
 	}
 
 	////
@@ -153,6 +162,10 @@ public final class ArgNode<S extends State, A extends Action> {
 
 	public Stream<ArgNode<S, A>> getCoveredNodes() {
 		return coveredNodes.stream();
+	}
+
+	public Stream<A> getLoops() {
+		return loops.stream();
 	}
 
 	////

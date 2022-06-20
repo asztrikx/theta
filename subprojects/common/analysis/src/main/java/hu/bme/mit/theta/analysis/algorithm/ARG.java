@@ -130,7 +130,8 @@ public final class ARG<S extends State, A extends Action> {
 		checkNotNull(action);
 		checkNotNull(succState);
 		checkArgument(node.arg == this, "Node does not belong to this ARG");
-		checkArgument(!node.isTarget(), "Node is target");
+		// We need to expand target // TODO better comment based on edge case 3
+		//checkArgument(!node.isTarget(), "Node is target");
 		final ArgNode<S, A> succNode = createNode(succState, node.getDepth() + 1, target);
 		createEdge(node, action, succNode);
 		return succNode;
