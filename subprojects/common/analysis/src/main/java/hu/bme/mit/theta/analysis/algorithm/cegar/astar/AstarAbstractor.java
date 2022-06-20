@@ -43,7 +43,6 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static com.google.common.base.Preconditions.checkNotNull;
-import static com.google.common.base.Preconditions.checkState;
 
 /**
  * Astar implementation for the abstractor, relying on an ArgBuilder.
@@ -121,6 +120,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		AstarNode<S, A> upperLimitAstarNode = null;
 		while (!waitlist.isEmpty()) {
 			Edge<S, A> edge = waitlist.remove();
+			AstarNode<S, A> parentAstarNode = edge.start;
 			AstarNode<S, A> astarNode = edge.end;
 			int depth = edge.depthFromAStartNode;
 			ArgNode<S, A> argNode = astarNode.argNode;
@@ -138,15 +138,6 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 				if (stopCriterion.canStop(astarArg.arg, List.of(astarNode.argNode))) {
 					return;
 				}
-			}
-
-			// reached target
-			if (argNode.isTarget()) {
-				astarArg.updateDistancesFromTargetUntil(astarNode, startNodes, parents);
-				if (stopCriterion.canStop(astarArg.arg, List.of(astarNode.argNode))) {
-					return;
-				}
-				continue;
 			}
 
 			// When is this possible:
@@ -168,33 +159,54 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 				continue;
 			}
 
-			close(argNode, astarArg.reachedSet.get(argNode));
+			close(argNode, astarArg.reachedSet.get(argNode), parents);
 			if (argNode.getCoveringNode().isPresent()) {
 				ArgNode<S, A> coveringNode = argNode.getCoveringNode().get();
 				AstarNode<S, A> coveringAstarNode = astarArg.get(coveringNode);
 				findHeuristic(coveringAstarNode, astarArg);
 
 				// Covering edge has 0 weight
-				//// going over covering edge does not break heuristic monotonicity
 				addToWaitList(coveringAstarNode, astarNode, search, depth);
-				// covering node is already found therefore already in reachedSet
+				// Covering node is already found therefore already in reachedSet
+
+				// If astarNode's parent is also a coveredNode then covering edges have been redirected.
+				// We have to update parents map according to that. (see ArgNode::cover)
+				//  1) a - - -> b
+				//  2) a - - -> b - - -> c
+				//  3) a        b - - -> c
+				//	   |                 ^
+				//     | - - - - - - - - |
+
+				// coveringAstarNode may already have a better parent or already in doneSet
+				if (parents.get(coveringNode) == argNode) {
+					if (parentAstarNode.argNode.getCoveringNode().isPresent()) {
+						// Because argNode is covered it can only reach coveringNode with the same distance as it's new parent
+						// therefore we can safely remove it
+						parents.remove(argNode);
+
+						// Update to new parent
+						parents.replace(coveringNode, parentAstarNode.argNode);
+					}
+				}
+
 				continue;
 			}
 
-			if (!argNode.isSubsumed() && !argNode.isTarget()) {
+			if (!argNode.isSubsumed()/* && !argNode.isTarget()*/) {
 				// expand: create nodes
 				if (!argNode.isExpanded()) {
 					argBuilder.expand(argNode, astarArg.prec);
 				}
 
 				// go over recreated and remained nodes
+				// TODO rewrite from outEdge as we don't need action
 				argNode.getOutEdges().forEach(outEdge -> {
 					ArgNode<S, A> succArgNode = outEdge.getTarget();
 					AstarNode<S, A> succAstarNode = astarArg.get(succArgNode);
 
 					// expand: create astar nodes
 					if (succAstarNode == null) {
-						AstarNode<S, A> providerAstarNode = findProviderAstarNode(succArgNode, outEdge.getAction(), astarNode, astarArg.parent);
+						AstarNode<S, A> providerAstarNode = findProviderAstarNode(succArgNode, astarNode, astarArg.parent);
 						succAstarNode = new AstarNode<>(succArgNode, providerAstarNode);
 						astarArg.put(succAstarNode);
 						astarArg.reachedSet.add(succArgNode);
@@ -217,6 +229,16 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 
 					addToWaitList(succAstarNode, astarNode, search, depth + 1);
 				});
+			}
+
+			// reached target
+			//	 	All nodes are expected to be expanded targets as well
+			if (argNode.isTarget()) {
+				astarArg.updateDistancesFromTargetUntil(astarNode, startNodes, parents);
+				if (stopCriterion.canStop(astarArg.arg, List.of(astarNode.argNode))) {
+					return;
+				}
+				continue;
 			}
 
 			// TODO: stopcriterion for children: can we be sure that if the parent of target is found first then target
@@ -312,7 +334,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 			assert !initArgNode.isCovered();
 
 			// find provider node
-			AstarNode<S, A> providerNode = findProviderAstarNode(initArgNode, null, null, astarArg.parent);
+			AstarNode<S, A> providerNode = findProviderAstarNode(initArgNode, null, astarArg.parent);
 			assert astarArg.parent == null || providerNode != null;
 
 			// create init astar node
@@ -338,6 +360,8 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		}
 		assert type != Type.FULL;
 
+		// Do not return EXACT(0) when node is target as that would not create the side effect of expanding the node
+
 		// visualize current before going back to previous astarArg
 		String visualizerState = AstarFileVisualizer.getVisualizerState(List.of(astarNode));
 		astarFileVisualizer.visualize(String.format("paused %s", visualizerState), astarArgStore.getIndex(astarArg));
@@ -354,10 +378,9 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		astarFileVisualizer.visualize(String.format("resumed %s", visualizerState), astarArgStore.getIndex(astarArg));
 	}
 
-	// action, parentAstarNode: can be null when argNode is an init node
+	// parentAstarNode: can be null when argNode is an init node
 	private AstarNode<S, A> findProviderAstarNode(
 			ArgNode<S, A> argNode,
-			@Nullable A action,
 			@Nullable AstarNode<S, A> parentAstarNode,
 			AstarArg<S, A, P> parentAstarArg
 	) {
@@ -384,8 +407,8 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 			// 		therefore it's provider's distance is known
 			assert parentProviderAstarNode.distance.isKnown();
 			// 		therefore it's heuristic is known
-			//		therefore it must be expanded or covered
-			assert parentProviderNode.isExpanded() || parentProviderNode.isCovered() || parentProviderNode.isTarget();
+			//		therefore it must be expanded or covered (targets are also expanded)
+			assert parentProviderNode.isExpanded() || parentProviderNode.isCovered();
 
 			// Although we don't choose covered provider node after it has been set it still can be covered
 			// (when the provider node is a fresh node and not have)
@@ -394,26 +417,16 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 				ArgNode<S, A> parentProviderCoveringNode = parentProviderNode.getCoveringNode().get();
 				// This change will affect visualizer midpoint
 				parentProviderAstarNode = parentAstarNode.providerAstarNode = parentAstarArg.get(parentProviderCoveringNode);
+				parentProviderNode = parentProviderAstarNode.argNode;
 
 				assert parentProviderAstarNode.distance.isKnown();
 				assert parentProviderNode.isExpanded();
 			}
 
-			// Testing
-			/*if (parentProviderNode.isTarget()) {
-				var newNodes = argBuilder.expand(parentProviderNode, parentAstarArg.prec);
-				assert newNodes.size() == 1;
-				providerCandidates = newNodes.stream();
-			} else {*/
-				providerCandidates = Stream.of();
-			//}
-
-			providerCandidates = Stream.concat(
-					parentProviderNode.getOutEdges()
-					.filter(edge -> edge.getAction().equals(action))
-					.map(ArgEdge::getTarget),
-					providerCandidates
-			);
+			providerCandidates = parentProviderNode.getOutEdges().map(ArgEdge::getTarget);
+			if (parentProviderNode.getLoops().findAny().isPresent()) {
+				providerCandidates = Stream.concat(Stream.of(parentProviderNode), providerCandidates);
+			}
 		}
 
 		// filter based on partialOrd: isLeq == "<=" == subset of
