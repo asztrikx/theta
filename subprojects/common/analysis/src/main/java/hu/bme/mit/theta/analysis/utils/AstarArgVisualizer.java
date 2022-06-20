@@ -133,9 +133,8 @@ public final class AstarArgVisualizer<S extends State, A extends Action, P exten
 		final ArgNode<S1, A1> node = astarNode.argNode;
 		if (traversed.contains(node)) {
 			return;
-		} else {
-			traversed.add(node);
 		}
+		traversed.add(node);
 		final String nodeId = NODE_ID_PREFIX + node.getId();
 		final int peripheries = node.isTarget() ? 2 : 1;
 
@@ -157,17 +156,17 @@ public final class AstarArgVisualizer<S extends State, A extends Action, P exten
 
 		graph.addNode(nodeId, nAttributes);
 
+		for (final A action : node.getLoops().collect(Collectors.toList())) {
+			createEdge(graph, node, astarNode, SUCC_EDGE_STYLE, actionToString.apply(action));
+		}
+
 		for (final ArgEdge<S1, A1> edge : node.getOutEdges().collect(Collectors.toSet())) {
 			// We might be searching for provider node for children nodes created by expand.
 			// In that case a visualization will be made of that graph, but those children not have AstarNode because of the latter.
 			AstarNode<S1, A1> astarNodeChild = astarArg.get(edge.getTarget());
 			if(astarNodeChild != null){
 				traverse(graph, astarNodeChild, traversed, astarArg);
-				final String sourceId = NODE_ID_PREFIX + edge.getSource().getId();
-				final String targetId = NODE_ID_PREFIX + edge.getTarget().getId();
-				final EdgeAttributes eAttributes = EdgeAttributes.builder().label(actionToString.apply(edge.getAction()))
-						.alignment(LEFT).font(FONT).color(LINE_COLOR).lineStyle(SUCC_EDGE_STYLE).build();
-				graph.addEdge(sourceId, targetId, eAttributes);
+				createEdge(graph, node, astarNodeChild, SUCC_EDGE_STYLE, actionToString.apply(edge.getAction()));
 			}
 		}
 
@@ -176,12 +175,18 @@ public final class AstarArgVisualizer<S extends State, A extends Action, P exten
 			AstarNode<S1, A1> astarNodeChild = astarArg.get(node.getCoveringNode().get());
 			if(astarNodeChild != null){
 				traverse(graph, astarNodeChild, traversed, astarArg);
-				final String sourceId = NODE_ID_PREFIX + node.getId();
-				final String targetId = NODE_ID_PREFIX + node.getCoveringNode().get().getId();
-				final EdgeAttributes eAttributes = EdgeAttributes.builder().label("").color(LINE_COLOR)
-						.lineStyle(COVER_EDGE_STYLE).weight(0).build();
-				graph.addEdge(sourceId, targetId, eAttributes);
+				createEdge(graph, node, astarNodeChild, COVER_EDGE_STYLE, "");
 			}
 		}
+	}
+
+	private <S1 extends S, A1 extends A, P1 extends P> void createEdge(
+			Graph graph, ArgNode<S1, A1> parent, AstarNode<S1, A1> child, LineStyle lineStyle, String actionText
+	) {
+		final String sourceId = NODE_ID_PREFIX + parent.getId();
+		final String targetId = NODE_ID_PREFIX + child.argNode.getId();
+		final EdgeAttributes eAttributes = EdgeAttributes.builder().label(actionText).color(LINE_COLOR)
+				.alignment(LEFT).font(FONT).lineStyle(lineStyle).weight(0).build();
+		graph.addEdge(sourceId, targetId, eAttributes);
 	}
 }
