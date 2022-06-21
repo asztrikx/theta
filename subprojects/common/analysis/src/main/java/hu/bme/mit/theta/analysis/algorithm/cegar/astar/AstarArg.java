@@ -73,11 +73,26 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
             // Multiple targets can be visited during a check, therefore we should only keep distances from the first found target
             if (astarNode.distance.getType() != Distance.Type.EXACT) {
                 astarNode.distance = new Distance(Distance.Type.EXACT, distance + startDistance);
+                return until.contains(node);
             } else {
                 assert astarNode.distance.getValue() <= distance + startDistance;
-            }
 
-            return until.contains(node);
+                if (target.argNode != node) {
+                    return true;
+                } else {
+                    // We would not start a search from a node with known distance
+                    assert !until.contains(node);
+                    return false;
+                }
+
+                // We can skip once we reach a known distance:
+                //  - if it was within the same search then parents is the same
+                //      - for common nodes we walk up through the same nodes
+                //      - those nodes only have distance by reaching at least once the target in this search
+                //      - otherwise the distance was already there and we wouldn't explore here
+                //      - therefore all nodes above the first node with distance have a distance
+                //  - if it wasn't then we would stop when we reach a node with known distance therefore this scenario is not possible
+            }
         });
     }
 
