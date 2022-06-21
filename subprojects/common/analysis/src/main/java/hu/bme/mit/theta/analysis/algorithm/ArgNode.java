@@ -49,8 +49,6 @@ public final class ArgNode<S extends State, A extends Action> {
 
 	boolean expanded; // Set by ArgBuilder
 
-	Collection<A> loops;
-
 	ArgNode(final ARG<S, A> arg, final S state, final int id, final int depth, final boolean target) {
 		this.arg = arg;
 		this.state = state;
@@ -62,7 +60,6 @@ public final class ArgNode<S extends State, A extends Action> {
 		coveringNode = Optional.empty();
 		coveredNodes = Containers.createSet();
 		expanded = false;
-		loops = Containers.createSet();
 	}
 
 	void copyFrom(final ArgNode<S, A> subject) {
@@ -72,7 +69,6 @@ public final class ArgNode<S extends State, A extends Action> {
 		//  - managed by ARG
 		id = subject.id;
 		expanded = subject.expanded;
-		loops = Containers.createSet(subject.loops);
 	}
 
 	////
@@ -101,8 +97,7 @@ public final class ArgNode<S extends State, A extends Action> {
 	// node: what we want to cover
 	public boolean mayCover(final ArgNode<S, A> node) {
 		if (arg.partialOrd.isLeq(node.getState(), this.getState())) {
-			// TODO: why do we check n.isSubsumed()
-			// TODO: why don't we cover with ancestors?
+			// TODO: why do we check these?
 			return ancestors().noneMatch(n -> n.equals(node) || n.isSubsumed());
 		} else {
 			return false;
@@ -138,10 +133,6 @@ public final class ArgNode<S extends State, A extends Action> {
 		oldCoveredNodes.forEach(n -> n.setCoveringNode(node));
 	}
 
-	public void addLoop(A action) {
-		loops.add(action);
-	}
-
 	////
 
 	public Optional<ArgNode<S, A>> getParent() {
@@ -162,10 +153,6 @@ public final class ArgNode<S extends State, A extends Action> {
 
 	public Stream<ArgNode<S, A>> getCoveredNodes() {
 		return coveredNodes.stream();
-	}
-
-	public Stream<A> getLoops() {
-		return loops.stream();
 	}
 
 	////

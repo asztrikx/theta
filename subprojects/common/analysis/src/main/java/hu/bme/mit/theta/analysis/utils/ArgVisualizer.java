@@ -104,7 +104,12 @@ public final class ArgVisualizer<S extends State, A extends Action> {
 		final LineStyle lineStyle = SUCC_EDGE_STYLE;
 		final int peripheries = node.isTarget() ? 2 : 1;
 
-		final NodeAttributes nAttributes = NodeAttributes.builder().label(stateToString.apply(node.getState()))
+		String label = String.format("%s\\l%s",
+				stateToString.apply(node.getState()),
+				String.format("ArgNode: %s", node.toString())
+		);
+
+		final NodeAttributes nAttributes = NodeAttributes.builder().label(label)
 				.alignment(LEFT).shape(RECTANGLE).font(FONT).fillColor(FILL_COLOR).lineColor(LINE_COLOR)
 				.lineStyle(lineStyle).peripheries(peripheries).build();
 

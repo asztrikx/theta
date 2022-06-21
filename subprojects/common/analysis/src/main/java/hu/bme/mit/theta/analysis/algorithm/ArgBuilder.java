@@ -100,12 +100,6 @@ public final class ArgBuilder<S extends State, A extends Action, P extends Prec>
 					continue;
 				}
 
-				// TODO by default would there be a new node?
-				if (node.getState().equals(succState)) {
-					node.addLoop(action);
-					continue;
-				}
-
 				// Only add state if there is no covering sibling (with the same action)
 				if (node.getSuccNodes().noneMatch(n -> n.getInEdge().get().getAction().equals(action) &&
 						analysis.getPartialOrd().isLeq(succState, n.getState()))) {

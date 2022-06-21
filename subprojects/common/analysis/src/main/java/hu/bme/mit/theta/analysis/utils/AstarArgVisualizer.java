@@ -147,7 +147,7 @@ public final class AstarArgVisualizer<S extends State, A extends Action, P exten
 				stateToString.apply(node.getState()),
 				String.format("ArgNode: %s", argNodeToString.apply(node)),
 				String.format("AstarNode: %s", astarNodeToString.apply(astarNode)),
-				String.format("Parent: %s", parentLabel)
+				String.format("Provider: %s", parentLabel)
 		);
 
 		final NodeAttributes nAttributes = NodeAttributes.builder().label(label)
@@ -155,10 +155,6 @@ public final class AstarArgVisualizer<S extends State, A extends Action, P exten
 				.lineStyle(getLineStyle(astarNode)).peripheries(peripheries).build();
 
 		graph.addNode(nodeId, nAttributes);
-
-		for (final A action : node.getLoops().collect(Collectors.toList())) {
-			createEdge(graph, node, astarNode, SUCC_EDGE_STYLE, actionToString.apply(action));
-		}
 
 		for (final ArgEdge<S1, A1> edge : node.getOutEdges().collect(Collectors.toSet())) {
 			// We might be searching for provider node for children nodes created by expand.

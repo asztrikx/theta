@@ -159,7 +159,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 				continue;
 			}
 
-			close(argNode, astarArg.reachedSet.get(argNode), parents);
+			close(argNode, astarArg.reachedSet.get(argNode));
 			if (argNode.getCoveringNode().isPresent()) {
 				ArgNode<S, A> coveringNode = argNode.getCoveringNode().get();
 				AstarNode<S, A> coveringAstarNode = astarArg.get(coveringNode);
@@ -179,7 +179,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 
 				// coveringAstarNode may already have a better parent or already in doneSet
 				if (parents.get(coveringNode) == argNode) {
-					if (parentAstarNode.argNode.getCoveringNode().isPresent()) {
+					if (parentAstarNode != null && parentAstarNode.argNode.getCoveringNode().isPresent()) {
 						// Because argNode is covered it can only reach coveringNode with the same distance as it's new parent
 						// therefore we can safely remove it
 						parents.remove(argNode);
@@ -241,8 +241,12 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 				continue;
 			}
 
-			// TODO: stopcriterion for children: can we be sure that if the parent of target is found first then target
-			//  would be found first if let the expanding continue?
+			// TODO: validate & rewrite
+			// cex: we can't stop when node's child contains a target
+			// waitlist (heuristic, depth): (0, x), (1, x-1)
+			// 		first is the current element which reaches target
+			//		second is an element in waitlist which also reaches target
+			// targets (heuristic, depth): (0, x+1), (0, x)
 		}
 
 		// upper limit was not reached (no more nodes left)
@@ -415,6 +419,8 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 			// The node's children are at the covering node
 			if (parentProviderNode.getCoveringNode().isPresent()) {
 				ArgNode<S, A> parentProviderCoveringNode = parentProviderNode.getCoveringNode().get();
+				// Optimization: only handle covering case once
+				// We can't do this when setting parentAstarNode's provider node as covering can happen after that
 				// This change will affect visualizer midpoint
 				parentProviderAstarNode = parentAstarNode.providerAstarNode = parentAstarArg.get(parentProviderCoveringNode);
 				parentProviderNode = parentProviderAstarNode.argNode;
@@ -424,9 +430,6 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 			}
 
 			providerCandidates = parentProviderNode.getOutEdges().map(ArgEdge::getTarget);
-			if (parentProviderNode.getLoops().findAny().isPresent()) {
-				providerCandidates = Stream.concat(Stream.of(parentProviderNode), providerCandidates);
-			}
 		}
 
 		// filter based on partialOrd: isLeq == "<=" == subset of
