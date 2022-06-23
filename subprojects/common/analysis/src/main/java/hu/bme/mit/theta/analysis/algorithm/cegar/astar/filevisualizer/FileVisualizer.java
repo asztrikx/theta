@@ -74,6 +74,10 @@ public abstract class FileVisualizer {
 		}
 	}
 
+	public boolean getEnabled() {
+		return enabled;
+	}
+
 	private static String getNowText() {
 		LocalDateTime now = LocalDateTime.now();
 		DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy_MM_dd HH_mm_ss");

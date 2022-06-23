@@ -293,6 +293,6 @@ public final class ArgNode<S extends State, A extends Action> {
 	@Override
 	public String toString() {
 		//return Utils.lispStringBuilder("ArgNode").add(id).body().add(state).toString();
-		return AstarFileVisualizer.getVisualizerStateILoveJava(List.of(this));
+		return AstarFileVisualizer.getVisualizerState(this);
 	}
 }
