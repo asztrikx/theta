@@ -2,9 +2,10 @@ package hu.bme.mit.theta.analysis.algorithm.cegar.astar;
 
 import hu.bme.mit.theta.analysis.Action;
 import hu.bme.mit.theta.analysis.PartialOrd;
-import hu.bme.mit.theta.analysis.State;
 import hu.bme.mit.theta.analysis.Prec;
+import hu.bme.mit.theta.analysis.State;
 import hu.bme.mit.theta.analysis.algorithm.ARG;
+import hu.bme.mit.theta.analysis.algorithm.ArgEdge;
 import hu.bme.mit.theta.analysis.algorithm.ArgNode;
 import hu.bme.mit.theta.analysis.reachedset.Partition;
 import hu.bme.mit.theta.common.container.factory.HashContainerFactory;
@@ -131,6 +132,85 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
             return false;
         });
         astarNodes = astarNodesNew;
+    }
+
+    public AstarNode<S, A> createSuccAstarNode(ArgNode<S, A> argNode, AstarNode<S, A> parentAstarNode) {
+        AstarNode<S, A> providerAstarNode = findProviderAstarNode(argNode, parentAstarNode, parent);
+        AstarNode<S, A> astarNode = new AstarNode<>(argNode, providerAstarNode);
+        put(astarNode);
+        reachedSet.add(argNode);
+        return astarNode;
+    }
+
+    public AstarNode<S, A> createInitAstarNode(ArgNode<S, A> initArgNode) {
+        AstarNode<S, A> providerNode = findProviderAstarNode(initArgNode, null, parent);
+        AstarNode<S, A> newInitAstarNode = new AstarNode<>(initArgNode, providerNode);
+        putInit(newInitAstarNode);
+        reachedSet.add(newInitAstarNode.argNode);
+        return newInitAstarNode;
+    }
+
+    // parentAstarNode: can be null when argNode is an init node
+    private AstarNode<S, A> findProviderAstarNode(
+            ArgNode<S, A> argNode,
+            @Nullable AstarNode<S, A> parentAstarNode,
+            AstarArg<S, A, P> parentAstarArg
+    ) {
+        // No previous arg therefore no provider node
+        if (parentAstarArg == null) {
+            return null;
+        }
+
+        // Parent of argNode should be given
+        assert !parentAstarArg.containsArg(argNode); // TODO maybe change to astarArg
+
+        Stream<ArgNode<S, A>> providerCandidates;
+
+        // Init nodes don't have parents
+        if (parentAstarNode == null) {
+            providerCandidates = parentAstarArg.getAllInitArg().stream();
+        } else {
+            AstarNode<S, A> parentProviderAstarNode = parentAstarNode.providerAstarNode;
+            ArgNode<S, A> parentProviderNode = parentProviderAstarNode.argNode;
+
+            // parentAstarNode had to be in waitlist
+            // 		therefore it's heuristic is known
+            // 		therefore it's provider's distance is known
+            assert parentProviderAstarNode.distance.isKnown();
+            // 		therefore it's heuristic is known
+            //		therefore it must be expanded or covered (targets are also expanded)
+            assert parentProviderNode.isExpanded() || parentProviderNode.isCovered();
+
+            // Even if we checked provider node before setting it whether it is covered,
+            // later it still can be covered if it's not yet expanded.
+            // The node's children are the covering node's children.
+            // There is no guarantee that covering node has been expanded or has distance, we can only know it for the covered node
+            //	 The only case when this can happen is when covered node is a target otherwise
+            //	 we continue the search in covering node which would make it expanded would also receive a distance.
+            //	 That case is handled by expanded target when found.
+            // Covering node chains are compressed therefore covering node can't have covering node.
+            if (parentProviderNode.getCoveringNode().isPresent()) {
+                ArgNode<S, A> parentProviderCoveringNode = parentProviderNode.getCoveringNode().get();
+                // Optimization: only handle covering case once
+                // We can't do this when setting parentAstarNode's provider node as covering can happen after that
+                // This change will affect visualizer midpoint
+                parentProviderAstarNode = parentAstarNode.providerAstarNode = parentAstarArg.get(parentProviderCoveringNode);
+                parentProviderNode = parentProviderAstarNode.argNode;
+
+                assert parentProviderAstarNode.distance.isKnown();
+                assert parentProviderNode.isExpanded();
+            }
+
+            providerCandidates = parentProviderNode.getOutEdges().map(ArgEdge::getTarget);
+        }
+
+        // filter based on partialOrd: isLeq == "<=" == subset of
+        providerCandidates = providerCandidates.filter(providerCandidate ->
+                partialOrd.isLeq(argNode.getState(), providerCandidate.getState())
+        );
+        Optional<ArgNode<S,A>> providerNode = providerCandidates.findAny();
+        assert providerNode.isPresent();
+        return parentAstarArg.get(providerNode.get());
     }
 
     /// ARG Wrappers

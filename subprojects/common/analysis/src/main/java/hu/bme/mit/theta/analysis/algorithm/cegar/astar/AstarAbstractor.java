@@ -140,6 +140,17 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 				}
 			}
 
+			// reached target
+			//	 	All nodes are expected to be expanded for provider nodes, targets as well
+			if (argNode.isTarget()) {
+				astarArg.updateDistancesFromTargetUntil(astarNode, startNodes, parents);
+				expandTarget(astarNode, astarArg);
+				if (stopCriterion.canStop(astarArg.arg, List.of(astarNode.argNode))) {
+					return;
+				}
+				continue;
+			}
+
 			// When is this possible:
 			//   - in a different subgraph reached by covering edge
 			//   - same subgraph which was reached from a different subgraph by a covering edge
@@ -192,24 +203,21 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 				continue;
 			}
 
-			if (!argNode.isSubsumed()/* && !argNode.isTarget()*/) {
+			if (argNode.isFeasible()) {
+				assert !argNode.isTarget() && !argNode.isCovered();
+
 				// expand: create nodes
 				if (!argNode.isExpanded()) {
 					argBuilder.expand(argNode, astarArg.prec);
-				}
+				} // TODO if stopcriterion can stop +target? => stop here
 
 				// go over recreated and remained nodes
-				// TODO rewrite from outEdge as we don't need action
-				argNode.getOutEdges().forEach(outEdge -> {
-					ArgNode<S, A> succArgNode = outEdge.getTarget();
+				argNode.getSuccNodes().forEach(succArgNode -> {
 					AstarNode<S, A> succAstarNode = astarArg.get(succArgNode);
 
 					// expand: create astar nodes
 					if (succAstarNode == null) {
-						AstarNode<S, A> providerAstarNode = findProviderAstarNode(succArgNode, astarNode, astarArg.parent);
-						succAstarNode = new AstarNode<>(succArgNode, providerAstarNode);
-						astarArg.put(succAstarNode);
-						astarArg.reachedSet.add(succArgNode);
+						succAstarNode = astarArg.createSuccAstarNode(succArgNode, astarNode);
 					}
 
 					// already existing succAstarNode
@@ -229,16 +237,6 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 
 					addToWaitList(succAstarNode, astarNode, search, depth + 1);
 				});
-			}
-
-			// reached target
-			//	 	All nodes are expected to be expanded targets as well
-			if (argNode.isTarget()) {
-				astarArg.updateDistancesFromTargetUntil(astarNode, startNodes, parents);
-				if (stopCriterion.canStop(astarArg.arg, List.of(astarNode.argNode))) {
-					return;
-				}
-				continue;
 			}
 
 			// TODO: validate & rewrite
@@ -290,6 +288,41 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		// maybe:  ancestors().noneMatch(n -> n.equals(node) || n.isSubsumed());
 	}
 
+	// expands the provider node so that the children of the provided node can also have provider nodes to choose from
+	private void expandTarget(AstarNode<S, A> astarNode, AstarArg<S, A, P> astarArg) {
+		if (astarArg == null) {
+			return;
+		}
+		ArgNode<S, A> argNode = astarNode.argNode;
+		assert !argNode.isExpanded();
+
+		do {
+			argBuilder.expand(argNode, astarArg.prec);
+
+			// go over recreated and remained nodes
+			// expand: create astar nodes
+			AstarNode<S, A> lambdaAstarNode = astarNode;
+			argNode.getSuccNodes().forEach(succArgNode -> {
+				AstarNode<S, A> succAstarNode = astarArg.get(succArgNode);
+				if (succAstarNode == null) {
+					astarArg.createSuccAstarNode(succArgNode, lambdaAstarNode);
+				}
+			});
+
+			if (argNode.getCoveringNode().isEmpty()) {
+				break;
+			}
+
+			// Covered node's children are the covering node's children, therefore we have to expand the covering node
+			argNode = argNode.getCoveringNode().get();
+			astarNode = astarArg.get(argNode);
+			// As we are not exploring with findDistance we have to manually set the distances for new nodes.
+			// Target node's covering node must be target
+			assert argNode.isTarget();
+			astarNode.distance = new Distance(Distance.Type.EXACT, 0);
+		} while(!argNode.isExpanded()); // We can cover into an already expanded target e.g. ("self loops" is also a good example)
+	}
+
 	private void addToWaitList(AstarNode<S, A> astarNode, AstarNode<S, A> parentAstarNode, AstarSearch<S, A> search, int depth) {
 		Waitlist<Edge<S, A>> waitlist = search.waitlist;
 		Set<AstarNode<S, A>> doneSet = search.doneSet;
@@ -336,16 +369,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 	private void initAstarArg(final AstarArg<S, A, P> astarArg) {
 		astarArg.arg.getInitNodes().forEach(initArgNode -> {
 			assert !initArgNode.isCovered();
-
-			// find provider node
-			AstarNode<S, A> providerNode = findProviderAstarNode(initArgNode, null, astarArg.parent);
-			assert astarArg.parent == null || providerNode != null;
-
-			// create init astar node
-			AstarNode<S, A> newInitAstarNode = new AstarNode<>(initArgNode, providerNode);
-			astarArg.putInit(newInitAstarNode);
-
-			astarArg.reachedSet.add(newInitAstarNode.argNode);
+			astarArg.createInitAstarNode(initArgNode);
 		});
 	}
 
@@ -380,65 +404,6 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 
 		// visualize current after going back to previous astarArg
 		astarFileVisualizer.visualize(String.format("resumed %s", visualizerState), astarArgStore.getIndex(astarArg));
-	}
-
-	// parentAstarNode: can be null when argNode is an init node
-	private AstarNode<S, A> findProviderAstarNode(
-			ArgNode<S, A> argNode,
-			@Nullable AstarNode<S, A> parentAstarNode,
-			AstarArg<S, A, P> parentAstarArg
-	) {
-		// No previous arg therefore no provider node
-		if (parentAstarArg == null) {
-			return null;
-		}
-
-		// Parent of argNode should be given
-		assert !parentAstarArg.containsArg(argNode); // TODO maybe change to astarArg
-
-		Stream<ArgNode<S, A>> providerCandidates;
-
-		// Init nodes don't have parents
-		if (parentAstarNode == null) {
-			providerCandidates = parentAstarArg.getAllInitArg().stream();
-		} else {
-			AstarNode<S, A> parentProviderAstarNode = parentAstarNode.providerAstarNode;
-			ArgNode<S, A> parentProviderNode = parentProviderAstarNode.argNode;
-			//// as parent's child is explored parent had to be in waitlist => distance exists => parent expanded / covered
-
-			// parentAstarNode had to be in waitlist
-			// 		therefore it's heuristic is known
-			// 		therefore it's provider's distance is known
-			assert parentProviderAstarNode.distance.isKnown();
-			// 		therefore it's heuristic is known
-			//		therefore it must be expanded or covered (targets are also expanded)
-			assert parentProviderNode.isExpanded() || parentProviderNode.isCovered();
-
-			// Although we don't choose covered provider node after it has been set it still can be covered
-			// (when the provider node is a fresh node and not have)
-			// The node's children are at the covering node
-			if (parentProviderNode.getCoveringNode().isPresent()) {
-				ArgNode<S, A> parentProviderCoveringNode = parentProviderNode.getCoveringNode().get();
-				// Optimization: only handle covering case once
-				// We can't do this when setting parentAstarNode's provider node as covering can happen after that
-				// This change will affect visualizer midpoint
-				parentProviderAstarNode = parentAstarNode.providerAstarNode = parentAstarArg.get(parentProviderCoveringNode);
-				parentProviderNode = parentProviderAstarNode.argNode;
-
-				assert parentProviderAstarNode.distance.isKnown();
-				assert parentProviderNode.isExpanded();
-			}
-
-			providerCandidates = parentProviderNode.getOutEdges().map(ArgEdge::getTarget);
-		}
-
-		// filter based on partialOrd: isLeq == "<=" == subset of
-		providerCandidates = providerCandidates.filter(providerCandidate ->
-				partialOrd.isLeq(argNode.getState(), providerCandidate.getState())
-		);
-		Optional<ArgNode<S,A>> providerNode = providerCandidates.findAny();
-		assert providerNode.isPresent();
-		return parentAstarArg.get(providerNode.get());
 	}
 
 	@Override
