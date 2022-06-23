@@ -361,6 +361,11 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 			findDistanceInner(astarArg, stopCriterion, startAstarNodes);
 		//}
 
+		// TODO temporary fix until we set all possible nodes infinite
+		if (startAstarNodes.stream().noneMatch(a -> a.distance.isKnown())) {
+			startAstarNodes.forEach(astarArg::updateDistancesFromRootInfinite);
+		}
+
 		logger.write(Level.SUBSTEP, "done%n");
 		logger.write(Level.INFO, "|  |  Finished ARG: %d nodes, %d incomplete, %d unsafe%n", arg.getNodes().count(),
 				arg.getIncompleteNodes().count(), arg.getUnsafeNodes().count());
