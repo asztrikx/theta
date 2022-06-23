@@ -15,15 +15,21 @@ import static com.google.common.base.Preconditions.checkNotNull;
 
 public abstract class FileVisualizer {
 	private static final String nowText = getNowText();
-	private final Logger logger;
 	private File file;
 
-	public FileVisualizer(Logger logger) {
-		this.logger = logger;
+	private boolean enabled;
+	private boolean initialized = false;
 
-		if (logger == NullLogger.getInstance()) {
-			return;
+	public FileVisualizer(boolean enabled) {
+		this.enabled = enabled;
+
+		if (enabled) {
+			initialize();
 		}
+	}
+
+	public void initialize() {
+		initialized = true;
 
 		File parentDir = new File(String.format("%s/theta/%s", System.getProperty("java.io.tmpdir"), nowText));
 		if (!parentDir.exists()) {
@@ -45,7 +51,7 @@ public abstract class FileVisualizer {
 	protected void visualizeBase(String state, String title, Supplier<Graph> graphSupplier) {
 		checkNotNull(state);
 
-		if (logger == NullLogger.getInstance()) {
+		if (!enabled) {
 			return;
 		}
 
@@ -57,6 +63,14 @@ public abstract class FileVisualizer {
 			GraphvizWriter.getInstance().writeFileAutoConvert(graphSupplier.get(), filename);
 		} catch (IOException | InterruptedException e) {
 			throw new RuntimeException(e);
+		}
+	}
+
+	public void setEnabled(boolean enabled) {
+		this.enabled = enabled;
+
+		if (enabled && !initialized) {
+			initialize();
 		}
 	}
 

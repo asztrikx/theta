@@ -17,8 +17,8 @@ import static com.google.common.base.Preconditions.checkNotNull;
 public class AstarFileVisualizer<S extends State, A extends Action, P extends Prec> extends FileVisualizer {
     private final AstarArgStore<S, A, P> astarArgStore;
 
-    public AstarFileVisualizer(Logger logger, AstarArgStore<S, A, P> astarArgStore) {
-        super(logger);
+    public AstarFileVisualizer(boolean enabled, AstarArgStore<S, A, P> astarArgStore) {
+        super(enabled);
         this.astarArgStore = astarArgStore;
     }
 

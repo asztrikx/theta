@@ -7,10 +7,10 @@ import hu.bme.mit.theta.analysis.utils.ArgVisualizer;
 import hu.bme.mit.theta.common.logging.Logger;
 
 public class ArgFileVisualizer<S extends State, A extends Action> extends FileVisualizer {
-	private ARG<S, A> arg;
+	private final ARG<S, A> arg;
 
-	public ArgFileVisualizer(Logger logger, ARG<S, A> arg) {
-		super(logger);
+	public ArgFileVisualizer(boolean enabled, ARG<S, A> arg) {
+		super(enabled);
 		this.arg = arg;
 	}
 
