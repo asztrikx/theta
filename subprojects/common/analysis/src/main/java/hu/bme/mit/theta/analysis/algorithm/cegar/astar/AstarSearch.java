@@ -26,7 +26,7 @@ public class AstarSearch<S extends State, A extends Action> {
 	public Waitlist<Edge<S, A>> waitlist = PriorityWaitlist.create(new AstarWaitlistComparator<>());
 
 	public static class Edge<S extends State, A extends Action> {
-		public @Nullable AstarNode<S, A> start;
+		public @Nullable AstarNode<S, A> start; // TODO this is redundant as we can get it from parents however this is faster
 		public AstarNode<S, A> end;
 		public int depthFromAStartNode;
 
