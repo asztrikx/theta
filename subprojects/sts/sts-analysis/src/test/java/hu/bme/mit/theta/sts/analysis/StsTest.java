@@ -70,6 +70,8 @@ public class StsTest {
 
 				{ "src/test/resources/simple2.system", EXPL, SEQ_ITP, true },
 
+				{ "src/test/resources/simple2.2.system", EXPL, SEQ_ITP, false },
+
 				{ "src/test/resources/simple3.system", EXPL, SEQ_ITP, false },
 		});
 	}
@@ -86,7 +88,7 @@ public class StsTest {
 		}
 		StsConfig<? extends State, ? extends Action, ? extends Prec> config
 				= new StsConfigBuilder(domain, refinement, Z3SolverFactory.getInstance())
-				.logger(new ConsoleLogger(Logger.Level.VERBOSE))
+				//.logger(new ConsoleLogger(Logger.Level.VERBOSE))
 				.search(StsConfigBuilder.Search.ASTAR)
 				.build(sts);
 		Assert.assertEquals(isSafe, config.check().isSafe());
