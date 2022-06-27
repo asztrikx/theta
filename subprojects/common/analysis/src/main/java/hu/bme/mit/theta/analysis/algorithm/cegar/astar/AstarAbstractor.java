@@ -75,7 +75,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		this.logger = checkNotNull(logger);
 		this.astarArgStore = checkNotNull(astarArgStore);
 		this.type = type;
-		this.astarFileVisualizer = new AstarFileVisualizer<>(logger != NullLogger.getInstance(), astarArgStore);
+		this.astarFileVisualizer = new AstarFileVisualizer<>(false, astarArgStore);
 		this.partialOrd = partialOrd;
 	}
 

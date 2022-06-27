@@ -128,7 +128,7 @@ public class CfaTest {
 		CFA cfa = CfaDslManager.createCfa(new FileInputStream(filePath));
 		CfaConfig<? extends State, ? extends Action, ? extends Prec> config
 				= new CfaConfigBuilder(domain, refinement, Z3SolverFactory.getInstance())
-				.logger(new ConsoleLogger(Logger.Level.VERBOSE))
+				//.logger(new ConsoleLogger(Logger.Level.VERBOSE))
 				.search(CfaConfigBuilder.Search.ASTAR)
 				.build(cfa, cfa.getErrorLoc().get());
 		SafetyResult<? extends State, ? extends Action> result = config.check();
