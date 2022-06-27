@@ -9,38 +9,38 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class AstarArgStoreSemiOndemand<S extends State, A extends Action, P extends Prec> implements AstarArgStore<S, A, P> {
-    protected final List<AstarArg<S, A, P>> astarArgs = new ArrayList<>();
+	protected final List<AstarArg<S, A, P>> astarArgs = new ArrayList<>();
 
-    @Override
-    public void add(final AstarArg<S, A, P> astarArg) {
-        // set parent
-        if (astarArgs.isEmpty()) {
-            astarArg.parent = null;
-        } else {
-            astarArg.parent = getLast();
-        }
+	@Override
+	public void add(final AstarArg<S, A, P> astarArg) {
+		// set parent
+		if (astarArgs.isEmpty()) {
+			astarArg.parent = null;
+		} else {
+			astarArg.parent = getLast();
+		}
 
-        astarArgs.add(astarArg);
-    }
+		astarArgs.add(astarArg);
+	}
 
-    @Override
-    public AstarArg<S, A, P> get(final int index) {
-        return astarArgs.get(index);
-    }
+	@Override
+	public AstarArg<S, A, P> get(final int index) {
+		return astarArgs.get(index);
+	}
 
-    @Override
-    public AstarArg<S, A, P> getLast() {
-        return astarArgs.get(size() - 1);
-    }
+	@Override
+	public AstarArg<S, A, P> getLast() {
+		return astarArgs.get(size() - 1);
+	}
 
-    @Override
-    public int size() {
-        return astarArgs.size();
-    }
+	@Override
+	public int size() {
+		return astarArgs.size();
+	}
 
-    @Override
-    public int getIndex(AstarArg<S, A, P> astarArg) {
-        // Most of the time the requested astarArg is at the back therefore use lastIndexOf to search from back
-        return astarArgs.lastIndexOf(astarArg);
-    }
+	@Override
+	public int getIndex(AstarArg<S, A, P> astarArg) {
+		// Most of the time the requested astarArg is at the back therefore use lastIndexOf to search from back
+		return astarArgs.lastIndexOf(astarArg);
+	}
 }
