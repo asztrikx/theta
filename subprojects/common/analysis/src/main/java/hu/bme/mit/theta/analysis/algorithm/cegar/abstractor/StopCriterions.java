@@ -63,7 +63,8 @@ public final class StopCriterions {
 
 		@Override
 		public boolean canStop(ARG<S, A> arg, Collection<ArgNode<S, A>> newNodes) {
-			return newNodes.stream().anyMatch(n -> n.isTarget() && !n.isExcluded());
+			// TODO why does it matter that it is covered? removed isExcluded
+			return newNodes.stream().anyMatch(n -> n.isTarget() && n.isFeasible());
 		}
 
 		@Override
