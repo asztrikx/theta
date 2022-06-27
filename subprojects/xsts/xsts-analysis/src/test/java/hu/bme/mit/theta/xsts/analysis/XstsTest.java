@@ -23,7 +23,6 @@ import hu.bme.mit.theta.solver.z3.Z3SolverFactory;
 import hu.bme.mit.theta.xsts.XSTS;
 import hu.bme.mit.theta.xsts.analysis.config.XstsConfig;
 import hu.bme.mit.theta.xsts.analysis.config.XstsConfigBuilder;
-import hu.bme.mit.theta.xsts.analysis.maxatomcount.XstsNMaxAtomCountFactory;
 import hu.bme.mit.theta.xsts.dsl.XstsDslManager;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -221,7 +220,13 @@ public class XstsTest {
 
 				{ "src/test/resources/model/loopxy.xsts", "src/test/resources/property/loopxy.prop", true, XstsConfigBuilder.Domain.EXPL_PRED_COMBINED},
 
-				{ "src/test/resources/model/loopxy.xsts", "src/test/resources/property/loopxy.prop", true, XstsConfigBuilder.Domain.PRED_CART}
+				{ "src/test/resources/model/loopxy.xsts", "src/test/resources/property/loopxy.prop", true, XstsConfigBuilder.Domain.PRED_CART},
+
+				{ "src/test/resources/model/arraywrite_sugar.xsts", "src/test/resources/property/arraywrite_sugar.prop", false, XstsConfigBuilder.Domain.PRED_CART},
+
+				{ "src/test/resources/model/if1.xsts", "src/test/resources/property/if1.prop", true, XstsConfigBuilder.Domain.PRED_CART},
+
+				{ "src/test/resources/model/if2.xsts", "src/test/resources/property/if2.prop", false, XstsConfigBuilder.Domain.EXPL_PRED_COMBINED}
 		});
 	}
 
@@ -234,8 +239,8 @@ public class XstsTest {
 		try (InputStream inputStream = new SequenceInputStream(new FileInputStream(filePath), new FileInputStream(propPath))) {
 			xsts = XstsDslManager.createXsts(inputStream);
 		}
-
-		final XstsConfig<?, ?, ?> configuration = new XstsConfigBuilder(domain, XstsConfigBuilder.Refinement.SEQ_ITP, Z3SolverFactory.getInstance()).initPrec(XstsConfigBuilder.InitPrec.CTRL).optimizeStmts(XstsConfigBuilder.OptimizeStmts.ON).predSplit(XstsConfigBuilder.PredSplit.CONJUNCTS).maxEnum(250).xstsMaxAtomCountFactory(new XstsNMaxAtomCountFactory(5))
+		
+		final XstsConfig<?, ?, ?> configuration = new XstsConfigBuilder(domain, XstsConfigBuilder.Refinement.SEQ_ITP, Z3SolverFactory.getInstance()).initPrec(XstsConfigBuilder.InitPrec.CTRL).optimizeStmts(XstsConfigBuilder.OptimizeStmts.ON).predSplit(XstsConfigBuilder.PredSplit.CONJUNCTS).maxEnum(250).autoExpl(XstsConfigBuilder.AutoExpl.NEWOPERANDS)
 				.logger(new ConsoleLogger(Level.VERBOSE))
 				.search(XstsConfigBuilder.Search.ASTAR)
 				.build(xsts);

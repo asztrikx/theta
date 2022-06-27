@@ -1,5 +1,5 @@
 /*
- *  Copyright 2017 Budapest University of Technology and Economics
+ *  Copyright 2022 Budapest University of Technology and Economics
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -15,10 +15,20 @@
  */
 package hu.bme.mit.theta.analysis.expl;
 
+import com.google.common.collect.ImmutableList;
 import hu.bme.mit.theta.core.decl.Decl;
 import hu.bme.mit.theta.core.decl.VarDecl;
 import hu.bme.mit.theta.core.model.MutableValuation;
-import hu.bme.mit.theta.core.stmt.*;
+import hu.bme.mit.theta.core.stmt.AssignStmt;
+import hu.bme.mit.theta.core.stmt.AssumeStmt;
+import hu.bme.mit.theta.core.stmt.HavocStmt;
+import hu.bme.mit.theta.core.stmt.IfStmt;
+import hu.bme.mit.theta.core.stmt.LoopStmt;
+import hu.bme.mit.theta.core.stmt.NonDetStmt;
+import hu.bme.mit.theta.core.stmt.OrtStmt;
+import hu.bme.mit.theta.core.stmt.SequenceStmt;
+import hu.bme.mit.theta.core.stmt.SkipStmt;
+import hu.bme.mit.theta.core.stmt.Stmt;
 import hu.bme.mit.theta.core.type.Expr;
 import hu.bme.mit.theta.core.type.LitExpr;
 import hu.bme.mit.theta.core.type.abstracttype.EqExpr;
@@ -31,9 +41,11 @@ import hu.bme.mit.theta.core.utils.ExprUtils;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
+
+import static hu.bme.mit.theta.core.type.booltype.SmartBoolExprs.Not;
 
 public final class StmtApplier {
-
 	public enum ApplyResult {
 		FAILURE, SUCCESS, BOTTOM
 	}
@@ -65,6 +77,9 @@ public final class StmtApplier {
 		} else if (stmt instanceof LoopStmt) {
 			final LoopStmt loopStmt = (LoopStmt) stmt;
 			return applyLoop(loopStmt, val, approximate);
+		} else if (stmt instanceof IfStmt) {
+			final IfStmt ifStmt = (IfStmt) stmt;
+			return applyIf(ifStmt, val, approximate);
 		} else {
 			throw new UnsupportedOperationException("Unhandled statement: " + stmt);
 		}
@@ -174,8 +189,8 @@ public final class StmtApplier {
 	}
 
 	private static ApplyResult applyLoop(final LoopStmt stmt, final MutableValuation val,
-											 final boolean approximate) {
-		throw new UnsupportedOperationException(String.format("Loop statement %s was not unrolled",stmt));
+										 final boolean approximate) {
+		throw new UnsupportedOperationException(String.format("Loop statement %s was not unrolled", stmt));
 	}
 
 	private static ApplyResult applyNonDet(final NonDetStmt stmt, final MutableValuation val,
@@ -213,10 +228,58 @@ public final class StmtApplier {
 		}
 	}
 
+	private static ApplyResult applyIf(final IfStmt stmt, final MutableValuation val,
+									   final boolean approximate) {
+		final Expr<BoolType> cond = ExprUtils.simplify(stmt.getCond(), val);
+
+		if (cond instanceof BoolLitExpr) {
+			final BoolLitExpr condLit = (BoolLitExpr) cond;
+			if (condLit.getValue()) {
+				return apply(stmt.getThen(), val, approximate);
+			} else {
+				return apply(stmt.getElze(), val, approximate);
+			}
+		} else {
+			final MutableValuation thenVal = MutableValuation.copyOf(val);
+			final MutableValuation elzeVal = MutableValuation.copyOf(val);
+
+			final ApplyResult thenResult = apply(stmt.getThen(), thenVal, approximate);
+			final ApplyResult elzeResult = apply(stmt.getElze(), elzeVal, approximate);
+
+			if (thenResult == ApplyResult.FAILURE || elzeResult == ApplyResult.FAILURE) {
+				return ApplyResult.FAILURE;
+			}
+
+			if (thenResult == ApplyResult.BOTTOM && elzeResult == ApplyResult.BOTTOM) {
+				return ApplyResult.BOTTOM;
+			}
+
+			if (thenResult == ApplyResult.SUCCESS && elzeResult == ApplyResult.BOTTOM) {
+				SequenceStmt seq = SequenceStmt.of(ImmutableList.of(AssumeStmt.of(cond), stmt.getThen()));
+				return apply(seq, val, approximate);
+			}
+
+			if (thenResult == ApplyResult.BOTTOM && elzeResult == ApplyResult.SUCCESS) {
+				SequenceStmt seq = SequenceStmt.of(ImmutableList.of(AssumeStmt.of(Not(cond)), stmt.getElze()));
+				return apply(seq, val, approximate);
+			}
+
+			if (approximate) {
+				apply(stmt.getThen(), val, approximate);
+				var toRemove = val.getDecls().stream()
+						.filter(it -> !val.eval(it).equals(elzeVal.eval(it)))
+						.collect(Collectors.toSet());
+				for (Decl<?> decl : toRemove) val.remove(decl);
+				return ApplyResult.SUCCESS;
+			} else {
+				return ApplyResult.FAILURE;
+			}
+		}
+	}
+
 	private static ApplyResult applyOrt(final OrtStmt stmt, final MutableValuation val,
 										final boolean approximate) {
 		throw new UnsupportedOperationException();
 	}
-
 
 }

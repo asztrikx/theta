@@ -1,5 +1,5 @@
 /*
- *  Copyright 2017 Budapest University of Technology and Economics
+ *  Copyright 2022 Budapest University of Technology and Economics
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -24,6 +24,7 @@ import hu.bme.mit.theta.analysis.algorithm.SafetyChecker;
 import hu.bme.mit.theta.analysis.algorithm.SafetyResult;
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.filevisualizer.ArgFileVisualizer;
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.filevisualizer.FileVisualizer;
+import hu.bme.mit.theta.analysis.algorithm.runtimecheck.ArgCexCheckHandler;
 import hu.bme.mit.theta.common.Utils;
 import hu.bme.mit.theta.common.logging.Logger;
 import hu.bme.mit.theta.common.logging.Logger.Level;
@@ -87,6 +88,9 @@ public final class CegarChecker<S extends State, A extends Action, P extends Pre
 			fileVisualizer.visualize("Bend", iteration - 1);
 
 			if (abstractorResult.isUnsafe()) {
+				ArgCexCheckHandler.instance.checkAndStop(arg, prec);
+
+				P lastPrec = prec;
 				logger.write(Level.MAINSTEP, "| Refining abstraction...%n");
 				final long refinerStartTime = stopwatch.elapsed(TimeUnit.MILLISECONDS);
 				refinerResult = refiner.refine(arg, prec);
@@ -96,6 +100,13 @@ public final class CegarChecker<S extends State, A extends Action, P extends Pre
 				if (refinerResult.isSpurious()) {
 					prec = refinerResult.asSpurious().getRefinedPrec();
 				}
+
+				if (lastPrec.equals(prec)) {
+					logger.write(Level.MAINSTEP, "! Precision did NOT change in this iteration" + System.lineSeparator());
+				} else {
+					logger.write(Level.MAINSTEP, "! Precision DID change in this iteration" + System.lineSeparator());
+				}
+
 			}
 
 		} while (!abstractorResult.isSafe() && !refinerResult.isUnsafe());

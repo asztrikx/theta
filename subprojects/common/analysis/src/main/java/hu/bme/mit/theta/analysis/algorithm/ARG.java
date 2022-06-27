@@ -1,5 +1,5 @@
 /*
- *  Copyright 2017 Budapest University of Technology and Economics
+ *  Copyright 2022 Budapest University of Technology and Economics
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -15,27 +15,25 @@
  */
 package hu.bme.mit.theta.analysis.algorithm;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Preconditions.checkNotNull;
-import static com.google.common.base.Preconditions.checkState;
-import static java.util.stream.Collectors.toList;
-
-import java.util.Collection;
-import java.util.Set;
-import java.util.Map;
+import hu.bme.mit.theta.analysis.Action;
+import hu.bme.mit.theta.analysis.PartialOrd;
+import hu.bme.mit.theta.analysis.State;
 import hu.bme.mit.theta.analysis.waitlist.FifoWaitlist;
 import hu.bme.mit.theta.analysis.waitlist.Waitlist;
 import hu.bme.mit.theta.common.container.Containers;
+import hu.bme.mit.theta.common.container.factory.HashContainerFactory;
+
+import java.util.Collection;
 import java.util.Optional;
 import java.util.OptionalInt;
 
 import java.util.function.BiFunction;
 import java.util.stream.Stream;
 
-import hu.bme.mit.theta.analysis.Action;
-import hu.bme.mit.theta.analysis.PartialOrd;
-import hu.bme.mit.theta.analysis.State;
-import hu.bme.mit.theta.common.container.factory.HashContainerFactory;
+import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkNotNull;
+import static com.google.common.base.Preconditions.checkState;
+import static java.util.stream.Collectors.toList;
 
 /**
  * Represents an abstract reachability graph (ARG). See the related class
