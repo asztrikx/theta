@@ -11,7 +11,11 @@ import hu.bme.mit.theta.analysis.reachedset.Partition;
 import hu.bme.mit.theta.common.container.factory.HashContainerFactory;
 
 import javax.annotation.Nullable;
-import java.util.*;
+import java.util.Collection;
+import java.util.Map;
+import java.util.Optional;
+import java.util.List;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -24,7 +28,6 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
 	public @Nullable AstarArg<S, A, P> provider;
 
 	// contains init nodes as well
-	//  TODO use partition
 	private Map<ArgNode<S, A>, AstarNode<S, A>> astarNodes = new HashContainerFactory().createMap();
 	private Map<ArgNode<S, A>, AstarNode<S, A>> astarInitNodes = new HashContainerFactory().createMap();
 	private final PartialOrd<S> partialOrd;

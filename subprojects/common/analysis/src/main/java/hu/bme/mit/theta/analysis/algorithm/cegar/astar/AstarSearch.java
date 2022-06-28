@@ -8,16 +8,14 @@ import hu.bme.mit.theta.analysis.waitlist.Waitlist;
 import hu.bme.mit.theta.common.container.factory.HashContainerFactory;
 
 import javax.annotation.Nullable;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
 public class AstarSearch<S extends State, A extends Action> {
 	// We could already have started to explore a subgraph therefore do not use global doneSet variable
-	public Set<AstarNode<S, A>> doneSet = new HashSet<>();
+	public Set<AstarNode<S, A>> doneSet = new HashContainerFactory().createSet();
 	// Useful to know whether the current item is smaller than the one in the waitlist (if not in doneSet)
-	public Map<AstarNode<S, A>, Integer> minWeights = new HashMap<>();
+	public Map<AstarNode<S, A>, Integer> minWeights = new HashContainerFactory().createMap();;
 	// After we reach target we know the distance for all nodes between root and target which is visitable by parent entries
 	// This is needed because with covering edges there can be multiple in-edges
 	// node -> parent

@@ -8,10 +8,10 @@ import hu.bme.mit.theta.analysis.algorithm.ARG;
 import hu.bme.mit.theta.analysis.algorithm.ArgCopier;
 import hu.bme.mit.theta.analysis.algorithm.ArgNode;
 import hu.bme.mit.theta.common.Tuple2;
+import hu.bme.mit.theta.common.container.factory.HashContainerFactory;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.Set;
 import java.util.function.Function;
 
@@ -25,7 +25,7 @@ public class AstarCopier {
 			final Function<? super S, ?> projection
 	) {
 		Collection<Tuple2<ArgNode<S, A>, ArgNode<S, A>>> translation = new ArrayList<>();
-		Set<ArgNode<S, A>> newInitNodes = new HashSet<>();
+		Set<ArgNode<S, A>> newInitNodes = new HashContainerFactory().createSet();
 		ARG<S, A> arg = ArgCopier.createCopy(astarArg.arg, (argNode, argNodeCopy) -> {
 			translation.add(Tuple2.of(argNode, argNodeCopy));
 		}, (initArgNode, initArgNodeCopy) -> {
