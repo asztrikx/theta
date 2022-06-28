@@ -386,7 +386,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 	// astarArg: the one in which for a node we look for heuristic
 	private void findHeuristic(AstarNode<S, A> astarNode, AstarArg<S, A, P> astarArg) {
 		// no previous astar arg exists: getHeuristic returns (EXACT, 0)
-		if (astarArg.parent == null) {
+		if (astarArg.provider == null) {
 			return;
 		}
 		checkNotNull(astarNode.providerAstarNode);
@@ -406,10 +406,10 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 
 		// get the heuristic with findDistance in parent arg
 		AstarNode<S, A> providerAstarNode = astarNode.providerAstarNode;
-		AstarArg<S, A, P> parentAstarArg = astarArg.parent;
+		AstarArg<S, A, P> providerAstarArg = astarArg.provider;
 
 		String visualizerStateProvider = " " + AstarFileVisualizer.getVisualizerState(astarNode.providerAstarNode);
-		findDistance(parentAstarArg, new AstarDistanceKnown<>(providerAstarNode), List.of(providerAstarNode), visualizerStateProvider);
+		findDistance(providerAstarArg, new AstarDistanceKnown<>(providerAstarNode), List.of(providerAstarNode), visualizerStateProvider);
 		assert astarNode.getHeuristic().isKnown();
 
 		// visualize current after going back to previous astarArg

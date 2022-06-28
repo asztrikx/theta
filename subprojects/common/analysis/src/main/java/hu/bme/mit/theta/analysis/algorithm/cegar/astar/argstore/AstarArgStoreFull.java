@@ -17,7 +17,7 @@ public class AstarArgStoreFull<S extends State, A extends Action, P extends Prec
 		previous = current;
 		current = astarArg;
 
-		astarArg.parent = previous;
+		astarArg.provider = previous;
 		size++;
 	}
 

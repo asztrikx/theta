@@ -21,7 +21,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
 public final class AstarArg<S extends State, A extends Action, P extends Prec> {
 	public final ARG<S, A> arg;
 	public P prec;
-	public @Nullable AstarArg<S, A, P> parent;
+	public @Nullable AstarArg<S, A, P> provider;
 
 	// contains init nodes as well
 	//  TODO use partition
@@ -135,7 +135,7 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
 	}
 
 	public AstarNode<S, A> createSuccAstarNode(ArgNode<S, A> argNode, AstarNode<S, A> parentAstarNode) {
-		AstarNode<S, A> providerAstarNode = findProviderAstarNode(argNode, parentAstarNode, parent);
+		AstarNode<S, A> providerAstarNode = findProviderAstarNode(argNode, parentAstarNode, provider);
 		AstarNode<S, A> astarNode = new AstarNode<>(argNode, providerAstarNode);
 		put(astarNode);
 		reachedSet.add(argNode);
@@ -143,7 +143,7 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
 	}
 
 	public AstarNode<S, A> createInitAstarNode(ArgNode<S, A> initArgNode) {
-		AstarNode<S, A> providerNode = findProviderAstarNode(initArgNode, null, parent);
+		AstarNode<S, A> providerNode = findProviderAstarNode(initArgNode, null, provider);
 		AstarNode<S, A> newInitAstarNode = new AstarNode<>(initArgNode, providerNode);
 		putInit(newInitAstarNode);
 		reachedSet.add(newInitAstarNode.argNode);
@@ -154,21 +154,21 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
 	private AstarNode<S, A> findProviderAstarNode(
 			ArgNode<S, A> argNode,
 			@Nullable AstarNode<S, A> parentAstarNode,
-			AstarArg<S, A, P> parentAstarArg
+			AstarArg<S, A, P> providerAstarArg
 	) {
 		// No previous arg therefore no provider node
-		if (parentAstarArg == null) {
+		if (providerAstarArg == null) {
 			return null;
 		}
 
 		// Parent of argNode should be given
-		assert !parentAstarArg.containsArg(argNode); // TODO maybe change to astarArg
+		assert !providerAstarArg.containsArg(argNode); // TODO maybe change to astarArg
 
 		Stream<ArgNode<S, A>> providerCandidates;
 
 		// Init nodes don't have parents
 		if (parentAstarNode == null) {
-			providerCandidates = parentAstarArg.getAllInitArg().stream();
+			providerCandidates = providerAstarArg.getAllInitArg().stream();
 		} else {
 			AstarNode<S, A> parentProviderAstarNode = parentAstarNode.providerAstarNode;
 			ArgNode<S, A> parentProviderNode = parentProviderAstarNode.argNode;
@@ -194,7 +194,7 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
 				// Optimization: only handle covering case once
 				// We can't do this when setting parentAstarNode's provider node as covering can happen after that
 				// This change will affect visualizer midpoint
-				parentProviderAstarNode = parentAstarNode.providerAstarNode = parentAstarArg.get(parentProviderCoveringNode);
+				parentProviderAstarNode = parentAstarNode.providerAstarNode = providerAstarArg.get(parentProviderCoveringNode);
 				parentProviderNode = parentProviderAstarNode.argNode;
 
 				assert parentProviderAstarNode.distance.isKnown();
@@ -210,7 +210,7 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
 		);
 		Optional<ArgNode<S,A>> providerNode = providerCandidates.findAny();
 		assert providerNode.isPresent();
-		return parentAstarArg.get(providerNode.get());
+		return providerAstarArg.get(providerNode.get());
 	}
 
 	/// ARG Wrappers
