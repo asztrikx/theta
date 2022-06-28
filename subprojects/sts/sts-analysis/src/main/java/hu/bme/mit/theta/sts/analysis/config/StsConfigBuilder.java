@@ -29,7 +29,11 @@ import hu.bme.mit.theta.analysis.algorithm.cegar.BasicAbstractor;
 import hu.bme.mit.theta.analysis.algorithm.cegar.CegarChecker;
 import hu.bme.mit.theta.analysis.algorithm.cegar.Refiner;
 import hu.bme.mit.theta.analysis.algorithm.cegar.abstractor.StopCriterions;
-import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarSafetyChecker;
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarAbstractor;
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarCegarChecker;
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.argstore.AstarArgStore;
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.argstore.AstarArgStoreFull;
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.argstore.AstarArgStoreSemiOndemand;
 import hu.bme.mit.theta.analysis.expl.ExplAnalysis;
 import hu.bme.mit.theta.analysis.expl.ExplPrec;
 import hu.bme.mit.theta.analysis.expl.ExplState;
@@ -71,6 +75,7 @@ import hu.bme.mit.theta.sts.analysis.initprec.StsEmptyInitPrec;
 import hu.bme.mit.theta.sts.analysis.initprec.StsInitPrec;
 import hu.bme.mit.theta.sts.analysis.initprec.StsPropInitPrec;
 
+import java.util.function.Function;
 import java.util.function.Predicate;
 
 import static hu.bme.mit.theta.core.type.booltype.BoolExprs.Not;
@@ -207,21 +212,32 @@ public final class StsConfigBuilder {
 			}
 
 			SafetyChecker<ExplState, StsAction, ExplPrec> checker;
+			final boolean isMultiSeq = refinement == Refinement.MULTI_SEQ;
 			switch (search) {
-				case ASTAR:
-					checker = AstarSafetyChecker.getAstarSafetyChecker(
-							argBuilder, refiner, analysis.getPartialOrd(), logger,
-							s -> 0,
-							refinement == Refinement.MULTI_SEQ
-					);
-					break;
-				default:
+				case ASTAR -> {
+					final AstarArgStore<ExplState, StsAction, ExplPrec> astarArgStore;
+					if (isMultiSeq) {
+						astarArgStore = new AstarArgStoreFull<>();
+					} else {
+						astarArgStore = new AstarArgStoreSemiOndemand<>();
+					}
+					final AstarAbstractor<ExplState, StsAction, ExplPrec> abstractor = AstarAbstractor
+							.builder(argBuilder)
+							.stopCriterion(isMultiSeq ? StopCriterions.fullExploration() : StopCriterions.firstCex())
+							.logger(logger)
+							.astarArgStore(astarArgStore)
+							.partialOrder(analysis.getPartialOrd())
+							.build();
+					checker = AstarCegarChecker.create(abstractor, null, refiner, logger, analysis.getPartialOrd(), astarArgStore);
+				}
+				default -> {
 					final Abstractor<ExplState, StsAction, ExplPrec> abstractor = BasicAbstractor.builder(argBuilder)
 							.waitlist(PriorityWaitlist.create(search.comparator))
-							.stopCriterion(refinement == Refinement.MULTI_SEQ ? StopCriterions.fullExploration()
+							.stopCriterion(isMultiSeq ? StopCriterions.fullExploration()
 									: StopCriterions.firstCex())
 							.logger(logger).build();
 					checker = CegarChecker.create(abstractor, refiner, logger);
+				}
 			}
 
 			final ExplPrec prec = initPrec.builder.createExpl(sts);
@@ -277,21 +293,32 @@ public final class StsConfigBuilder {
 			}
 
 			SafetyChecker<PredState, StsAction, PredPrec> checker;
+			final boolean isMultiSeq = refinement == Refinement.MULTI_SEQ;
 			switch (search) {
-				case ASTAR:
-					checker = AstarSafetyChecker.getAstarSafetyChecker(
-							argBuilder, refiner, analysis.getPartialOrd(), logger,
-							s -> 0,
-							refinement == Refinement.MULTI_SEQ
-					);
-					break;
-				default:
+				case ASTAR -> {
+					final AstarArgStore<PredState, StsAction, PredPrec> astarArgStore;
+					if (isMultiSeq) {
+						astarArgStore = new AstarArgStoreFull<>();
+					} else {
+						astarArgStore = new AstarArgStoreSemiOndemand<>();
+					}
+					final AstarAbstractor<PredState, StsAction, PredPrec> abstractor = AstarAbstractor
+							.builder(argBuilder)
+							.stopCriterion(isMultiSeq ? StopCriterions.fullExploration() : StopCriterions.firstCex())
+							.logger(logger)
+							.astarArgStore(astarArgStore)
+							.partialOrder(analysis.getPartialOrd())
+							.build();
+					checker = AstarCegarChecker.create(abstractor, null, refiner, logger, analysis.getPartialOrd(), astarArgStore);
+				}
+				default -> {
 					final Abstractor<PredState, StsAction, PredPrec> abstractor = BasicAbstractor.builder(argBuilder)
 							.waitlist(PriorityWaitlist.create(search.comparator))
-							.stopCriterion(refinement == Refinement.MULTI_SEQ ? StopCriterions.fullExploration()
+							.stopCriterion(isMultiSeq ? StopCriterions.fullExploration()
 									: StopCriterions.firstCex())
 							.logger(logger).build();
 					checker = CegarChecker.create(abstractor, refiner, logger);
+				}
 			}
 
 			final PredPrec prec = initPrec.builder.createPred(sts);

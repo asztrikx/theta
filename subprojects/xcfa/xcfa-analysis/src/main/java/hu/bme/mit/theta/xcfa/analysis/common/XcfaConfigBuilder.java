@@ -32,6 +32,11 @@ import hu.bme.mit.theta.analysis.algorithm.cegar.BasicAbstractor;
 import hu.bme.mit.theta.analysis.algorithm.cegar.CegarChecker;
 import hu.bme.mit.theta.analysis.algorithm.cegar.Refiner;
 import hu.bme.mit.theta.analysis.algorithm.cegar.abstractor.StopCriterions;
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarAbstractor;
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarCegarChecker;
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.argstore.AstarArgStore;
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.argstore.AstarArgStoreFull;
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.argstore.AstarArgStoreSemiOndemand;
 import hu.bme.mit.theta.analysis.expl.ExplPrec;
 import hu.bme.mit.theta.analysis.expl.ExplStmtAnalysis;
 import hu.bme.mit.theta.analysis.expl.ItpRefToExplPrec;
@@ -82,6 +87,7 @@ import hu.bme.mit.theta.xcfa.model.XcfaLocation;
 import hu.bme.mit.theta.xcfa.model.utils.XcfaUtils;
 
 import java.util.List;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -197,6 +203,14 @@ public class XcfaConfigBuilder {
 			public ArgNodeComparator getComp(final XCFA cfa, final XcfaLocation errLoc) {
 				return new XcfaDistToErrComparator(cfa, errLoc);
 			}
+		},
+
+		// Astar doesn't use the comparator specified here
+		ASTAR {
+			@Override
+			public ArgNodeComparator getComp(final XCFA cfa, final XcfaLocation errLoc) {
+				return null;
+			}
 		};
 
 		public abstract ArgNodeComparator getComp(final XCFA cfa, final XcfaLocation errLoc);
@@ -248,6 +262,9 @@ public class XcfaConfigBuilder {
 	private InitPrec initPrec = InitPrec.EMPTY;
 	private PruneStrategy pruneStrategy = PruneStrategy.LAZY;
 	private AutoExpl autoExpl = AutoExpl.NEWOPERANDS;
+	private final Function projection = state -> ((XcfaState) state).getCurrentLoc();
+	private Analysis analysis = null;
+	private AstarArgStore astarArgStore = null;
 
 	public XcfaConfigBuilder(final Domain domain, final Refinement refinement, final SolverFactory refinementSolverFactory, final SolverFactory abstractionSolverFactory, final Algorithm algorithm) {
 		this.domain = domain;
@@ -397,7 +414,12 @@ public class XcfaConfigBuilder {
 			refiner = SingleExprTraceRefiner.create(exprTraceChecker,
 					precRefiner, pruneStrategy, logger);
 		}
-		final SafetyChecker checker = CegarChecker.create(abstractor, refiner, logger);
+		final SafetyChecker checker = switch (search) {
+			case ASTAR -> AstarCegarChecker.create(abstractor, projection, refiner, logger,
+					algorithm.getPartialOrder(analysis.getPartialOrd()), astarArgStore);
+			default -> CegarChecker.create(abstractor, refiner, logger);
+		};
+
 		return XcfaConfig.create(checker, prec);
 	}
 
@@ -455,13 +477,35 @@ public class XcfaConfigBuilder {
 	}
 
 	private Abstractor getAbstractor(LTS lts, Analysis domainAnalysis, XCFA xcfa) {
-		final Analysis analysis = algorithm.getAnalysis(xcfa.getProcesses().stream().map(proc -> proc.getMainProcedure().getInitLoc()).collect(Collectors.toList()), domainAnalysis);
+		if (analysis == null) {
+			analysis = algorithm.getAnalysis(xcfa.getProcesses().stream().map(proc -> proc.getMainProcedure().getInitLoc()).collect(Collectors.toList()), domainAnalysis);
+		}
+		final boolean isMultiSeq = refinement == Refinement.MULTI_SEQ;
 
 		final ArgBuilder argBuilder = ArgBuilder.create(lts, analysis, state -> ((XcfaState) state).isError(), true);
-		return BasicAbstractor
-				.builder(argBuilder).projection(state -> ((XcfaState) state).getCurrentLoc())
-				.waitlist(PriorityWaitlist.create(search.getComp(xcfa, xcfa.getMainProcess().getMainProcedure().getErrorLoc())))
-				.stopCriterion(refinement == Refinement.MULTI_SEQ ? StopCriterions.fullExploration()
-						: StopCriterions.firstCex()).logger(logger).build();
+		switch (search) {
+			case ASTAR -> {
+				if (isMultiSeq) {
+					astarArgStore = new AstarArgStoreFull();
+				} else {
+					astarArgStore = new AstarArgStoreSemiOndemand();
+				}
+				return AstarAbstractor
+						.builder(argBuilder)
+						.projection(projection) //
+						.stopCriterion(isMultiSeq ? StopCriterions.fullExploration() : StopCriterions.firstCex())
+						.logger(logger)
+						.astarArgStore(astarArgStore)
+						.partialOrder(algorithm.getPartialOrder(analysis.getPartialOrd()))
+						.build();
+			}
+			default -> {
+				return BasicAbstractor
+						.builder(argBuilder).projection(projection)
+						.waitlist(PriorityWaitlist.create(search.getComp(xcfa, xcfa.getMainProcess().getMainProcedure().getErrorLoc())))
+						.stopCriterion(isMultiSeq ? StopCriterions.fullExploration()
+								: StopCriterions.firstCex()).logger(logger).build();
+			}
+		}
 	}
 }

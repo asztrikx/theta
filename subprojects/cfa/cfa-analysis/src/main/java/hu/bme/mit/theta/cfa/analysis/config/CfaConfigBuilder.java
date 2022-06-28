@@ -26,10 +26,13 @@ import hu.bme.mit.theta.analysis.algorithm.SafetyChecker;
 import hu.bme.mit.theta.analysis.algorithm.cegar.Abstractor;
 import hu.bme.mit.theta.analysis.algorithm.cegar.BasicAbstractor;
 import hu.bme.mit.theta.analysis.algorithm.cegar.CegarChecker;
-import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarCegarChecker;
 import hu.bme.mit.theta.analysis.algorithm.cegar.Refiner;
 import hu.bme.mit.theta.analysis.algorithm.cegar.abstractor.StopCriterions;
-import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarSafetyChecker;
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarAbstractor;
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarCegarChecker;
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.argstore.AstarArgStore;
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.argstore.AstarArgStoreFull;
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.argstore.AstarArgStoreSemiOndemand;
 import hu.bme.mit.theta.analysis.expl.ExplPrec;
 import hu.bme.mit.theta.analysis.expl.ExplState;
 import hu.bme.mit.theta.analysis.expl.ExplStmtAnalysis;
@@ -381,21 +384,33 @@ public class CfaConfigBuilder {
 			}
 
 			SafetyChecker<CfaState<ExplState>, CfaAction, CfaPrec<ExplPrec>> checker;
+			final boolean isMultiSeq = refinement == Refinement.MULTI_SEQ;
 			switch (search) {
-				case ASTAR:
-					checker = AstarSafetyChecker.getAstarSafetyChecker(
-							argBuilder, refiner, analysis.getPartialOrd(), logger,
-							projection,
-							refinement == Refinement.MULTI_SEQ
-					);
-					break;
-				default:
+				case ASTAR -> {
+					final AstarArgStore<CfaState<ExplState>, CfaAction, CfaPrec<ExplPrec>> astarArgStore;
+					if (isMultiSeq) {
+						astarArgStore = new AstarArgStoreFull<>();
+					} else {
+						astarArgStore = new AstarArgStoreSemiOndemand<>();
+					}
+					final AstarAbstractor<CfaState<ExplState>, CfaAction, CfaPrec<ExplPrec>> abstractor = AstarAbstractor
+							.builder(argBuilder)
+							.projection(projection) //
+							.stopCriterion(isMultiSeq ? StopCriterions.fullExploration() : StopCriterions.firstCex())
+							.logger(logger)
+							.astarArgStore(astarArgStore)
+							.partialOrder(analysis.getPartialOrd())
+							.build();
+					checker = AstarCegarChecker.create(abstractor, projection, refiner, logger, analysis.getPartialOrd(), astarArgStore);
+				}
+				default -> {
 					final Abstractor<CfaState<ExplState>, CfaAction, CfaPrec<ExplPrec>> abstractor = BasicAbstractor
 							.builder(argBuilder).projection(projection)
 							.waitlist(PriorityWaitlist.create(search.getComp(cfa, errLoc)))
-							.stopCriterion(refinement == Refinement.MULTI_SEQ ? StopCriterions.fullExploration()
+							.stopCriterion(isMultiSeq ? StopCriterions.fullExploration()
 									: StopCriterions.firstCex()).logger(logger).build();
 					checker = CegarChecker.create(abstractor, refiner, logger);
+				}
 			}
 
 			CfaPrec<ExplPrec> prec;
@@ -493,21 +508,33 @@ public class CfaConfigBuilder {
 			}
 
 			SafetyChecker<CfaState<PredState>, CfaAction, CfaPrec<PredPrec>> checker;
+			final boolean isMultiSeq = refinement == Refinement.MULTI_SEQ;
 			switch (search) {
-				case ASTAR:
-					checker = AstarSafetyChecker.getAstarSafetyChecker(
-							argBuilder, refiner, analysis.getPartialOrd(), logger,
-							projection,
-							refinement == Refinement.MULTI_SEQ
-					);
-					break;
-				default:
+				case ASTAR -> {
+					final AstarArgStore<CfaState<PredState>, CfaAction, CfaPrec<PredPrec>> astarArgStore;
+					if (isMultiSeq) {
+						astarArgStore = new AstarArgStoreFull<>();
+					} else {
+						astarArgStore = new AstarArgStoreSemiOndemand<>();
+					}
+					final AstarAbstractor<CfaState<PredState>, CfaAction, CfaPrec<PredPrec>> abstractor = AstarAbstractor
+							.builder(argBuilder)
+							.projection(projection) //
+							.stopCriterion(isMultiSeq ? StopCriterions.fullExploration() : StopCriterions.firstCex())
+							.logger(logger)
+							.astarArgStore(astarArgStore)
+							.partialOrder(analysis.getPartialOrd())
+							.build();
+					checker = AstarCegarChecker.create(abstractor, projection, refiner, logger, analysis.getPartialOrd(), astarArgStore);
+				}
+				default -> {
 					final Abstractor<CfaState<PredState>, CfaAction, CfaPrec<PredPrec>> abstractor = BasicAbstractor
 							.builder(argBuilder).projection(projection)
 							.waitlist(PriorityWaitlist.create(search.getComp(cfa, errLoc)))
-							.stopCriterion(refinement == Refinement.MULTI_SEQ ? StopCriterions.fullExploration()
+							.stopCriterion(isMultiSeq ? StopCriterions.fullExploration()
 									: StopCriterions.firstCex()).logger(logger).build();
 					checker = CegarChecker.create(abstractor, refiner, logger);
+				}
 			}
 
 			CfaPrec<PredPrec> prec;

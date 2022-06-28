@@ -26,9 +26,10 @@ import hu.bme.mit.theta.analysis.algorithm.cegar.Abstractor;
 import hu.bme.mit.theta.analysis.algorithm.cegar.AbstractorResult;
 import hu.bme.mit.theta.analysis.algorithm.cegar.abstractor.StopCriterion;
 import hu.bme.mit.theta.analysis.algorithm.cegar.abstractor.StopCriterions;
-import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarCegarChecker.Type;
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarSearch.Edge;
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarCegarChecker.Type;
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.argstore.AstarArgStore;
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.argstore.AstarArgStoreFull;
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.filevisualizer.AstarFileVisualizer;
 import hu.bme.mit.theta.analysis.waitlist.Waitlist;
 import hu.bme.mit.theta.common.logging.Logger;
@@ -483,7 +484,6 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		private StopCriterion<S, A> stopCriterion;
 		private Logger logger;
 		private AstarArgStore<S, A, P> astarArgStore;
-		private Type type;
 		private PartialOrd<S> partialOrd;
 
 		private Builder(final ArgBuilder<S, A, P> argBuilder) {
@@ -508,24 +508,19 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 			return this;
 		}
 
-		public Builder<S, A, P> AstarArgStore(final AstarArgStore<S, A, P> astarArgStore) {
+		public Builder<S, A, P> astarArgStore(final AstarArgStore<S, A, P> astarArgStore) {
 			this.astarArgStore = astarArgStore;
 			return this;
 		}
 
-		public Builder<S, A, P> type(final Type type) {
-			this.type = type;
-			return this;
-		}
-
-		public Builder<S, A, P> partialOrder(final PartialOrd partialOrd) {
+		public Builder<S, A, P> partialOrder(final PartialOrd<S> partialOrd) {
 			this.partialOrd = partialOrd;
 			return this;
 		}
 
 		public AstarAbstractor<S, A, P> build() {
 			assert astarArgStore != null;
-			return new AstarAbstractor<>(argBuilder, projection, stopCriterion, logger, astarArgStore, type, partialOrd);
+			return new AstarAbstractor<>(argBuilder, projection, stopCriterion, logger, astarArgStore, astarArgStore instanceof AstarArgStoreFull<S,A,P> ? Type.FULL : Type.SEMI_ONDEMAND, partialOrd);
 		}
 	}
 

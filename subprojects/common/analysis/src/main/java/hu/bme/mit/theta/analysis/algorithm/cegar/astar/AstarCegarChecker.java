@@ -62,49 +62,27 @@ public final class AstarCegarChecker<S extends State, A extends Action, P extend
 	final AstarArgStore<S, A, P> astarArgStore;
 
 	private AstarCegarChecker(
-			final ArgBuilder<S, A, P> argBuilder, final Function<? super S, ?> projection, final Refiner<S, A, P> refiner,
-			final PartialOrd<S> partialOrd, final Logger logger, final Type type
+			final Abstractor<S, A, P> abstractor, final Function<? super S, ?> projection, final Refiner<S, A, P> refiner,
+			final PartialOrd<S> partialOrd, final Logger logger, final AstarArgStore<S, A, P> astarArgStore
 	) {
-		StopCriterion<S, A> stopCriterion;
-		switch (type) {
-			case FULL:
-				this.astarArgStore = new AstarArgStoreFull<>();
-				stopCriterion = StopCriterions.fullExploration();
-				break;
-			case SEMI_ONDEMAND:
-				this.astarArgStore = new AstarArgStoreSemiOndemand<>();
-				stopCriterion = StopCriterions.firstCex();
-				break;
-			default:
-				throw new IllegalArgumentException("Unknown AstarCegarChecker.Type");
-		}
-		final Abstractor<S, A, P> abstractor = AstarAbstractor
-			.builder(argBuilder)
-			.projection(projection) //
-			.stopCriterion(stopCriterion)
-			.logger(logger)
-			.AstarArgStore(astarArgStore)
-			.type(type)
-			.partialOrder(partialOrd)
-			.build();
-
 		this.abstractor = checkNotNull(abstractor);
+		this.astarArgStore = astarArgStore;
 		this.refiner = checkNotNull(refiner);
 		this.logger = checkNotNull(logger);
-		this.projection = projection;
+		this.projection = projection == null ? s -> 0 : projection;
 		this.partialOrd = partialOrd;
 	}
 
 	public static <S extends State, A extends Action, P extends Prec> AstarCegarChecker<S, A, P> create(
-			final ArgBuilder<S, A, P> argBuilder, final Function<? super S, ?> projection, final Refiner<S, A, P> refiner,
-			final PartialOrd<S> partialOrd, final Type type) {
-		return new AstarCegarChecker<>(argBuilder, projection, refiner, partialOrd, NullLogger.getInstance(), type);
+			final Abstractor<S, A, P> astarAbstractor, final Function<? super S, ?> projection, final Refiner<S, A, P> refiner,
+			final PartialOrd<S> partialOrd, final AstarArgStore<S, A, P> astarArgStore) {
+		return new AstarCegarChecker<>(astarAbstractor, projection, refiner, partialOrd, NullLogger.getInstance(), astarArgStore);
 	}
 
 	public static <S extends State, A extends Action, P extends Prec> AstarCegarChecker<S, A, P> create(
-			final ArgBuilder<S, A, P> argBuilder, final Function<? super S, ?> projection, final Refiner<S, A, P> refiner,
-			final Logger logger, final PartialOrd<S> partialOrd, final Type type) {
-		return new AstarCegarChecker<>(argBuilder, projection, refiner, partialOrd, logger, type);
+			final Abstractor<S, A, P> astarAbstractor, final Function<? super S, ?> projection, final Refiner<S, A, P> refiner,
+			final Logger logger, final PartialOrd<S> partialOrd, final AstarArgStore<S, A, P> astarArgStore) {
+		return new AstarCegarChecker<>(astarAbstractor, projection, refiner, partialOrd, logger, astarArgStore);
 	}
 
 	@Override
