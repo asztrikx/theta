@@ -72,7 +72,7 @@ public final class CegarChecker<S extends State, A extends Action, P extends Pre
 		AbstractorResult abstractorResult = null;
 		final ARG<S, A> arg = abstractor.createArg();
 		// arg reference expected to stay the same
-		FileVisualizer fileVisualizer = new ArgFileVisualizer<>(logger != NullLogger.getInstance(), arg);
+		FileVisualizer fileVisualizer = new ArgFileVisualizer<>(false, arg);
 		P prec = initPrec;
 		int iteration = 0;
 		do {
