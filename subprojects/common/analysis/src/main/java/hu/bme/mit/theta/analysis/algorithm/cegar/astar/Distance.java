@@ -1,6 +1,8 @@
 package hu.bme.mit.theta.analysis.algorithm.cegar.astar;
 
-public final class Distance {
+import java.util.Comparator;
+
+public final class Distance implements Comparable<Distance> {
 	private final Type type;
 	private final int value;
 
@@ -34,6 +36,22 @@ public final class Distance {
 
 	public boolean isKnown() {
 		return type == Type.EXACT || type == Type.INFINITE;
+	}
+
+	// Both distances should be known
+	@Override
+	public int compareTo(Distance distance) {
+		assert isKnown();
+		assert distance.isKnown();
+		if (getType() == Type.INFINITE) {
+			return -1;
+		}
+		if (distance.getType() == Type.INFINITE) {
+			return 1;
+		}
+		int value1 = getValue();
+		int value2 = distance.getValue();
+		return value1 - value2;
 	}
 
 	@Override

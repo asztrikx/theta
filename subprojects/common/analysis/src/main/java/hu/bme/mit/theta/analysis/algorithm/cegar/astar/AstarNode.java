@@ -10,7 +10,7 @@ import java.util.List;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
-public final class AstarNode<S extends hu.bme.mit.theta.analysis.State, A extends Action> {
+public final class AstarNode<S extends State, A extends Action> {
 	public final ArgNode<S, A> argNode;
 	public AstarNode<S, A> providerAstarNode;
 	public Distance distance;

@@ -76,7 +76,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		this.logger = checkNotNull(logger);
 		this.astarArgStore = checkNotNull(astarArgStore);
 		this.type = type;
-		this.astarFileVisualizer = new AstarFileVisualizer<>(false, astarArgStore);
+		this.astarFileVisualizer = new AstarFileVisualizer<>(true, astarArgStore);
 		this.partialOrd = partialOrd;
 	}
 
@@ -145,6 +145,8 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 			// reached target
 			//	 	All nodes are expected to be expanded for provider nodes, targets as well
 			if (argNode.isTarget()) {
+				// Set distances for nodes as we find a target because when we are searching for multiple targets
+				// and cover into any of these nodes we wouldn't know otherwise whether target is reachable (can't revisit nodes, doneSet).
 				astarArg.updateDistancesFromTargetUntil(astarNode, startNodes, parents);
 				expandTarget(astarNode, astarArg);
 				if (stopCriterion.canStop(astarArg.arg, List.of(astarNode.argNode))) {
@@ -172,7 +174,12 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 				continue;
 			}
 
-			close(argNode, astarArg.reachedSet.get(argNode));
+			// After prune node may have children but not fully expanded (isExpanded false).
+			// If node has no children it still can already be expanded, therefore expanded is already set (should not be covered).
+			// If node already has covering node, close cloud still choose another one, therefore avoid.
+			if (!argNode.isExpanded() && argNode.getSuccNodes().findAny().isEmpty() && argNode.getCoveringNode().isEmpty()) {
+				close(argNode, astarArg.reachedSet.get(argNode));
+			}
 			if (argNode.getCoveringNode().isPresent()) {
 				ArgNode<S, A> coveringNode = argNode.getCoveringNode().get();
 				AstarNode<S, A> coveringAstarNode = astarArg.get(coveringNode);
@@ -253,73 +260,51 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 
 		// If we are looking for n targets then it is possible that we reached [1,n) target when reaching this line
 
-		// TODO: optimalization: completed leaf nodes with no distance we should walk up and set infinite distance until all other children have infinite distance
-		// otherwise we could visit it many times
-		// e.g.
-		// 		b,d,f is target
-		//		- nodes don't matter in this case
-		//		we call findHeuristic on a,c,e
-		//		e-g is visited 3 times
-		//
-		//	The edges closer to the left side will enter waitlist first
-		//     a
-		//    | \
-		//    -  c
-		//	  | | \
-		//	  - -  e
-		//	  | | | \
-		//	  - - -  g (no more children)
-		//    | | |
-		//    b d f
-
-		//
-		// TODO (same) what about loops (covering edge)
-		// Covering edge to its ascendant: we
-		//      -
-		//     / |
-		//    -  a <- -
-		//       |      \
-		//       b      |
-		//       |      |
-		//       c - - /
-		//       |
-		//      (there can be other children)
-		// maybe:  ancestors().noneMatch(n -> n.equals(node) || n.isSubsumed());
+		// We need to have heuristic for startAstarNodes
+		// Before this only exact heuristics were set
+		astarArg.updateDistanceInfinite();
 	}
 
-	// expands the provider node so that the children of the provided node can also have provider nodes to choose from
+	// Expands the target (future provider node) so that the children of the provided node can also have provider nodes to choose from.
+	// Target should not already be expanded.
 	private void expandTarget(AstarNode<S, A> astarNode, AstarArg<S, A, P> astarArg) {
-		if (astarArg == null) {
+		ArgNode<S, A> argNode = astarNode.argNode;
+		// astarNode can be a coverer node for another target, therefore it can already be expanded (directly or indirectly)
+		if (argNode.isExpanded() || argNode.getCoveringNode().isPresent()) {
 			return;
 		}
-		ArgNode<S, A> argNode = astarNode.argNode;
-		assert !argNode.isExpanded();
+		assert argNode.getSuccNodes().findAny().isEmpty(); // TODO ask this
 
 		do {
-			argBuilder.expand(argNode, astarArg.prec);
-
-			// go over recreated and remained nodes
-			// expand: create astar nodes
-			AstarNode<S, A> lambdaAstarNode = astarNode;
-			argNode.getSuccNodes().forEach(succArgNode -> {
-				AstarNode<S, A> succAstarNode = astarArg.get(succArgNode);
-				if (succAstarNode == null) {
-					astarArg.createSuccAstarNode(succArgNode, lambdaAstarNode);
-				}
-			});
-
+			assert !argNode.isExpanded();
+			assert argNode.getSuccNodes().findAny().isEmpty();
+			assert argNode.getCoveringNode().isEmpty();
+			close(argNode, astarArg.reachedSet.get(argNode));
 			if (argNode.getCoveringNode().isEmpty()) {
+				//// We can get covered into already expanded node
+				//// Covering target may have been after astarNode in waitlist therefore it may not already be expanded
+				argBuilder.expand(argNode, astarArg.prec);
+
+				// expand: create astar nodes
+				AstarNode<S, A> lambdaAstarNode = astarNode;
+				argNode.getSuccNodes().forEach(succArgNode -> {
+					AstarNode<S, A> succAstarNode = astarArg.get(succArgNode);
+					assert succAstarNode == null;
+					astarArg.createSuccAstarNode(succArgNode, lambdaAstarNode);
+					// We don't add it to waitlist therefore we don't need to find heuristic
+				});
+
 				break;
 			}
 
 			// Covered node's children are the covering node's children, therefore we have to expand the covering node
 			argNode = argNode.getCoveringNode().get();
 			astarNode = astarArg.get(argNode);
-			// As we are not exploring with findDistance we have to manually set the distances for new nodes.
-			// Target node's covering node must be target
+			// Target node's covering node must be a target.
 			assert argNode.isTarget();
+			// optimization: we know the distance for a target node
 			astarNode.distance = new Distance(Distance.Type.EXACT, 0);
-		} while(!argNode.isExpanded()); // We can cover into an already expanded target e.g. ("self loops" is also a good example)
+		} while(!argNode.isExpanded()); // We can cover into an already expanded target (it can't be covered, see close())
 	}
 
 	// TODO this function should be part of Search class
@@ -363,11 +348,6 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 			findDistanceInner(astarArg, stopCriterion, startAstarNodes);
 		//}
 
-		// TODO temporary fix until we set all possible nodes infinite
-		if (startAstarNodes.stream().noneMatch(a -> a.distance.isKnown())) {
-			startAstarNodes.forEach(astarArg::updateDistancesFromRootInfinite);
-		}
-
 		logger.write(Level.SUBSTEP, "done%n");
 		logger.write(Level.INFO, "|  |  Finished ARG: %d nodes, %d incomplete, %d unsafe%n", arg.getNodes().count(),
 				arg.getIncompleteNodes().count(), arg.getUnsafeNodes().count());
@@ -379,6 +359,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		astarArg.arg.getInitNodes().forEach(initArgNode -> {
 			assert !initArgNode.isCovered();
 			astarArg.createInitAstarNode(initArgNode);
+			// TODO: find heur here, remove findHeur in finddistance assert is is already known
 		});
 	}
 
@@ -447,9 +428,9 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 			//   therefore we don't need this: checkState(arg.isComplete(), "Returning incomplete ARG as safe");
 			return AbstractorResult.safe();
 		} else {
-			if (type == AstarCegarChecker.Type.FULL) {
+			/*if (type == AstarCegarChecker.Type.FULL) {
 				astarArg.setUnknownDistanceInfinite();
-			}
+			}*/
 			return AbstractorResult.unsafe();
 		}
 	}
@@ -462,6 +443,8 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 	}
 
 	private void close(final ArgNode<S, A> node, final Collection<ArgNode<S, A>> candidates) {
+		assert node.getCoveringNode().isEmpty();
+		assert node.getSuccNodes().findAny().isEmpty();
 		if (!node.isLeaf()) {
 			return;
 		}

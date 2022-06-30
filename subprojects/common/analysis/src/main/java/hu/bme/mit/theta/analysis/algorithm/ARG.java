@@ -24,12 +24,12 @@ import hu.bme.mit.theta.common.container.Containers;
 import hu.bme.mit.theta.common.container.factory.HashContainerFactory;
 
 import java.util.Collection;
-import java.util.Map;
 import java.util.Set;
 import java.util.Optional;
 import java.util.OptionalInt;
 
 import java.util.function.BiFunction;
+import java.util.function.Function;
 import java.util.stream.Stream;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -80,14 +80,21 @@ public final class ARG<S extends State, A extends Action> {
 		return getInitNodes().flatMap(ArgNode::unexcludedDescendants).filter(n -> !n.isExpanded());
 	}
 
-	public Stream<ArgNode<S, A>> getCompleteNodes() {
-		// TODO what is unexcludedDescendants (call chain is weird)
-		return getInitNodes().flatMap(ArgNode::unexcludedDescendants).filter(ArgNode::isExpanded);
+	// Get expanded (not covered) nodes with no outedge
+	public Stream<ArgNode<S, A>> getCompleteLeafNodes() {
+		return getInitNodes().flatMap(ArgNode::unexcludedDescendants).filter(n -> n.isExpanded() && n.getSuccNodes().findAny().isEmpty() && !n.isCovered());
 	}
 
-	public Stream<ArgNode<S, A>> getCompleteLeafNodes() {
-		// TODO what is unexcludedDescendants (call chain is weird)
-		return getInitNodes().flatMap(ArgNode::unexcludedDescendants).filter(n -> n.isExpanded() && n.getSuccNodes().findAny().isEmpty() && !n.isCovered());
+	public Stream<ArgNode<S, A>> getAncestorCoveredNodes() {
+		return getCoveredNodes().filter(coveredNode -> {
+			assert coveredNode.coveringNode.isPresent();
+			ArgNode<S, A> coveringNode = coveredNode.coveringNode.get();
+			return coveredNode.properAncestors().anyMatch(properAncestor -> properAncestor == coveringNode);
+		});
+	}
+
+	public Stream<ArgNode<S, A>> getCoveredNodes() {
+		return getInitNodes().flatMap(ArgNode::unexcludedDescendants).filter(ArgNode::isCovered);
 	}
 
 	////
@@ -268,7 +275,7 @@ public final class ARG<S extends State, A extends Action> {
 	}
 
 	// parents: node -> parent
-	public void walkUpParents(ArgNode<S, A> start, Map<ArgNode<S, A>, ArgNode<S, A>> parents, BiFunction<ArgNode<S, A>, Integer, Boolean> skip) {
+	public void walkUpParents(ArgNode<S, A> start, Function<ArgNode<S, A>, ArgNode<S, A>> getParent, BiFunction<ArgNode<S, A>, Integer, Boolean> skip) {
 		checkNotNull(start);
 		checkNotNull(skip);
 
@@ -279,11 +286,13 @@ public final class ARG<S extends State, A extends Action> {
 				break;
 			}
 
-			ArgNode<S, A> parent = parents.get(current);
-			if (current.inEdge.isPresent() && current.inEdge.get().getSource() == parent) {
-				distance++;
-			} else {
-				assert current.coveredNodes.contains(parent);
+			ArgNode<S, A> parent = getParent.apply(current);
+			if (parent != null) { // TODO how did this not failed
+				if (current.inEdge.isPresent() && current.inEdge.get().getSource() == parent) {
+					distance++;
+				} else {
+					assert current.coveredNodes.contains(parent);
+				}
 			}
 			current = parent;
 		}
