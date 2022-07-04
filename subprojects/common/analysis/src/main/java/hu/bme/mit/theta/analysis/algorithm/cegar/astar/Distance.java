@@ -1,7 +1,5 @@
 package hu.bme.mit.theta.analysis.algorithm.cegar.astar;
 
-import java.util.Comparator;
-
 public final class Distance implements Comparable<Distance> {
 	private final Type type;
 	private final int value;
@@ -28,10 +26,8 @@ public final class Distance implements Comparable<Distance> {
 	}
 
 	public int getValue() {
-		if (type == Type.EXACT) {
-			return value;
-		}
-		throw new RuntimeException("Only EXACT Distances have meaningful values.");
+		assert type == Type.EXACT;
+		return value;
 	}
 
 	public boolean isKnown() {
@@ -47,10 +43,10 @@ public final class Distance implements Comparable<Distance> {
 			return 0;
 		}
 		if (getType() == Type.INFINITE) {
-			return -1;
+			return 1;
 		}
 		if (distance.getType() == Type.INFINITE) {
-			return 1;
+			return -1;
 		}
 		int value1 = getValue();
 		int value2 = distance.getValue();

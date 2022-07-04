@@ -53,21 +53,27 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
 	// Propagate exact distance up from target until a node in a set is reached
 	// parents: node -> parent
 	public void updateDistancesFromTargetUntil(
-			AstarNode<S, A> target, Set<ArgNode<S, A>> until, Map<ArgNode<S, A>, ArgNode<S, A>> parents
+			AstarNode<S, A> from, Set<ArgNode<S, A>> until, Map<ArgNode<S, A>, ArgNode<S, A>> parents
 	) {
 		int startDistance;
-		if (target.distance.getType() == Distance.Type.EXACT) {
-			startDistance = target.distance.getValue();
+		if (from.distance.getType() == Distance.Type.EXACT) {
+			startDistance = from.distance.getValue();
 		} else {
 			startDistance = 0;
 		}
 
 		List<Tuple2<ArgNode<S, A>, Integer>> conditionalNodes = new ArrayList<>();
 
-		// TODO what about when covering into node with exact distance (exact distance before and after cover)
-		arg.walkUpParents(target.argNode, parents::get, (node, distance) -> {
+		// parents is good even when we have a covered node pointing to a node with an exact distance as that exact distance
+		// can only be from a previous iteration as we set distances at the end of the iterations so the parent of the covering
+		// node will be the covered node.
+		arg.walkUpParents(from.argNode, parents::get, (node, distance) -> {
 			AstarNode<S, A> astarNode = get(node);
 			distance = distance + startDistance;
+
+			if (node.isTarget() && node != from.argNode) {
+				assert astarNode.distance.isKnown();
+			}
 
 			// Multiple targets can be visited during a check, therefore we should only keep distances from the first found target
 			if (astarNode.distance.getType() != Distance.Type.EXACT) {
@@ -76,7 +82,7 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
 				// Save covered nodes
 				Integer lambdaDistance = distance;
 				Stream<Tuple2<ArgNode<S, A>, Integer>> coveredNodesStream = node.getCoveredNodes()
-						// Parent is a covered node, do not call updateDistancesFromNodes as it's distance will be known
+						// Node's parent is a covered node, do not call updateDistancesFromNodes as it's distance will be known
 						.filter(coveredNode -> parents.get(node) != coveredNode)
 						.map(coveredNode -> {
 							assert get(coveredNode).distance.getType() == Distance.Type.UNKNOWN;
@@ -87,14 +93,13 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
 				// Parents is a covered node therefore inedge source's children may all have distance after setting this node
 				// therefore add it to list
 				if (node.getCoveredNodes().anyMatch(coveredNode -> parents.get(node) == coveredNode)) {
-					// can be covered into an init node
+					// can be an init node
 					if (node.getParent().isPresent()) {
 						ArgNode<S, A> graphParent = node.getParent().get();
 						AstarNode<S, A> astarGraphParent = get(graphParent);
 						// Graph parent may already have distance
 						if (!astarGraphParent.distance.isKnown()) {
-							// TODO inedge source can have a distance as it can be a covered node ancestor
-							conditionalNodes.add(Tuple2.of(graphParent, distance + 1));
+							conditionalNodes.add(Tuple2.of(graphParent, Integer.MIN_VALUE));
 						}
 					}
 				}
@@ -103,12 +108,11 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
 			} else {
 				assert astarNode.distance.getValue() <= distance;
 
-				// TODO we also can set distance to covered node and set it as target, then we would not have this edge case
-				if (target.argNode != node) {
+				if (from.argNode != node) {
 					return true;
 				} else {
-					// We would not start a search from a node with known distance
-					// therefore it must be a node which we covered into and got upperlimit
+					// [multiparent] this maybe false as startNode may just hava a distance from different target
+					// Upperlimit case
 					assert !until.contains(node);
 					return false;
 				}
@@ -123,13 +127,20 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
 			}
 		});
 
-		updateDistancesFromNodes(conditionalNodes);
+		updateDistancesFromConditionalNodes(conditionalNodes);
 	}
 
 	// Propagate exact distance up
 	// nodes: all should be either covered or have > 0 children and must not have a distance already
-	public void updateDistancesFromNodes(List<Tuple2<ArgNode<S, A>, Integer>> nodes) {
-		assert nodes.stream().noneMatch(t -> get(t.get1()).distance.isKnown());
+	public void updateDistancesFromConditionalNodes(List<Tuple2<ArgNode<S, A>, Integer>> nodes) {
+		// distance can already be known:
+		//	parents: c's is b, b's is a
+		//  updateDistancesFromTargetUntil calls with a as in general case inedge's source is not the covering node's ancestor
+		//  see comment in that function
+		//      a
+		//    /  \
+		//   b- ->c
+		nodes = nodes.stream().filter(t -> !get(t.get1()).distance.isKnown()).toList();
 		Queue<Tuple2<ArgNode<S, A>, Integer>> queue = new ArrayDeque<>(nodes);
 
 		// We also know the distance to all covered nodes as they can't reach target otherwise
@@ -147,8 +158,13 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
 			}, (node, _distance) -> {
 				AstarNode<S, A> astarNode = get(node);
 
+				if (node.isTarget()) {
+					assert astarNode.distance.getType() == Distance.Type.EXACT;
+				}
+
 				if (astarNode.distance.getType() == Distance.Type.EXACT) {
-					assert _distance + distanceBase >= astarNode.distance.getValue();
+					Distance minDistance = node.getSuccNodes().map(child -> get(child).distance).filter(Distance::isKnown).min(Distance::compareTo).get();
+					assert minDistance.getValue() + 1 >= astarNode.distance.getValue();
 					return true;
 				}
 
@@ -170,13 +186,25 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
 					assert minDistance.getType() == Distance.Type.EXACT;
 					astarNode.distance = new Distance(Distance.Type.EXACT, minDistance.getValue() + 1);
 				}
-				// astarNode.distance != distance, see above
+				// astarNode.distance != _distance, see above
 				Integer lambdaDistance = astarNode.distance.getValue();
 				queue.addAll(node.getCoveredNodes().map(newCoveredNode -> Tuple2.of(newCoveredNode, lambdaDistance)).toList());
 
 				return false;
 			});
 		}
+	}
+
+	public void updateDistancesFromRootInfinite(AstarNode<S, A> from) {
+		arg.walk(List.of(from.argNode), (argNode, distance) -> {
+			AstarNode<S, A> astarNode = get(argNode);
+
+			// if we reach a part where target is reachable then root should also reach it
+			assert(astarNode.distance.getType() != Distance.Type.EXACT);
+			astarNode.distance = new Distance(Distance.Type.INFINITE);
+
+			return false;
+		});
 	}
 
 	// Set all nodes which will never reach target infinite
@@ -239,6 +267,8 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
 
 		while (!queue.isEmpty()) {
 			ArgNode<S, A> argNode = queue.remove();
+
+			// Parent nodes with non inf heuristic can be infinite distance after refinement
 			arg.walkUpParents(argNode, node -> {
 				if (node.getParent().isPresent()) {
 					return node.getParent().get();
@@ -248,28 +278,29 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
 			}, (node, _distance) -> {
 				AstarNode<S, A> astarNode = get(node);
 
-				/*if (node.isTarget()) {
+				// We can have target ancestor
+				if (node.isTarget()) { // TODO do this in setDistanceExact
 					// target may or may not have a distance
 					return true;
-				}*/
+				}
 
 				// When updating nodes reaching a target, they can already have distance without all children having distance
-				/*if (astarNode.distance.isKnown()) {
+				if (astarNode.distance.isKnown()) {
 					assert astarNode.distance.getType() == Distance.Type.EXACT;
 					return true;
-				}*/
-
-				// 3) Add covered nodes to queue
-				node.getCoveredNodes().forEach(coveredNode -> {
-					assert !get(coveredNode).distance.isKnown();
-					queue.add(coveredNode);
-				});
+				}
 
 				// Covered nodes added to queue have covering node with infinite distance.
 				// Nodes with infinite heuristic are not expanded therefore we have to check it before allSuccNodeDistanceInfinite.
 				if (node.isCovered() || astarNode.getHeuristic().getType() == Distance.Type.INFINITE || allSuccNodeDistanceInfinite(node)) {
 					assert astarNode.distance.getType() == Distance.Type.UNKNOWN;
 					astarNode.distance = new Distance(Distance.Type.INFINITE);
+
+					// 3) Add covered nodes to queue
+					node.getCoveredNodes().forEach(coveredNode -> {
+						assert !get(coveredNode).distance.isKnown();
+						queue.add(coveredNode);
+					});
 
 					return false;
 				} else {
@@ -278,7 +309,7 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
 					// therefore we have to call updateDistanceFromNodes because exact distances are only set from a target
 					if (allSuccDistanceKnown(node)) {
 						// distance won't be used as node is not covered
-						updateDistancesFromNodes(List.of(Tuple2.of(node, Integer.MIN_VALUE)));
+						updateDistancesFromConditionalNodes(List.of(Tuple2.of(node, Integer.MIN_VALUE)));
 					}
 
 					return true;

@@ -38,7 +38,8 @@ public abstract class FileVisualizer {
 		}
 		int testCount = parentDir.listFiles().length;
 		File directory = new File(String.format("%s/theta/%s/%d", System.getProperty("java.io.tmpdir"), nowText, testCount));
-		assert directory.mkdirs();
+		boolean successful = directory.mkdirs();
+		assert successful;
 		try {
 			file = new File(directory.getCanonicalPath());
 		} catch (IOException e) {
@@ -59,7 +60,7 @@ public abstract class FileVisualizer {
 			// '∣' != '|' (for Windows)
 			File[] subfiles = file.listFiles();
 			assert subfiles != null;
-			String filename = String.format("%s/%d∣ %s.png", file.getCanonicalPath(), subfiles.length + 1, title);
+			String filename = String.format("%s/%d∣ %s.svg", file.getCanonicalPath(), subfiles.length + 1, title);
 			GraphvizWriter.getInstance().writeFileAutoConvert(graphSupplier.get(), filename);
 		} catch (IOException | InterruptedException e) {
 			throw new RuntimeException(e);

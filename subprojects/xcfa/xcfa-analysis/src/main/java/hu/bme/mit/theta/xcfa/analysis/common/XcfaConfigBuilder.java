@@ -328,6 +328,7 @@ public class XcfaConfigBuilder {
 		switch (domain) {
 			case EXPL:
 				final ExplStmtAnalysis domainAnalysis = ExplStmtAnalysis.create(abstractionSolverFactory.createSolver(), True(), maxEnum);
+				analysis = domainAnalysis;
 				abstractor = getAbstractor(lts, domainAnalysis, xcfa);
 				prec = getExplPrec(initPrec, xcfa);
 				precRefiner = algorithm.getPrecRefiner(explRefToPrec);
@@ -335,6 +336,7 @@ public class XcfaConfigBuilder {
 			case PRED_BOOL:
 				PredAbstractor predAbstractor = PredAbstractors.booleanAbstractor(abstractionSolverFactory.createSolver());
 				PredAnalysis<?> predAnalysis = PredAnalysis.create(abstractionSolverFactory.createSolver(), predAbstractor, True());
+				analysis = predAnalysis;
 				abstractor = getAbstractor(lts, predAnalysis, xcfa);
 				prec = getPredPrec(initPrec, xcfa);
 				precRefiner = algorithm.getPrecRefiner(predRefToPrec);
@@ -342,6 +344,7 @@ public class XcfaConfigBuilder {
 			case PRED_CART:
 				predAbstractor = PredAbstractors.booleanSplitAbstractor(abstractionSolverFactory.createSolver());
 				predAnalysis = PredAnalysis.create(abstractionSolverFactory.createSolver(), predAbstractor, True());
+				analysis = predAnalysis;
 				abstractor = getAbstractor(lts, predAnalysis, xcfa);
 				prec = getPredPrec(initPrec, xcfa);
 				precRefiner = algorithm.getPrecRefiner(predRefToPrec);
@@ -349,6 +352,7 @@ public class XcfaConfigBuilder {
 			case PRED_SPLIT:
 				predAbstractor = PredAbstractors.cartesianAbstractor(abstractionSolverFactory.createSolver());
 				predAnalysis = PredAnalysis.create(abstractionSolverFactory.createSolver(), predAbstractor, True());
+				analysis = predAnalysis;
 				abstractor = getAbstractor(lts, predAnalysis, xcfa);
 				prec = getPredPrec(initPrec, xcfa);
 				precRefiner = algorithm.getPrecRefiner(predRefToPrec);
@@ -477,9 +481,7 @@ public class XcfaConfigBuilder {
 	}
 
 	private Abstractor getAbstractor(LTS lts, Analysis domainAnalysis, XCFA xcfa) {
-		if (analysis == null) {
-			analysis = algorithm.getAnalysis(xcfa.getProcesses().stream().map(proc -> proc.getMainProcedure().getInitLoc()).collect(Collectors.toList()), domainAnalysis);
-		}
+		final Analysis analysis = algorithm.getAnalysis(xcfa.getProcesses().stream().map(proc -> proc.getMainProcedure().getInitLoc()).collect(Collectors.toList()), domainAnalysis);
 		final boolean isMultiSeq = refinement == Refinement.MULTI_SEQ;
 
 		final ArgBuilder argBuilder = ArgBuilder.create(lts, analysis, state -> ((XcfaState) state).isError(), true);
@@ -496,7 +498,7 @@ public class XcfaConfigBuilder {
 						.stopCriterion(isMultiSeq ? StopCriterions.fullExploration() : StopCriterions.firstCex())
 						.logger(logger)
 						.astarArgStore(astarArgStore)
-						.partialOrder(algorithm.getPartialOrder(analysis.getPartialOrd()))
+						.partialOrder(algorithm.getPartialOrder(domainAnalysis.getPartialOrd()))
 						.build();
 			}
 			default -> {

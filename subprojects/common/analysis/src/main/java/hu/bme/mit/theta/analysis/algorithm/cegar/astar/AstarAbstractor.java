@@ -73,7 +73,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		this.logger = checkNotNull(logger);
 		this.astarArgStore = checkNotNull(astarArgStore);
 		this.type = type;
-		this.astarFileVisualizer = new AstarFileVisualizer<>(true, astarArgStore);
+		this.astarFileVisualizer = new AstarFileVisualizer<>(false, astarArgStore);
 		this.partialOrd = partialOrd;
 	}
 
@@ -119,7 +119,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		AstarNode<S, A> upperLimitAstarNode = null;
 
 		// Implementation assumes that lower distance is set first therefore store reached targets in the order we reach them.
-		// We save targets and nodes with exact value.
+		// We save targets and nodes with exact value. In the latter the exact values must be from a previous findDistance as we set exact distances at the end of iteration.
 		Queue<AstarNode<S, A>> reachedExacts = new ArrayDeque<>();
 
 		while (!waitlist.isEmpty()) {
@@ -141,7 +141,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 			if (depth >= upperLimitValue && upperLimitValue != -1) {
 				reachedExacts.add(upperLimitAstarNode);
 				if (stopCriterion.canStop(astarArg.arg, List.of(astarNode.argNode))) {
-					return;
+					break;
 				}
 			}
 
@@ -149,7 +149,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 			if (argNode.isTarget()) {
 				reachedExacts.add(astarNode);
 				if (stopCriterion.canStop(astarArg.arg, List.of(astarNode.argNode))) {
-					return;
+					break;
 				}
 				continue;
 			}
@@ -230,7 +230,6 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 					// expand: create astar nodes
 					if (succAstarNode == null) {
 						succAstarNode = astarArg.createSuccAstarNode(succArgNode, astarNode);
-
 					}
 
 					// already existing succAstarNode
@@ -265,8 +264,6 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 
 		// We need to have heuristic for startAstarNodes therefore we need to set distance.
 		// updateDistancesFromNodes depends on infinite distances being already set therefore set infinite distances first.
-		// TODO handle cases when non target has parent target <= target is expanded
-		// TODO handle cases when parent has distance
 		astarArg.updateDistanceInfinite();
 		while(!reachedExacts.isEmpty()) {
 			AstarNode<S, A> target = reachedExacts.remove();
@@ -360,6 +357,11 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		//if (!stopCriterion.canStop(arg)) {
 			findDistanceInner(astarArg, stopCriterion, startAstarNodes);
 		//}
+
+		// TODO temporary fix until we set all possible nodes infinite
+		if (startAstarNodes.stream().noneMatch(a -> a.distance.isKnown())) {
+			startAstarNodes.forEach(astarArg::updateDistancesFromRootInfinite);
+		}
 
 		logger.write(Level.SUBSTEP, "done%n");
 		logger.write(Level.INFO, "|  |  Finished ARG: %d nodes, %d incomplete, %d unsafe%n", arg.getNodes().count(),

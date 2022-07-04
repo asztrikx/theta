@@ -21,3 +21,7 @@ dependencies {
 application {
     mainClassName = "hu.bme.mit.theta.xcfa.cli.XcfaCli"
 }
+
+tasks.withType(JavaExec::class.java) {
+    this.enableAssertions = true
+}
