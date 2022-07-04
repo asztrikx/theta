@@ -43,6 +43,9 @@ public final class Distance implements Comparable<Distance> {
 	public int compareTo(Distance distance) {
 		assert isKnown();
 		assert distance.isKnown();
+		if (getType() == Type.INFINITE && distance.getType() == Type.INFINITE) {
+			return 0;
+		}
 		if (getType() == Type.INFINITE) {
 			return -1;
 		}

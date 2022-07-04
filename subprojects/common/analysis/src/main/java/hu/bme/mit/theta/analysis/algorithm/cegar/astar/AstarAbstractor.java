@@ -36,10 +36,7 @@ import hu.bme.mit.theta.common.logging.Logger;
 import hu.bme.mit.theta.common.logging.Logger.Level;
 import hu.bme.mit.theta.common.logging.NullLogger;
 
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -117,8 +114,14 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		// start nodes to search
 		startAstarNodes.forEach(startNode -> waitlist.add(new Edge<>(null, startNode, 0)));
 
+		// We might reach a node with known distance making an upper limit for the closest target
 		int upperLimitValue = -1;
 		AstarNode<S, A> upperLimitAstarNode = null;
+
+		// Implementation assumes that lower distance is set first therefore store reached targets in the order we reach them.
+		// We save targets and nodes with exact value.
+		Queue<AstarNode<S, A>> reachedExacts = new ArrayDeque<>();
+
 		while (!waitlist.isEmpty()) {
 			Edge<S, A> edge = waitlist.remove();
 			AstarNode<S, A> parentAstarNode = edge.start;
@@ -136,19 +139,15 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 
 			// reached upper limit
 			if (depth >= upperLimitValue && upperLimitValue != -1) {
-				astarArg.updateDistancesFromTargetUntil(upperLimitAstarNode, startNodes, parents);
+				reachedExacts.add(upperLimitAstarNode);
 				if (stopCriterion.canStop(astarArg.arg, List.of(astarNode.argNode))) {
 					return;
 				}
 			}
 
 			// reached target
-			//	 	All nodes are expected to be expanded for provider nodes, targets as well
 			if (argNode.isTarget()) {
-				// Set distances for nodes as we find a target because when we are searching for multiple targets
-				// and cover into any of these nodes we wouldn't know otherwise whether target is reachable (can't revisit nodes, doneSet).
-				astarArg.updateDistancesFromTargetUntil(astarNode, startNodes, parents);
-				expandTarget(astarNode, astarArg);
+				reachedExacts.add(astarNode);
 				if (stopCriterion.canStop(astarArg.arg, List.of(astarNode.argNode))) {
 					return;
 				}
@@ -160,6 +159,8 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 			//   - same subgraph which was reached from a different subgraph by a covering edge
 			// We have a target in x distance therefore we have an upper bound
 			// Node can already be marked done therefore
+			// TODO move this to expand & cover, useless to put into waitlist: have to distinguish between cover edge and normal edge to know what will be the target: NOT if we set parent when having normal edge (required for multi target)
+			// TODO multi target: what if we cover into a subgraph reaching target, our subgraph should get distances otherwise it will wrongly be inf. this requires multi upper limit as we don't know whether a target or upper limit will be closer!!!!
 			if (astarNode.distance.getType() == Distance.Type.EXACT) {
 				//// put this into correct place: because of FULL in the same iteration it can be marked done
 				//// this case can also handle covering node's case
@@ -218,7 +219,8 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 
 				// expand: create nodes
 				if (!argNode.isExpanded()) {
-					argBuilder.expand(argNode, astarArg.prec);
+					Collection<ArgNode<S, A>> newNodes = argBuilder.expand(argNode, astarArg.prec);
+					astarArg.reachedSet.addAll(newNodes);
 				} // TODO if stopcriterion can stop +target? => stop here
 
 				// go over recreated and remained nodes
@@ -228,6 +230,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 					// expand: create astar nodes
 					if (succAstarNode == null) {
 						succAstarNode = astarArg.createSuccAstarNode(succArgNode, astarNode);
+
 					}
 
 					// already existing succAstarNode
@@ -255,14 +258,23 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 
 		// upper limit was not reached (no more nodes left)
 		if (upperLimitValue != -1) {
-			astarArg.updateDistancesFromTargetUntil(upperLimitAstarNode, startNodes, parents);
+			reachedExacts.add(upperLimitAstarNode);
 		}
 
 		// If we are looking for n targets then it is possible that we reached [1,n) target when reaching this line
 
-		// We need to have heuristic for startAstarNodes
-		// Before this only exact heuristics were set
+		// We need to have heuristic for startAstarNodes therefore we need to set distance.
+		// updateDistancesFromNodes depends on infinite distances being already set therefore set infinite distances first.
+		// TODO handle cases when non target has parent target <= target is expanded
+		// TODO handle cases when parent has distance
 		astarArg.updateDistanceInfinite();
+		while(!reachedExacts.isEmpty()) {
+			AstarNode<S, A> target = reachedExacts.remove();
+			astarArg.updateDistancesFromTargetUntil(target, startNodes, parents);
+
+			// All provider nodes are expected to be expanded, targets as well
+			expandTarget(target, astarArg);
+		}
 	}
 
 	// Expands the target (future provider node) so that the children of the provided node can also have provider nodes to choose from.
@@ -283,7 +295,8 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 			if (argNode.getCoveringNode().isEmpty()) {
 				//// We can get covered into already expanded node
 				//// Covering target may have been after astarNode in waitlist therefore it may not already be expanded
-				argBuilder.expand(argNode, astarArg.prec);
+				Collection<ArgNode<S, A>> newNodes = argBuilder.expand(argNode, astarArg.prec);
+				astarArg.reachedSet.addAll(newNodes);
 
 				// expand: create astar nodes
 				AstarNode<S, A> lambdaAstarNode = astarNode;
@@ -359,7 +372,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		astarArg.arg.getInitNodes().forEach(initArgNode -> {
 			assert !initArgNode.isCovered();
 			astarArg.createInitAstarNode(initArgNode);
-			// TODO: find heur here, remove findHeur in finddistance assert is is already known
+			// TODO: find heur here, remove findHeur in finddistance assert is is already known NOT SURE
 		});
 	}
 
@@ -379,6 +392,10 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		assert type != Type.FULL;
 
 		// Do not return EXACT(0) when node is target as that would not create the side effect of expanding the node
+
+		if (astarNode.providerAstarNode.getHeuristic().getType() == Distance.Type.INFINITE) {
+			assert astarNode.providerAstarNode.distance.getType() == Distance.Type.INFINITE;
+		}
 
 		// visualize current before going back to previous astarArg
 		String visualizerState = AstarFileVisualizer.getVisualizerState(astarNode);
@@ -411,7 +428,8 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		// initialize: prune can keep initialized state
 		if (!arg.isInitialized()) {
 			logger.write(Level.SUBSTEP, "|  |  (Re)initializing ARG...");
-			argBuilder.init(arg, prec);
+			Collection<ArgNode<S, A>> newNodes = argBuilder.init(arg, prec);
+			astarArg.reachedSet.addAll(newNodes);
 			initAstarArg(astarArg);
 			logger.write(Level.SUBSTEP, "done%n");
 		}

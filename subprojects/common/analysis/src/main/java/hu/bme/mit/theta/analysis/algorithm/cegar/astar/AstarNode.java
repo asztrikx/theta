@@ -12,7 +12,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
 
 public final class AstarNode<S extends State, A extends Action> {
 	public final ArgNode<S, A> argNode;
-	public AstarNode<S, A> providerAstarNode;
+	public @Nullable AstarNode<S, A> providerAstarNode;
 	public Distance distance;
 
 	//// TODO this should be through astarArg as they are coupled together, this should be disabled (protected:)
