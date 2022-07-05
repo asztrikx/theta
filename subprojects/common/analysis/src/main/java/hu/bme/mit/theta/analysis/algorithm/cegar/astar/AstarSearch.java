@@ -20,8 +20,9 @@ public class AstarSearch<S extends State, A extends Action> {
 	// This is needed because with covering edges there can be multiple in-edges
 	// node -> parent
 	public Map<ArgNode<S, A>, ArgNode<S, A>> parents = new HashContainerFactory().createMap();
-	////public Map<AstarNode<S, A>, Integer> depths = new HashContainerFactory().createMap();
-	public Waitlist<Edge<S, A>> waitlist = PriorityWaitlist.create(new AstarWaitlistComparator<>());
+	private Waitlist<Edge<S, A>> waitlist = PriorityWaitlist.create(new AstarWaitlistComparator<>());
+	// debug
+	public Map<ArgNode<S, A>, Integer> depths = new HashContainerFactory().createMap();
 
 	public void addToWaitlist(AstarNode<S, A> astarNode, AstarNode<S, A> parentAstarNode, int depth) {
 		if (astarNode.getHeuristic().getType() == Distance.Type.INFINITE) {
@@ -32,13 +33,24 @@ public class AstarSearch<S extends State, A extends Action> {
 			return;
 		}
 
-		Distance distance = astarNode.getWeight(depth);
 		if (!doneSet.contains(astarNode)) {
+			Distance distance = astarNode.getWeight(depth);
 			if (!minWeights.containsKey(astarNode) || minWeights.get(astarNode) > distance.getValue()) {
 				waitlist.add(new Edge<>(parentAstarNode, astarNode, depth));
-				parents.put(astarNode.argNode, parentAstarNode.argNode);
+				parents.put(astarNode.argNode, parentAstarNode == null ? null : parentAstarNode.argNode);
+				depths.put(astarNode.argNode, depth);
 			}
+		} else {
+			assert depths.get(astarNode.argNode) <= depth;
 		}
+	}
+
+	public boolean isWaitlistEmpty() {
+		return waitlist.isEmpty();
+	}
+
+	public Edge<S, A> removeFromWaitlist() {
+		return waitlist.remove();
 	}
 
 	public static class Edge<S extends State, A extends Action> {

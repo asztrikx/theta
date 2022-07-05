@@ -31,7 +31,6 @@ import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarCegarChecker.Type;
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.argstore.AstarArgStore;
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.argstore.AstarArgStoreFull;
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.filevisualizer.AstarFileVisualizer;
-import hu.bme.mit.theta.analysis.waitlist.Waitlist;
 import hu.bme.mit.theta.common.logging.Logger;
 import hu.bme.mit.theta.common.logging.Logger.Level;
 import hu.bme.mit.theta.common.logging.NullLogger;
@@ -95,11 +94,8 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 	) {
 		// create search
 		AstarSearch<S, A> search = new AstarSearch<>();
-		Waitlist<Edge<S, A>> waitlist = search.waitlist; // can't extract value => do not be a parameter
 		Set<AstarNode<S, A>> doneSet = search.doneSet;
-		Map<AstarNode<S, A>, Integer> minWeights = search.minWeights;
 		Map<ArgNode<S, A>, ArgNode<S, A>> parents = search.parents;
-		//Map<AstarNode<S, A>, Integer> depths = search.depths;
 
 		// Waitlist requires heuristic for nodes
 		// 	  node for which distance we are going back may not have heuristic
@@ -110,7 +106,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 				.collect(Collectors.toList());
 
 		// start nodes to search
-		startAstarNodes.forEach(startNode -> waitlist.add(new Edge<>(null, startNode, 0)));
+		startAstarNodes.forEach(startAstarNode -> search.addToWaitlist(startAstarNode, null, 0));
 
 		// We might reach a node with known distance making an upper limit for the closest target
 		int upperLimitValue = -1;
@@ -120,8 +116,8 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		// We save targets and nodes with exact value. In the latter the exact values must be from a previous findDistance as we set exact distances at the end of iteration.
 		Queue<AstarNode<S, A>> reachedExacts = new ArrayDeque<>();
 
-		while (!waitlist.isEmpty()) {
-			Edge<S, A> edge = waitlist.remove();
+		while (!search.isWaitlistEmpty()) {
+			Edge<S, A> edge = search.removeFromWaitlist();
 			AstarNode<S, A> parentAstarNode = edge.start;
 			AstarNode<S, A> astarNode = edge.end;
 			int depth = edge.depthFromAStartNode;
@@ -236,21 +232,9 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 					//		but it's provider doesn't have distance, therefore there is no heuristic
 					findHeuristic(succAstarNode, astarArg);
 
-					/* if (doneSet.contains(succAstarNode)) { // we don't find a shorter path later
-						// either: reach through covering edge, or this reached through covering edge (multi init nodes)
-						assert depths.get(newAstarNode) <= depth + 1;
-					}*/
-
 					search.addToWaitlist(succAstarNode, astarNode, depth + 1);
 				});
 			}
-
-			// TODO: validate & rewrite
-			// cex: we can't stop when node's child contains a target
-			// waitlist (heuristic, depth): (0, x), (1, x-1)
-			// 		first is the current element which reaches target
-			//		second is an element in waitlist which also reaches target
-			// targets (heuristic, depth): (0, x+1), (0, x)
 		}
 
 		// upper limit was not reached (no more nodes left)
