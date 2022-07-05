@@ -109,8 +109,6 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 				.filter(startNode -> startNode.getHeuristic().getType() != Distance.Type.INFINITE)
 				.collect(Collectors.toList());
 
-		Set<ArgNode<S, A>> startNodes = startAstarNodes.stream().map(astarNode -> astarNode.argNode).collect(Collectors.toSet());
-
 		// start nodes to search
 		startAstarNodes.forEach(startNode -> waitlist.add(new Edge<>(null, startNode, 0)));
 
@@ -265,12 +263,21 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		// We need to have heuristic for startAstarNodes therefore we need to set distance.
 		// updateDistancesFromNodes depends on infinite distances being already set therefore set infinite distances first.
 		astarArg.updateDistanceInfinite();
+		Set<ArgNode<S, A>> startNodes = startAstarNodes.stream().map(astarNode -> astarNode.argNode).collect(Collectors.toSet());
 		while(!reachedExacts.isEmpty()) {
 			AstarNode<S, A> target = reachedExacts.remove();
 			astarArg.updateDistancesFromTargetUntil(target, startNodes, parents);
 
 			// All provider nodes are expected to be expanded, targets as well
 			expandTarget(target, astarArg);
+		}
+
+		// Updating distance doesn't handle loops as they are hard to implement and probably don't have the same problem
+		// of visiting nodes multiple times as other cases.
+		// However, we need to guarantee that startAstarNodes have a distance which is not yet true if a startNode is
+		// in a loop and doesn't reach target.
+		if (startAstarNodes.stream().noneMatch(a -> a.distance.isKnown())) {
+			startAstarNodes.forEach(astarArg::updateDistancesFromRootInfinite);
 		}
 	}
 
@@ -358,11 +365,6 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 			findDistanceInner(astarArg, stopCriterion, startAstarNodes);
 		//}
 
-		// TODO temporary fix until we set all possible nodes infinite
-		if (startAstarNodes.stream().noneMatch(a -> a.distance.isKnown())) {
-			startAstarNodes.forEach(astarArg::updateDistancesFromRootInfinite);
-		}
-
 		logger.write(Level.SUBSTEP, "done%n");
 		logger.write(Level.INFO, "|  |  Finished ARG: %d nodes, %d incomplete, %d unsafe%n", arg.getNodes().count(),
 				arg.getIncompleteNodes().count(), arg.getUnsafeNodes().count());
@@ -440,7 +442,8 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		//// parents + (parents & covering edges) make this difficult: arg.getIncompleteNodes().map(astarArg::get).filter(n -> n.distance.getType() != DistanceType.INFINITE)
 		//// 		add to reachedSet if implemented
 		Collection<AstarNode<S, A>> incompleteAstarNodes = astarArg.getIncompleteNodes().collect(Collectors.toList());
-		findDistance(astarArg, initialStopCriterion, incompleteAstarNodes, "");
+		// If we start from incomplete nodes then we have to know their shortest depth from an init node.
+		findDistance(astarArg, initialStopCriterion, astarArg.getAllInit(), "");
 
 		// found and isSafe is different: e.g. full expand
 		if (arg.isSafe()) {

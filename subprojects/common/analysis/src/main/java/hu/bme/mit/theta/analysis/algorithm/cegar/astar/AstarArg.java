@@ -42,14 +42,6 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
 		this.reachedSet = Partition.of(n -> projection.apply(n.getState()));
 	}
 
-	public void setUnknownDistanceInfinite() {
-		getAll().values().forEach(astarNode -> {
-			if (astarNode.distance.getType() != Distance.Type.EXACT) {
-				astarNode.distance = new Distance(Distance.Type.INFINITE);
-			}
-		});
-	}
-
 	// Propagate exact distance up from target until a node in a set is reached
 	// parents: node -> parent
 	public void updateDistancesFromTargetUntil(
@@ -164,7 +156,7 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
 
 				if (astarNode.distance.getType() == Distance.Type.EXACT) {
 					Distance minDistance = node.getSuccNodes().map(child -> get(child).distance).filter(Distance::isKnown).min(Distance::compareTo).get();
-					assert minDistance.getValue() + 1 >= astarNode.distance.getValue();
+					//assert minDistance.getValue() + 1 >= astarNode.distance.getValue();
 					return true;
 				}
 
@@ -237,7 +229,7 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
 
 		// All cases
 		//	- covered
-		//		1) covered to ancestor (handled in queue)
+		//		1) covered to ancestor: not handled
 		//		- not covered to ancestor
 		//			2) coverer marked as infinite
 		//			3) coverer not marked as infinite (will be added in while loop if it gets marked as infinite)
@@ -315,28 +307,6 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
 					return true;
 				}
 			});
-
-			if (queue.isEmpty()) { // TODO queue can already be empty
-				// 1)
-				// Covered to ancestor still can reach target TODO
-				// 		Mivel T-t később is megtalálhatja így nem tudjuk biztosra, meg kéne nézni h expanded-e minden leszármazott vagy coverelt
-				//       |
-				//       a <- -
-				//       |      \
-				//       b      |
-				//     / |      |
-				//    T  c - - /
-				//
-				//       |
-				//       a <- -
-				//     / |      \
-				//    d  b      |
-				//       |      |
-				//       c - - /
-				// case
-				//queue.addAll(arg.getAncestorCoveredNodes().filter(excludeByDistance).toList());
-
-			}
 		}
 	}
 
@@ -443,12 +413,6 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
 		return providerAstarArg.get(providerNode.get());
 	}
 
-	/// ARG Wrappers
-
-	public Stream<AstarNode<S, A>> getIncompleteNodes() {
-		return arg.getIncompleteNodes().map(this::get);
-	}
-
 	public boolean allSuccDistanceKnown(ArgNode<S, A> argNode) {
 		assert !argNode.isCovered();
 		if (!argNode.isExpanded()) {
@@ -466,6 +430,12 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
 			AstarNode<S, A> childAstarNode = get(childNode);
 			return childAstarNode.distance.getType() == Distance.Type.INFINITE;
 		});
+	}
+
+	/// ARG Wrappers
+
+	public Stream<AstarNode<S, A>> getIncompleteNodes() {
+		return arg.getIncompleteNodes().map(this::get);
 	}
 
 	/// Collection wrappers

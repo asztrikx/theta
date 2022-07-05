@@ -24,6 +24,15 @@ public class AstarWaitlistComparator<S extends State, A extends Action> implemen
 
 	@Override
 	public int compare(Edge<S, A> edge1, Edge<S, A> edge2) {
+		// optimization
+		if (edge1.end.argNode.isTarget() && edge2.end.argNode.isTarget()) {
+			return 0;
+		} else if (edge1.end.argNode.isTarget()) {
+			return -1;
+		} else if (edge2.end.argNode.isTarget()) {
+			return 1;
+		}
+
 		final Distance weight1 = edge1.end.getWeight(edge1.depthFromAStartNode);
 		final Distance weight2 = edge2.end.getWeight(edge2.depthFromAStartNode);
 		return weight1.getValue() - weight2.getValue();
