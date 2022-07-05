@@ -23,6 +23,24 @@ public class AstarSearch<S extends State, A extends Action> {
 	////public Map<AstarNode<S, A>, Integer> depths = new HashContainerFactory().createMap();
 	public Waitlist<Edge<S, A>> waitlist = PriorityWaitlist.create(new AstarWaitlistComparator<>());
 
+	public void addToWaitlist(AstarNode<S, A> astarNode, AstarNode<S, A> parentAstarNode, int depth) {
+		if (astarNode.getHeuristic().getType() == Distance.Type.INFINITE) {
+			return;
+		}
+
+		if (astarNode.distance.getType() == Distance.Type.INFINITE) {
+			return;
+		}
+
+		Distance distance = astarNode.getWeight(depth);
+		if (!doneSet.contains(astarNode)) {
+			if (!minWeights.containsKey(astarNode) || minWeights.get(astarNode) > distance.getValue()) {
+				waitlist.add(new Edge<>(parentAstarNode, astarNode, depth));
+				parents.put(astarNode.argNode, parentAstarNode.argNode);
+			}
+		}
+	}
+
 	public static class Edge<S extends State, A extends Action> {
 		public @Nullable AstarNode<S, A> start; // TODO this is redundant as we can get it from parents however this is faster
 		public AstarNode<S, A> end;

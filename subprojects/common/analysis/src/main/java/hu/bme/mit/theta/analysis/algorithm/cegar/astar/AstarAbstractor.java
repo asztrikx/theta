@@ -206,7 +206,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 				}
 
 				// Covering edge has 0 weight
-				addToWaitList(coveringAstarNode, coveredAstarNode, search, depth);
+				search.addToWaitlist(coveringAstarNode, coveredAstarNode, depth);
 				// Covering node is already found therefore already in reachedSet
 
 				continue;
@@ -241,7 +241,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 						assert depths.get(newAstarNode) <= depth + 1;
 					}*/
 
-					addToWaitList(succAstarNode, astarNode, search, depth + 1);
+					search.addToWaitlist(succAstarNode, astarNode, depth + 1);
 				});
 			}
 
@@ -322,30 +322,6 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 			// optimization: we know the distance for a target node
 			astarNode.distance = new Distance(Distance.Type.EXACT, 0);
 		} while(!argNode.isExpanded()); // We can cover into an already expanded target (it can't be covered, see close())
-	}
-
-	// TODO this function should be part of Search class
-	private void addToWaitList(AstarNode<S, A> astarNode, AstarNode<S, A> parentAstarNode, AstarSearch<S, A> search, int depth) {
-		if (astarNode.getHeuristic().getType() == Distance.Type.INFINITE) {
-			return;
-		}
-
-		if (astarNode.distance.getType() == Distance.Type.INFINITE) {
-			return;
-		}
-
-		Waitlist<Edge<S, A>> waitlist = search.waitlist;
-		Set<AstarNode<S, A>> doneSet = search.doneSet;
-		Map<AstarNode<S, A>, Integer> minWeights = search.minWeights;
-		Map<ArgNode<S, A>, ArgNode<S, A>> parents = search.parents;
-
-		Distance distance = astarNode.getWeight(depth);
-		if (!doneSet.contains(astarNode)) {
-			if (!minWeights.containsKey(astarNode) || minWeights.get(astarNode) > distance.getValue()) {
-				waitlist.add(new Edge<>(parentAstarNode, astarNode, depth));
-				parents.put(astarNode.argNode, parentAstarNode.argNode);
-			}
-		}
 	}
 
 	private void findDistance(
