@@ -41,7 +41,7 @@ public class AstarSearch<S extends State, A extends Action> {
 				depths.put(astarNode.argNode, depth);
 			}
 		} else {
-			assert depths.get(astarNode.argNode) <= depth;
+			//assert depths.get(astarNode.argNode) <= depth;
 		}
 	}
 
