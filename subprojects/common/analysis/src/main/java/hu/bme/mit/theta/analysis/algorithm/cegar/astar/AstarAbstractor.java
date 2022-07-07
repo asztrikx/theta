@@ -69,6 +69,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		this.argBuilder = checkNotNull(argBuilder);
 		this.projection = checkNotNull(projection);
 		this.initialStopCriterion = checkNotNull(initialStopCriterion);
+		assert initialStopCriterion instanceof StopCriterions.FirstCex<S,A>;
 		this.logger = checkNotNull(logger);
 		this.astarArgStore = checkNotNull(astarArgStore);
 		this.type = type;
@@ -101,16 +102,10 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		// 	  node for which distance we are going back may not have heuristic
 		startAstarNodes.forEach(startNode -> findHeuristic(startNode, astarArg));
 		startAstarNodes = startAstarNodes.stream()
-				// Occurrence: node hasn't been expanded as it had infinite heuristic and is copied to new arg
 				.filter(startNode -> startNode.getHeuristic().getType() != Distance.Type.INFINITE)
 				.collect(Collectors.toList());
-
-		// start nodes to search
 		startAstarNodes.forEach(startAstarNode -> search.addToWaitlist(startAstarNode, null, 0));
-
-		// We might reach a node with known distance making an upper limit for the closest target
-		int upperLimitValue = -1;
-		AstarNode<S, A> upperLimitAstarNode = null;
+		assert startAstarNodes.stream().allMatch(startAstarNode -> startAstarNode.distance.getType() != Distance.Type.EXACT);
 
 		// Implementation assumes that lower distance is set first therefore store reached targets in the order we reach them.
 		// We save targets and nodes with exact value. In the latter the exact values must be from a previous findDistance as we set exact distances at the end of iteration.
@@ -131,9 +126,10 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 			}
 			doneSet.add(astarNode);
 
-			// reached upper limit
-			if (depth >= upperLimitValue && upperLimitValue != -1) {
-				reachedExacts.add(upperLimitAstarNode);
+			// reached upper limit: depth + heuristic distance
+			//astarNode.getWeight(depth).getValue()
+			if (depth >= search.upperLimitValue && search.upperLimitValue != -1) {
+				reachedExacts.add(search.upperLimitAstarNode);
 				if (stopCriterion.canStop(astarArg.arg, List.of(astarNode.argNode))) {
 					break;
 				}
@@ -144,27 +140,6 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 				reachedExacts.add(astarNode);
 				if (stopCriterion.canStop(astarArg.arg, List.of(astarNode.argNode))) {
 					break;
-				}
-				continue;
-			}
-
-			// When is this possible:
-			//   - in a different subgraph reached by covering edge
-			//   - same subgraph which was reached from a different subgraph by a covering edge
-			// We have a target in x distance therefore we have an upper bound
-			// Node can already be marked done therefore
-			// TODO move this to expand & cover, useless to put into waitlist: have to distinguish between cover edge and normal edge to know what will be the target: NOT if we set parent when having normal edge (required for multi target)
-			// TODO multi target: what if we cover into a subgraph reaching target, our subgraph should get distances otherwise it will wrongly be inf. this requires multi upper limit as we don't know whether a target or upper limit will be closer!!!!
-			if (astarNode.distance.getType() == Distance.Type.EXACT) {
-				//// put this into correct place: because of FULL in the same iteration it can be marked done
-				//// this case can also handle covering node's case
-
-				//// do not mark as done for other nodes to use this? this will be useful when leftovers put in reachedset in init (<= if newNode done do not add)
-				//// however if FULL this can still be marked as done so this will fail
-				//// if we check if newNodes contains a node with known distance will that be correct? as we already do like that when we say that n-1 depths will be considered
-				if (upperLimitValue > depth + astarNode.distance.getValue() || upperLimitValue == -1) {
-					upperLimitValue = depth + astarNode.distance.getValue();
-					upperLimitAstarNode = astarNode;
 				}
 				continue;
 			}
@@ -218,7 +193,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 				} // TODO if stopcriterion can stop +target? => stop here
 
 				// go over recreated and remained nodes
-				argNode.getSuccNodes().forEach(succArgNode -> {
+				for (ArgNode<S, A> succArgNode : argNode.getSuccNodes().toList()) {
 					AstarNode<S, A> succAstarNode = astarArg.get(succArgNode);
 
 					// expand: create astar nodes
@@ -233,13 +208,13 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 					findHeuristic(succAstarNode, astarArg);
 
 					search.addToWaitlist(succAstarNode, astarNode, depth + 1);
-				});
+				}
 			}
 		}
 
 		// upper limit was not reached (no more nodes left)
-		if (upperLimitValue != -1) {
-			reachedExacts.add(upperLimitAstarNode);
+		if (search.upperLimitValue != -1) {
+			reachedExacts.add(search.upperLimitAstarNode);
 		}
 
 		// If we are looking for n targets then it is possible that we reached [1,n) target when reaching this line

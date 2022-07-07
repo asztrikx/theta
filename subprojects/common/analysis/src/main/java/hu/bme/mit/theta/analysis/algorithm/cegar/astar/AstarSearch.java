@@ -21,6 +21,9 @@ public class AstarSearch<S extends State, A extends Action> {
 	// node -> parent
 	public Map<ArgNode<S, A>, ArgNode<S, A>> parents = new HashContainerFactory().createMap();
 	private Waitlist<Edge<S, A>> waitlist = PriorityWaitlist.create(new AstarWaitlistComparator<>());
+	// We might reach a node with known distance making an upper limit for the closest target
+	public int upperLimitValue = -1;
+	public AstarNode<S, A> upperLimitAstarNode = null;
 	// debug
 	public Map<ArgNode<S, A>, Integer> depths = new HashContainerFactory().createMap();
 
@@ -30,6 +33,27 @@ public class AstarSearch<S extends State, A extends Action> {
 		}
 
 		if (astarNode.distance.getType() == Distance.Type.INFINITE) {
+			return;
+		}
+
+		// When is this possible:
+		//   - in a different subgraph reached by covering edge
+		//   - same subgraph which was reached from a different subgraph by a covering edge
+		// We have a target in x distance therefore we have an upper bound
+		// Node can already be marked done therefore
+		// Can be in doneSet if not firstCex
+		//	- otherwise can move to if statement below
+		//	- we can't put into waitlist as it will drop it (in doneSet) otherwise it's an optimization to handle here
+		if (astarNode.distance.getType() == Distance.Type.EXACT) {
+			assert !doneSet.contains(astarNode);
+
+			if (upperLimitValue > depth + astarNode.distance.getValue() || upperLimitValue == -1) {
+				upperLimitValue = depth + astarNode.distance.getValue();
+				upperLimitAstarNode = astarNode;
+				// Only happens if a startAstarNode already have distance
+				assert parentAstarNode != null;
+				parents.put(astarNode.argNode, parentAstarNode.argNode);
+			}
 			return;
 		}
 
