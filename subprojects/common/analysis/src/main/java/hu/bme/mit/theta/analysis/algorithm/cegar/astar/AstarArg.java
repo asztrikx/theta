@@ -65,7 +65,7 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
 			AstarNode<S, A> astarNode = get(node);
 			distance = distance + startDistance;
 
-			if (node.isTarget() && node != from.argNode) {
+			if (node.isTarget() && from.argNode != node) {
 				assert astarNode.distance.isKnown();
 			}
 
@@ -100,7 +100,7 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
 
 				return until.contains(node);
 			} else {
-				assert astarNode.distance.getValue() <= distance;
+				//assert astarNode.distance.getValue() <= distance;
 
 				if (from.argNode != node) {
 					return true;
@@ -173,9 +173,8 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
 						return true;
 					}
 
-					// Other child can also have been in queue: it stopped at this node as it had a child with unknown distance
+					// e.g. Other child can also have been in queue: it stopped at this node as it had a child with unknown distance
 					// therefore we manually have to choose the one with better distance
-					// TODO this case also happens when we expand a new arg from unexpanded nodes (update distance only goes to start nodes not all the way until an init node)
 					Distance minDistance = node.getSuccNodes().map(child -> get(child).distance).min(Distance::compareTo).get();
 					assert minDistance.getType() == Distance.Type.EXACT;
 					astarNode.distance = new Distance(Distance.Type.EXACT, minDistance.getValue() + 1);
@@ -273,7 +272,7 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
 				AstarNode<S, A> astarNode = get(node);
 
 				// We can have target ancestor
-				if (node.isTarget()) { // TODO do this in setDistanceExact
+				if (node.isTarget()) {
 					// target may or may not have a distance
 					return true;
 				}
@@ -371,7 +370,6 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
 		if (parentAstarNode == null) {
 			providerCandidates = providerAstarArg.getAllInitArg().stream();
 		} else {
-			// TODO for loop? comments may get messy
 			AstarNode<S, A> parentProviderAstarNode = parentAstarNode.providerAstarNode;
 			ArgNode<S, A> parentProviderNode = parentProviderAstarNode.argNode;
 

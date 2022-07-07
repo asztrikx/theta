@@ -190,7 +190,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 				if (!argNode.isExpanded()) {
 					Collection<ArgNode<S, A>> newNodes = argBuilder.expand(argNode, astarArg.prec);
 					astarArg.reachedSet.addAll(newNodes);
-				} // TODO if stopcriterion can stop +target? => stop here
+				}
 
 				// go over recreated and remained nodes
 				for (ArgNode<S, A> succArgNode : argNode.getSuccNodes().toList()) {
@@ -311,7 +311,6 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		astarArg.arg.getInitNodes().forEach(initArgNode -> {
 			assert !initArgNode.isCovered();
 			astarArg.createInitAstarNode(initArgNode);
-			// TODO: find heur here, remove findHeur in finddistance assert is is already known NOT SURE
 		});
 	}
 
