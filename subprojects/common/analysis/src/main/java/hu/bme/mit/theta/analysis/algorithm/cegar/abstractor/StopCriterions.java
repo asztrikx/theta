@@ -56,7 +56,7 @@ public final class StopCriterions {
 		return new AtLeastNCexs<>(n);
 	}
 
-	private static final class FirstCex<S extends State, A extends Action> implements StopCriterion<S, A> {
+	public static final class FirstCex<S extends State, A extends Action> implements StopCriterion<S, A> {
 		@Override
 		public boolean canStop(final ARG<S, A> arg) {
 			return arg.getUnsafeNodes().findAny().isPresent() && arg.getCexs().anyMatch(cex -> ArgCexCheckHandler.instance.checkIfCounterexampleNew(cex));

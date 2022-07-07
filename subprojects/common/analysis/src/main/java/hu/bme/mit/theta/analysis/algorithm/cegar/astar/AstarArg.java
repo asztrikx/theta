@@ -56,6 +56,8 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
 
 		List<Tuple2<ArgNode<S, A>, Integer>> conditionalNodes = new ArrayList<>();
 
+		// [Multitarget] parent is wrong if we cover into a subgraph explored in this iteration
+
 		// parents is good even when we have a covered node pointing to a node with an exact distance as that exact distance
 		// can only be from a previous iteration as we set distances at the end of the iterations so the parent of the covering
 		// node will be the covered node.
@@ -205,7 +207,7 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
 		Predicate<ArgNode<S, A>> excludeKnownDistance = node -> {
 			AstarNode<S, A> astarNode = get(node);
 			// Can't reach target && not already marked as infinite
-			return astarNode.distance.getType() == Distance.Type.UNKNOWN ;
+			return astarNode.distance.getType() == Distance.Type.UNKNOWN;
 		};
 		Predicate<ArgNode<S, A>> excludeTarget = node -> !node.isTarget();
 
