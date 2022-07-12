@@ -2,10 +2,10 @@ package hu.bme.mit.theta.analysis.algorithm.cegar.astar;
 
 import hu.bme.mit.theta.analysis.Action;
 import hu.bme.mit.theta.analysis.State;
+import hu.bme.mit.theta.analysis.algorithm.ArgNode;
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarSearch.Edge;
 
 import java.util.Comparator;
-import java.util.Map;
 
 public class AstarWaitlistComparator<S extends State, A extends Action> implements Comparator<Edge<S, A>> {
 	/*
@@ -24,17 +24,25 @@ public class AstarWaitlistComparator<S extends State, A extends Action> implemen
 
 	@Override
 	public int compare(Edge<S, A> edge1, Edge<S, A> edge2) {
-		// optimization
-		if (edge1.end.argNode.isTarget() && edge2.end.argNode.isTarget()) {
-			return 0;
-		} else if (edge1.end.argNode.isTarget()) {
-			return -1;
-		} else if (edge2.end.argNode.isTarget()) {
-			return 1;
-		}
+		AstarNode<S, A> astarNode1 = edge1.end;
+		AstarNode<S, A> astarNode2 = edge2.end;
+		ArgNode<S, A> argNode1 = astarNode1.argNode;
+		ArgNode<S, A> argNode2 = astarNode2.argNode;
 
-		final Distance weight1 = edge1.end.getWeight(edge1.depthFromAStartNode);
-		final Distance weight2 = edge2.end.getWeight(edge2.depthFromAStartNode);
-		return weight1.getValue() - weight2.getValue();
+		final int weight1 = astarNode1.getWeight(edge1.depthFromAStartNode).getValue();
+		final int weight2 = astarNode2.getWeight(edge2.depthFromAStartNode).getValue();
+
+		// optimization
+		if (weight1 == weight2) {
+			if (argNode1.isTarget() && argNode2.isTarget()) {
+				return 0;
+			} else if (argNode1.isTarget()) {
+				return -1;
+			} else if (argNode2.isTarget()) {
+				return 1;
+			}
+			return 0;
+		}
+		return weight1 - weight2;
 	}
 }
