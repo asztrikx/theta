@@ -241,7 +241,7 @@ public class XstsTest {
 		}
 		
 		final XstsConfig<?, ?, ?> configuration = new XstsConfigBuilder(domain, XstsConfigBuilder.Refinement.SEQ_ITP, Z3SolverFactory.getInstance()).initPrec(XstsConfigBuilder.InitPrec.CTRL).optimizeStmts(XstsConfigBuilder.OptimizeStmts.ON).predSplit(XstsConfigBuilder.PredSplit.CONJUNCTS).maxEnum(250).autoExpl(XstsConfigBuilder.AutoExpl.NEWOPERANDS)
-				.logger(new ConsoleLogger(Level.VERBOSE))
+				//.logger(new ConsoleLogger(Level.VERBOSE))
 				.search(XstsConfigBuilder.Search.ASTAR)
 				.build(xsts);
 		final SafetyResult<?, ?> status = configuration.check();
