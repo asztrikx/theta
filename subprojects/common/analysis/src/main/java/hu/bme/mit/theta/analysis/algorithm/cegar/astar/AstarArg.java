@@ -100,7 +100,7 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
 
 				return until.contains(node);
 			} else {
-				//assert astarNode.distance.getValue() <= distance;
+				assert astarNode.distance.getValue() <= distance; // TODO move this to upper if case
 
 				if (from.argNode != node) {
 					return true;
@@ -157,8 +157,8 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
 				}
 
 				if (astarNode.distance.getType() == Distance.Type.EXACT) {
-					//Distance minDistance = node.getSuccNodes().map(child -> get(child).distance).filter(Distance::isKnown).min(Distance::compareTo).get();
-					//assert minDistance.getValue() + 1 >= astarNode.distance.getValue();
+					Distance minDistance = node.getSuccNodes().map(child -> get(child).distance).filter(Distance::isKnown).min(Distance::compareTo).get();
+					assert minDistance.getValue() + 1 >= astarNode.distance.getValue();
 					return true;
 				}
 

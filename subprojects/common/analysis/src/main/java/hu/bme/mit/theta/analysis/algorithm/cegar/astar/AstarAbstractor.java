@@ -126,8 +126,16 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 			}
 			doneSet.add(astarNode);
 
+			// debug: is parent state managed correctly
+			// TODO: remove this state management
+			if (parentAstarNode == null) {
+				assert parents.get(astarNode.argNode) == null;
+			} else {
+				assert parentAstarNode.argNode == parents.get(astarNode.argNode);
+			}
+
 			// reached upper limit: depth + heuristic distance
-			//astarNode.getWeight(depth).getValue()
+			//astarNode.getWeight(depth).getValue() // TODO
 			if (depth >= search.upperLimitValue && search.upperLimitValue != -1) {
 				reachedExacts.add(search.upperLimitAstarNode);
 				if (stopCriterion.canStop(astarArg.arg, List.of(astarNode.argNode))) {

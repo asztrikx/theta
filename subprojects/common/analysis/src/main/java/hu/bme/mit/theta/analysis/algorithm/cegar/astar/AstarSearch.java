@@ -15,7 +15,7 @@ public class AstarSearch<S extends State, A extends Action> {
 	// We could already have started to explore a subgraph therefore do not use global doneSet variable
 	public Set<AstarNode<S, A>> doneSet = new HashContainerFactory().createSet();
 	// Useful to know whether the current item is smaller than the one in the waitlist (if not in doneSet)
-	public Map<AstarNode<S, A>, Integer> minWeights = new HashContainerFactory().createMap();;
+	private Map<AstarNode<S, A>, Integer> minWeights = new HashContainerFactory().createMap();;
 	// After we reach target we know the distance for all nodes between root and target which is visitable by parent entries
 	// This is needed because with covering edges there can be multiple in-edges
 	// node -> parent
@@ -52,6 +52,8 @@ public class AstarSearch<S extends State, A extends Action> {
 				upperLimitAstarNode = astarNode;
 				// Only happens if a startAstarNode already have distance
 				assert parentAstarNode != null;
+				// [Multi target?]
+				assert !parents.containsKey(astarNode.argNode);
 				parents.put(astarNode.argNode, parentAstarNode.argNode);
 			}
 			return;
@@ -63,9 +65,10 @@ public class AstarSearch<S extends State, A extends Action> {
 				waitlist.add(new Edge<>(parentAstarNode, astarNode, depth));
 				parents.put(astarNode.argNode, parentAstarNode == null ? null : parentAstarNode.argNode);
 				depths.put(astarNode.argNode, depth);
+				minWeights.put(astarNode, distance.getValue());
 			}
 		} else {
-			//assert depths.get(astarNode.argNode) <= depth;
+			assert depths.get(astarNode.argNode) <= depth;
 		}
 	}
 
