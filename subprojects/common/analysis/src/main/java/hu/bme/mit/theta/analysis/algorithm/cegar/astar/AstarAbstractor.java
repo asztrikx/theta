@@ -134,9 +134,8 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 				assert parentAstarNode.argNode == parents.get(astarNode.argNode);
 			}
 
-			// reached upper limit: depth + heuristic distance
-			//astarNode.getWeight(depth).getValue() // TODO
-			if (depth >= search.upperLimitValue && search.upperLimitValue != -1) {
+			// reached upper limit: depth + heuristic distance (only depth is also correct but reached later)
+			if (astarNode.getWeight(depth).getValue() >= search.upperLimitValue && search.upperLimitValue != -1) {
 				reachedExacts.add(search.upperLimitAstarNode);
 				if (stopCriterion.canStop(astarArg.arg, List.of(astarNode.argNode))) {
 					break;
