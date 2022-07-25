@@ -189,15 +189,26 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
 	}
 
 	public void updateDistancesFromRootInfinite(AstarNode<S, A> from) {
-		arg.walk(List.of(from.argNode), (argNode, distance) -> {
-			AstarNode<S, A> astarNode = get(argNode);
+		Queue<ArgNode<S, A>> queue = new ArrayDeque<>();
+		queue.add(from.argNode);
 
-			// if we reach a part where target is reachable then root should also reach it
-			assert(astarNode.distance.getType() != Distance.Type.EXACT);
-			astarNode.distance = new Distance(Distance.Type.INFINITE);
+		while (!queue.isEmpty()) {
+			var item = queue.remove();
+			arg.walk(List.of(item), (argNode, distance) -> {
+				AstarNode<S, A> astarNode = get(argNode);
 
-			return false;
-		});
+				// if we reach a part where target is reachable then root should also reach it
+				assert astarNode.distance.getType() != Distance.Type.EXACT;
+				assert argNode.isCovered() || argNode.isExpanded();
+				astarNode.distance = new Distance(Distance.Type.INFINITE);
+
+				if (argNode.getCoveringNode().isPresent()) {
+					queue.add(argNode.getCoveringNode().get());
+				}
+
+				return false;
+			});
+		}
 	}
 
 	// Set all nodes which will never reach target infinite
