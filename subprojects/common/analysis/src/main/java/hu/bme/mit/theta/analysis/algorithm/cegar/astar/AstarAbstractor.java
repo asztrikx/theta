@@ -137,6 +137,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 			// reached upper limit: depth + heuristic distance (only depth is also correct but reached later)
 			if (astarNode.getWeight(depth).getValue() >= search.upperLimitValue && search.upperLimitValue != -1) {
 				reachedExacts.add(search.upperLimitAstarNode);
+				search.upperLimitValue = -1;
 				if (stopCriterion.canStop(astarArg.arg, List.of(astarNode.argNode))) {
 					break;
 				}
@@ -217,14 +218,15 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 					search.addToWaitlist(succAstarNode, astarNode, depth + 1);
 				}
 			}
-		}
+ 		}
+		// If we are looking for n targets then it is possible that we reached [1,n) target when reaching this line
 
-		// upper limit was not reached (no more nodes left)
-		if (search.upperLimitValue != -1) {
+		// Upper limit was not handled as no more nodes left to reach limit.
+		// If we reach target and there is no more node left in queue we can also process upperlimits as targets can only
+		// appear as a descendant of current target which won't provide exact heuristic for currently known nodes.
+		if (search.isWaitlistEmpty() && search.upperLimitValue != -1) {
 			reachedExacts.add(search.upperLimitAstarNode);
 		}
-
-		// If we are looking for n targets then it is possible that we reached [1,n) target when reaching this line
 
 		// We need to have heuristic for startAstarNodes therefore we need to set distance.
 		// updateDistancesFromNodes depends on infinite distances being already set therefore set infinite distances first.
@@ -384,6 +386,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		//// 		add to reachedSet if implemented
 		Collection<AstarNode<S, A>> incompleteAstarNodes = astarArg.getIncompleteNodes().collect(Collectors.toList());
 		// If we start from incomplete nodes then we have to know their shortest depth from an init node.
+		// Unexpanded child might have shorter distance from a covered node.
 		findDistance(astarArg, initialStopCriterion, astarArg.getAllInit(), "");
 
 		// found and isSafe is different: e.g. full expand
