@@ -139,6 +139,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 				reachedExacts.add(search.upperLimitAstarNode);
 				search.upperLimitValue = -1;
 				if (stopCriterion.canStop(astarArg.arg, List.of(astarNode.argNode))) {
+					// TODO search lementése esetén lehet vissza kell rakni a nodeot
 					break;
 				}
 			}
