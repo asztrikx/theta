@@ -105,7 +105,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 				.filter(startNode -> startNode.getHeuristic().getType() != Distance.Type.INFINITE)
 				.collect(Collectors.toList());
 		startAstarNodes.forEach(startAstarNode -> search.addToWaitlist(startAstarNode, null, 0));
-		assert startAstarNodes.stream().allMatch(startAstarNode -> startAstarNode.distance.getType() != Distance.Type.EXACT);
+		assert startAstarNodes.stream().allMatch(startAstarNode -> startAstarNode.getDistance().getType() != Distance.Type.EXACT);
 
 		// Implementation assumes that lower distance is set first therefore store reached targets in the order we reach them.
 		// We save targets and nodes with exact value. In the latter the exact values must be from a previous findDistance as we set exact distances at the end of iteration.
@@ -118,7 +118,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 			int depth = edge.depthFromAStartNode;
 			ArgNode<S, A> argNode = astarNode.argNode;
 			assert astarNode.getHeuristic().getType() != Distance.Type.INFINITE;
-			assert astarNode.distance.getType() != Distance.Type.INFINITE;
+			assert astarNode.getDistance().getType() != Distance.Type.INFINITE;
 
 			// lazy propagation
 			if (doneSet.contains(astarNode)) {
@@ -244,7 +244,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		// of visiting nodes multiple times as other cases.
 		// However, we need to guarantee that startAstarNodes have a distance which is not yet true if a startNode is
 		// in a loop and doesn't reach target.
-		if (startAstarNodes.stream().noneMatch(a -> a.distance.isKnown())) {
+		if (startAstarNodes.stream().noneMatch(a -> a.getDistance().isKnown())) {
 			startAstarNodes.forEach(astarArg::updateDistancesFromRootInfinite);
 		}
 	}
@@ -288,7 +288,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 			// Target node's covering node must be a target.
 			assert argNode.isTarget();
 			// optimization: we know the distance for a target node
-			astarNode.distance = new Distance(Distance.Type.EXACT, 0);
+			astarNode.setDistance(new Distance(Distance.Type.EXACT, 0));
 		} while(!argNode.isExpanded()); // We can cover into an already expanded target (it can't be covered, see close())
 	}
 
@@ -341,7 +341,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		// Do not return EXACT(0) when node is target as that would not create the side effect of expanding the node
 
 		if (astarNode.providerAstarNode.getHeuristic().getType() == Distance.Type.INFINITE) {
-			assert astarNode.providerAstarNode.distance.getType() == Distance.Type.INFINITE;
+			assert astarNode.providerAstarNode.getDistance().getType() == Distance.Type.INFINITE;
 		}
 
 		// visualize current before going back to previous astarArg
@@ -402,10 +402,10 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		}
 	}
 
-	private void debug(AstarArg<S, A, P> astarArg) {
+	private void debug(AstarArg<S, A, P> astarArg, Collection<ArgNode<S,A>> startNodes) {
 		boolean enabled = astarFileVisualizer.getEnabled();
 		astarFileVisualizer.setEnabled(true);
-		astarFileVisualizer.visualize("debug", astarArgStore.getIndex(astarArg));
+		astarFileVisualizer.visualize("debug", astarArgStore.getIndex(astarArg), startNodes);
 		astarFileVisualizer.setEnabled(enabled);
 	}
 

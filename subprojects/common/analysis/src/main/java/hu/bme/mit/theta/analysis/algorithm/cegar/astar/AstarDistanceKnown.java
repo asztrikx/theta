@@ -8,6 +8,7 @@ import hu.bme.mit.theta.analysis.algorithm.cegar.abstractor.StopCriterion;
 
 import java.util.Collection;
 
+// TODO distance only known at the end of expansion after canstop called wtf
 public class AstarDistanceKnown<S extends State, A extends Action> implements StopCriterion<S, A> {
 	private final AstarNode<S, A> astarNode;
 
@@ -17,7 +18,7 @@ public class AstarDistanceKnown<S extends State, A extends Action> implements St
 
 	@Override
 	public boolean canStop(ARG<S, A> arg) {
-		return astarNode.distance.isKnown();
+		return astarNode.getDistance().isKnown();
 	}
 
 	@Override

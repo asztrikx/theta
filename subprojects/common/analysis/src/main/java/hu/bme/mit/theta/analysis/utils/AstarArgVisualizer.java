@@ -18,11 +18,11 @@ package hu.bme.mit.theta.analysis.utils;
 import hu.bme.mit.theta.analysis.Action;
 import hu.bme.mit.theta.analysis.Prec;
 import hu.bme.mit.theta.analysis.State;
-import hu.bme.mit.theta.analysis.algorithm.ARG;
 import hu.bme.mit.theta.analysis.algorithm.ArgEdge;
 import hu.bme.mit.theta.analysis.algorithm.ArgNode;
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarArg;
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarNode;
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.Distance;
 import hu.bme.mit.theta.common.container.Containers;
 import hu.bme.mit.theta.common.visualization.EdgeAttributes;
 import hu.bme.mit.theta.common.visualization.Graph;
@@ -30,6 +30,7 @@ import hu.bme.mit.theta.common.visualization.LineStyle;
 import hu.bme.mit.theta.common.visualization.NodeAttributes;
 
 import java.awt.*;
+import java.util.Collection;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -91,25 +92,23 @@ public final class AstarArgVisualizer<S extends State, A extends Action, P exten
 		return LazyHolderStructureOnly.INSTANCE;
 	}
 
-	public <S1 extends S, A1 extends A, P1 extends P>  Graph visualize(final AstarArg<S1, A1, P1> astarArg, String title) {
-		ARG<S1, A1> arg = astarArg.arg;
-
+	public <S1 extends S, A1 extends A, P1 extends P>  Graph visualize(final AstarArg<S1, A1, P1> astarArg, String title, Collection<ArgNode<S1, A1>> startNodes) {
 		final Graph graph = new Graph(ARG_ID, title);
 
 		final Set<ArgNode<S1, A1>> traversed = Containers.createSet();
 
-		for (final ArgNode<S1, A1> initNode : arg.getInitNodes().collect(Collectors.toSet())) {
+		for (final ArgNode<S1, A1> startNode : startNodes) {
 			// we might be visualizing a "back" state from a child just expanded => there could be children which don't have yet AstarNodes
-			AstarNode<S1, A1> astarInitNode = astarArg.get(initNode);
-			if(astarInitNode != null) {
-				traverse(graph, astarInitNode, traversed, astarArg);
+			AstarNode<S1, A1> astarStartNode = astarArg.get(startNode);
+			if(astarStartNode != null) {
+				traverse(graph, astarStartNode, traversed, astarArg);
 
 				final NodeAttributes nAttributes = NodeAttributes.builder().label("").fillColor(FILL_COLOR)
-						.lineColor(FILL_COLOR).lineStyle(getLineStyle(astarInitNode)).peripheries(1).build();
-				graph.addNode(PHANTOM_INIT_ID + initNode.getId(), nAttributes);
+						.lineColor(FILL_COLOR).lineStyle(getLineStyle(astarStartNode)).peripheries(1).build();
+				graph.addNode(PHANTOM_INIT_ID + startNode.getId(), nAttributes);
 				final EdgeAttributes eAttributes = EdgeAttributes.builder().label("").color(LINE_COLOR)
 						.lineStyle(SUCC_EDGE_STYLE).build();
-				graph.addEdge(PHANTOM_INIT_ID + initNode.getId(), NODE_ID_PREFIX + initNode.getId(), eAttributes);
+				graph.addEdge(PHANTOM_INIT_ID + startNode.getId(), NODE_ID_PREFIX + startNode.getId(), eAttributes);
 			}
 		}
 

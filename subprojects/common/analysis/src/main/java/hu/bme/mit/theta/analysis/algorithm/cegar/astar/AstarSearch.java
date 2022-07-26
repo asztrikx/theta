@@ -32,7 +32,7 @@ public class AstarSearch<S extends State, A extends Action> {
 			return;
 		}
 
-		if (astarNode.distance.getType() == Distance.Type.INFINITE) {
+		if (astarNode.getDistance().getType() == Distance.Type.INFINITE) {
 			return;
 		}
 
@@ -44,16 +44,19 @@ public class AstarSearch<S extends State, A extends Action> {
 		// Can be in doneSet if not firstCex
 		//	- otherwise can move to if statement below
 		//	- we can't put into waitlist as it will drop it (in doneSet) otherwise it's an optimization to handle here
-		if (astarNode.distance.getType() == Distance.Type.EXACT) {
+		if (astarNode.getDistance().getType() == Distance.Type.EXACT) {
 			assert !doneSet.contains(astarNode);
 
-			if (upperLimitValue > depth + astarNode.distance.getValue() || upperLimitValue == -1) {
-				upperLimitValue = depth + astarNode.distance.getValue();
+			if (upperLimitValue > depth + astarNode.getDistance().getValue() || upperLimitValue == -1) {
+				upperLimitValue = depth + astarNode.getDistance().getValue();
 				upperLimitAstarNode = astarNode;
 				// Only happens if a startAstarNode already have distance
 				assert parentAstarNode != null;
 				// [Multi target?]
-				assert !parents.containsKey(astarNode.argNode);
+				// Multiple node can be covered into the same node, therefore in that way it can have multiple parent
+				if (parents.containsKey(astarNode.argNode)) {
+					assert parents.get(astarNode.argNode).getCoveringNode().get() == astarNode.argNode;
+				}
 				parents.put(astarNode.argNode, parentAstarNode.argNode);
 			}
 			return;

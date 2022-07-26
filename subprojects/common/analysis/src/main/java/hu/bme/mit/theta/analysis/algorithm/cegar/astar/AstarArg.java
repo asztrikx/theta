@@ -48,8 +48,8 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
 			AstarNode<S, A> from, Set<ArgNode<S, A>> until, Map<ArgNode<S, A>, ArgNode<S, A>> parents
 	) {
 		int startDistance;
-		if (from.distance.getType() == Distance.Type.EXACT) {
-			startDistance = from.distance.getValue();
+		if (from.getDistance().getType() == Distance.Type.EXACT) {
+			startDistance = from.getDistance().getValue();
 		} else {
 			startDistance = 0;
 		}
@@ -66,12 +66,12 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
 			distance = distance + startDistance;
 
 			if (node.isTarget() && from.argNode != node) {
-				assert astarNode.distance.isKnown();
+				assert astarNode.getDistance().isKnown();
 			}
 
 			// Multiple targets can be visited during a check, therefore we should only keep distances from the first found target
-			if (astarNode.distance.getType() != Distance.Type.EXACT) {
-				astarNode.distance = new Distance(Distance.Type.EXACT, distance);
+			if (astarNode.getDistance().getType() != Distance.Type.EXACT) {
+				astarNode.setDistance(new Distance(Distance.Type.EXACT, distance));
 
 				// Save covered nodes
 				Integer lambdaDistance = distance;
@@ -79,7 +79,7 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
 						// Node's parent is a covered node, do not call updateDistancesFromNodes as it's distance will be known
 						.filter(coveredNode -> parents.get(node) != coveredNode)
 						.map(coveredNode -> {
-							assert get(coveredNode).distance.getType() == Distance.Type.UNKNOWN;
+							assert get(coveredNode).getDistance().getType() == Distance.Type.UNKNOWN;
 							return Tuple2.of(coveredNode, lambdaDistance);
 						});
 				conditionalNodes.addAll(coveredNodesStream.toList());
@@ -92,7 +92,7 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
 						ArgNode<S, A> graphParent = node.getParent().get();
 						AstarNode<S, A> astarGraphParent = get(graphParent);
 						// Graph parent may already have distance
-						if (!astarGraphParent.distance.isKnown()) {
+						if (!astarGraphParent.getDistance().isKnown()) {
 							conditionalNodes.add(Tuple2.of(graphParent, Integer.MIN_VALUE));
 						}
 					}
@@ -100,9 +100,8 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
 
 				return until.contains(node);
 			} else {
-				assert astarNode.distance.getValue() <= distance; // TODO move this to upper if case
-
 				if (from.argNode != node) {
+					assert astarNode.getDistance().getValue() <= distance;
 					return true;
 				} else {
 					// [multiparent] this maybe false as startNode may just hava a distance from different target
@@ -134,7 +133,7 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
 		//      a
 		//    /  \
 		//   b- ->c
-		nodes = nodes.stream().filter(t -> !get(t.get1()).distance.isKnown()).toList();
+		nodes = nodes.stream().filter(t -> !get(t.get1()).getDistance().isKnown()).toList();
 		Queue<Tuple2<ArgNode<S, A>, Integer>> queue = new ArrayDeque<>(nodes);
 
 		// We also know the distance to all covered nodes as they can't reach target otherwise
@@ -153,12 +152,12 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
 				AstarNode<S, A> astarNode = get(node);
 
 				if (node.isTarget()) {
-					assert astarNode.distance.getType() == Distance.Type.EXACT;
+					assert astarNode.getDistance().getType() == Distance.Type.EXACT;
 				}
 
-				if (astarNode.distance.getType() == Distance.Type.EXACT) {
-					Distance minDistance = node.getSuccNodes().map(child -> get(child).distance).filter(Distance::isKnown).min(Distance::compareTo).get();
-					assert minDistance.getValue() + 1 >= astarNode.distance.getValue();
+				if (astarNode.getDistance().getType() == Distance.Type.EXACT) {
+					Distance minDistance = node.getSuccNodes().map(child -> get(child).getDistance()).filter(Distance::isKnown).min(Distance::compareTo).get();
+					assert minDistance.getValue() + 1 >= astarNode.getDistance().getValue();
 					return true;
 				}
 
@@ -166,7 +165,7 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
 				if (node.getCoveringNode().isPresent()) {
 					// Covered nodes are added to the queue and arg.walkUpParents is started from them
 					assert _distance == 0;
-					astarNode.distance = new Distance(Distance.Type.EXACT, distanceBase);
+					astarNode.setDistance(new Distance(Distance.Type.EXACT, distanceBase));
 				} else {
 					assert node.getSuccNodes().findAny().isPresent();
 					if (!allSuccDistanceKnown(node)) {
@@ -175,12 +174,12 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
 
 					// e.g. Other child can also have been in queue: it stopped at this node as it had a child with unknown distance
 					// therefore we manually have to choose the one with better distance
-					Distance minDistance = node.getSuccNodes().map(child -> get(child).distance).min(Distance::compareTo).get();
+					Distance minDistance = node.getSuccNodes().map(child -> get(child).getDistance()).min(Distance::compareTo).get();
 					assert minDistance.getType() == Distance.Type.EXACT;
-					astarNode.distance = new Distance(Distance.Type.EXACT, minDistance.getValue() + 1);
+					astarNode.setDistance(new Distance(Distance.Type.EXACT, minDistance.getValue() + 1));
 				}
 				// astarNode.distance != _distance, see above
-				Integer lambdaDistance = astarNode.distance.getValue();
+				Integer lambdaDistance = astarNode.getDistance().getValue();
 				queue.addAll(node.getCoveredNodes().map(newCoveredNode -> Tuple2.of(newCoveredNode, lambdaDistance)).toList());
 
 				return false;
@@ -198,9 +197,9 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
 				AstarNode<S, A> astarNode = get(argNode);
 
 				// if we reach a part where target is reachable then root should also reach it
-				assert astarNode.distance.getType() != Distance.Type.EXACT;
+				assert astarNode.getDistance().getType() != Distance.Type.EXACT;
 				assert argNode.isCovered() || argNode.isExpanded();
-				astarNode.distance = new Distance(Distance.Type.INFINITE);
+				astarNode.setDistance(new Distance(Distance.Type.INFINITE));
 
 				if (argNode.getCoveringNode().isPresent()) {
 					queue.add(argNode.getCoveringNode().get());
@@ -217,7 +216,7 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
 		Predicate<ArgNode<S, A>> excludeKnownDistance = node -> {
 			AstarNode<S, A> astarNode = get(node);
 			// Can't reach target && not already marked as infinite
-			return astarNode.distance.getType() == Distance.Type.UNKNOWN;
+			return astarNode.getDistance().getType() == Distance.Type.UNKNOWN;
 		};
 		Predicate<ArgNode<S, A>> excludeTarget = node -> !node.isTarget();
 
@@ -256,7 +255,7 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
 			assert coveredNode.getCoveringNode().isPresent();
 			ArgNode<S, A> covererNode = coveredNode.getCoveringNode().get();
 			AstarNode<S, A> astarCovererNode = get(covererNode);
-			return astarCovererNode.distance.getType() == Distance.Type.INFINITE;
+			return astarCovererNode.getDistance().getType() == Distance.Type.INFINITE;
 		});
 		queue.addAll(lateCoveredNodes.filter(excludeKnownDistance).toList());
 
@@ -289,20 +288,20 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
 				}
 
 				// When updating nodes reaching a target, they can already have distance without all children having distance
-				if (astarNode.distance.isKnown()) {
-					assert astarNode.distance.getType() == Distance.Type.EXACT;
+				if (astarNode.getDistance().isKnown()) {
+					assert astarNode.getDistance().getType() == Distance.Type.EXACT;
 					return true;
 				}
 
 				// Covered nodes added to queue have covering node with infinite distance.
 				// Nodes with infinite heuristic are not expanded therefore we have to check it before allSuccNodeDistanceInfinite.
 				if (node.isCovered() || astarNode.getHeuristic().getType() == Distance.Type.INFINITE || allSuccNodeDistanceInfinite(node)) {
-					assert astarNode.distance.getType() == Distance.Type.UNKNOWN;
-					astarNode.distance = new Distance(Distance.Type.INFINITE);
+					assert astarNode.getDistance().getType() == Distance.Type.UNKNOWN;
+					astarNode.setDistance(new Distance(Distance.Type.INFINITE));
 
 					// 3) Add covered nodes to queue
 					node.getCoveredNodes().forEach(coveredNode -> {
-						assert !get(coveredNode).distance.isKnown();
+						assert !get(coveredNode).getDistance().isKnown();
 						queue.add(coveredNode);
 					});
 
@@ -387,7 +386,7 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
 			// parentAstarNode had to be in waitlist
 			// 		therefore it's heuristic is known
 			// 		therefore it's provider's distance is known
-			assert parentProviderAstarNode.distance.isKnown();
+			assert parentProviderAstarNode.getDistance().isKnown();
 			// 		therefore it's heuristic is known
 			//		therefore it must be expanded or covered (targets are also expanded)
 			assert parentProviderNode.isExpanded() || parentProviderNode.isCovered();
@@ -408,7 +407,7 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
 				parentProviderAstarNode = parentAstarNode.providerAstarNode = providerAstarArg.get(parentProviderCoveringNode);
 				parentProviderNode = parentProviderAstarNode.argNode;
 
-				assert parentProviderAstarNode.distance.isKnown();
+				assert parentProviderAstarNode.getDistance().isKnown();
 				assert parentProviderNode.isExpanded();
 			}
 
@@ -429,7 +428,7 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
 		if (!argNode.isExpanded()) {
 			return false;
 		}
-		return argNode.getSuccNodes().allMatch(child -> get(child).distance.isKnown());
+		return argNode.getSuccNodes().allMatch(child -> get(child).getDistance().isKnown());
 	}
 
 	public boolean allSuccNodeDistanceInfinite(ArgNode<S, A> argNode) {
@@ -439,7 +438,7 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
 		}
 		return argNode.getSuccNodes().allMatch(childNode -> {
 			AstarNode<S, A> childAstarNode = get(childNode);
-			return childAstarNode.distance.getType() == Distance.Type.INFINITE;
+			return childAstarNode.getDistance().getType() == Distance.Type.INFINITE;
 		});
 	}
 
