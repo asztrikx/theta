@@ -20,6 +20,7 @@ import hu.bme.mit.theta.analysis.PartialOrd;
 import hu.bme.mit.theta.analysis.Prec;
 import hu.bme.mit.theta.analysis.State;
 import hu.bme.mit.theta.analysis.algorithm.ARG;
+import hu.bme.mit.theta.analysis.algorithm.ARG.Visit;
 import hu.bme.mit.theta.analysis.algorithm.ArgBuilder;
 import hu.bme.mit.theta.analysis.algorithm.ArgNode;
 import hu.bme.mit.theta.analysis.algorithm.cegar.Abstractor;
@@ -31,6 +32,9 @@ import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarCegarChecker.Type;
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.argstore.AstarArgStore;
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.argstore.AstarArgStoreFull;
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.filevisualizer.AstarFileVisualizer;
+import hu.bme.mit.theta.analysis.waitlist.FifoWaitlist;
+import hu.bme.mit.theta.analysis.waitlist.Waitlist;
+import hu.bme.mit.theta.common.container.factory.HashContainerFactory;
 import hu.bme.mit.theta.common.logging.Logger;
 import hu.bme.mit.theta.common.logging.Logger.Level;
 import hu.bme.mit.theta.common.logging.NullLogger;
@@ -56,7 +60,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 	private final AstarArgStore<S, A, P> astarArgStore;
 	private final AstarFileVisualizer<S, A, P> astarFileVisualizer;
 	private final Type type;
-	private PartialOrd<S> partialOrd;
+	private PartialOrd<S> partialOrd; // Good for debugging
 
 	private AstarAbstractor(final ArgBuilder<S, A, P> argBuilder,
 							final Function<? super S, ?> projection,
@@ -136,6 +140,8 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 
 			// reached upper limit: depth + heuristic distance (only depth is also correct but reached later)
 			if (astarNode.getWeight(depth).getValue() >= search.upperLimitValue && search.upperLimitValue != -1) {
+				// Otherwise we might miss shorter upperlimits overwritten before first upperlimit process
+				assert reachedExacts.size() == 0;
 				reachedExacts.add(search.upperLimitAstarNode);
 				search.upperLimitValue = -1;
 				if (stopCriterion.canStop(astarArg.arg, List.of(astarNode.argNode))) {
@@ -166,14 +172,16 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 
 				// If astarNode's parent is also a coveredNode then covering edges have been redirected.
 				// We have to update parents map according to that. (see ArgNode::cover)
-				//  1) a - - -> b
-				//  2) a - - -> b - - -> c
+				//  1) a - - -> b (argNode,coveredAstarNode)
+				//  2) a - - -> b - - -> c (coveringNode)
 				//  3) a        b - - -> c
 				//	   |                 ^
 				//     | - - - - - - - - |
 
 				AstarNode<S, A> coveredAstarNode;
 				if (parentAstarNode != null && parentAstarNode.argNode.getCoveringNode().isPresent()) {
+					assertConsistency(astarNode, coveringAstarNode, true);
+
 					// Because argNode is covered it can only reach coveringNode with the same distance as it's new parent
 					// therefore we can safely remove it
 					parents.remove(argNode);
@@ -184,6 +192,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 				} else {
 					coveredAstarNode = astarNode;
 				}
+				assertConsistency(coveredAstarNode, coveringAstarNode, true);
 
 				// Covering edge has 0 weight
 				search.addToWaitlist(coveringAstarNode, coveredAstarNode, depth);
@@ -215,6 +224,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 					//		they may get covered with a non leaf which has succAstarNode (from copy)
 					//		but it's provider doesn't have distance, therefore there is no heuristic
 					findHeuristic(succAstarNode, astarArg);
+					assertConsistency(astarNode, succAstarNode, false);
 
 					search.addToWaitlist(succAstarNode, astarNode, depth + 1);
 				}
@@ -248,6 +258,45 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		if (startAstarNodes.stream().noneMatch(a -> a.getDistance().isKnown())) {
 			startAstarNodes.forEach(astarArg::updateDistancesFromRootInfinite);
 		}
+
+		assertShortestDistance(astarArg);
+	}
+
+	private void assertShortestDistance(AstarArg<S, A, P> astarArg) {
+		ARG<S, A> arg = astarArg.arg;
+		Collection<ArgNode<S, A>> targets = arg.getNodes().filter(ArgNode::isTarget).toList();
+		arg.walk(targets, (argNode, distance) -> false, visit -> {
+			AstarNode<S, A> astarNode = astarArg.get(visit.argNode);
+			if (astarNode.getDistance().getType() == Distance.Type.EXACT) {
+				assert astarNode.getDistance().getValue() == visit.distance;
+			}
+
+			Collection<Visit<S, A>> newVisits = new ArrayList<>((int) visit.argNode.getCoveredNodes().count() + 1);
+			visit.argNode.getCoveredNodes().forEach(coveredNode -> {
+				newVisits.add(new Visit<>(coveredNode, visit.distance));
+			});
+			if (visit.argNode.getParent().isPresent()) {
+				newVisits.add(new Visit<>(visit.argNode.getParent().get(), visit.distance + 1));
+			}
+			return newVisits;
+		});
+	}
+
+	private void assertConsistency(AstarNode<S, A> parent, AstarNode<S, A> child, boolean coverEdge) {
+		assert parent.getHeuristic().getType() != Distance.Type.INFINITE || child.getHeuristic().getType() != Distance.Type.INFINITE;;
+		assert parent.getHeuristic().getType() != Distance.Type.INFINITE;
+		if (child.getHeuristic().getType() == Distance.Type.INFINITE) {
+			return;
+		}
+
+		int heuristicDistanceValue = parent.getHeuristic().getValue() - child.getHeuristic().getValue();
+		int edgeWeight;
+		if (coverEdge) {
+			edgeWeight = 0;
+		} else {
+			edgeWeight = 1;
+		}
+		assert heuristicDistanceValue <= edgeWeight;
 	}
 
 	// Expands the target (future provider node) so that the children of the provided node can also have provider nodes to choose from.

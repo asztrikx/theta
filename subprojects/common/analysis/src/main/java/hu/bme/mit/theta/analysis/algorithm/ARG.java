@@ -25,6 +25,9 @@ import hu.bme.mit.theta.common.container.factory.HashContainerFactory;
 
 import java.util.Collection;
 import java.util.Set;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.OptionalInt;
 
@@ -207,44 +210,35 @@ public final class ARG<S extends State, A extends Action> {
 		return getUnsafeNodes().map(ArgTrace::to);
 	}
 
+	static public class Visit<S extends State, A extends Action> {
+		final public ArgNode<S, A> argNode;
+		final public int distance;
+
+		public Visit(ArgNode<S, A> argNode, int distance) {
+			this.argNode = argNode;
+			this.distance = distance;
+		}
+	}
+
 	/**
 	 * Calls skip on all nodes reachable from root even through covering edges.
 	 * If skip returns true then the children of the ArgNode is not added to waitlist.
 	 * ArgNode and it's distance from a root is given to skip().
 	 */
-	public void walk(Collection<ArgNode<S, A>> roots, BiFunction<ArgNode<S, A>, Integer, Boolean> skip) {
+	public void walk(Collection<ArgNode<S, A>> roots, BiFunction<ArgNode<S, A>, Integer, Boolean> skip, Function<Visit<S, A>, Collection<Visit<S, A>>> newVisitsFunc) {
 		for (ArgNode<S, A> root : roots) {
 			checkNotNull(root);
 		}
 		checkNotNull(skip);
 
-		class Visit {
-			final public ArgNode<S, A> argNode;
-			final public int distance;
-
-			public Visit(ArgNode<S, A> argNode, int distance) {
-				this.argNode = argNode;
-				this.distance = distance;
-			}
-		}
-
 		Set<ArgNode<S, A>> doneSet = new HashContainerFactory().createSet();
-		Waitlist<Visit> waitlist = FifoWaitlist.create();
+		ArrayDeque<Visit<S, A>> queue = new ArrayDeque<>();
 		for (ArgNode<S, A> root : roots) {
-			waitlist.add(new Visit(root, 0));
+			queue.add(new Visit<>(root, 0));
 		}
 
-		// Covering edge has zero weight which would break BFS if we did not push it to its correct place in waitlist
-		//	e.g. to the front which is always a correct place
-		Visit coveringVisit = null;
-		while (!waitlist.isEmpty()) {
-			Visit visit;
-			if (coveringVisit == null) {
-				visit = waitlist.remove();
-			} else {
-				visit = coveringVisit;
-				coveringVisit = null;
-			}
+		while (!queue.isEmpty()) {
+			Visit<S, A> visit = queue.removeFirst();
 			ArgNode<S, A> argNode = visit.argNode;
 			int distance = visit.distance;
 
@@ -259,19 +253,37 @@ public final class ARG<S extends State, A extends Action> {
 				continue;
 			}
 
-			// covered: add to front of waitlist
-			if (argNode.getCoveringNode().isPresent()) {
-				ArgNode<S, A> coveringNode = argNode.getCoveringNode().get();
-				coveringVisit = new Visit(coveringNode, distance);
-				continue;
-			}
-
-			argNode.getSuccNodes().forEach(succNode -> {
-				if (!doneSet.contains(succNode)) {
-					waitlist.add(new Visit(succNode, distance + 1));
+			// covered: add to front of queue
+			Collection<Visit<S, A>> newVisits = newVisitsFunc.apply(visit);
+			for (Visit<S, A> newVisit : newVisits) {
+				if (doneSet.contains(newVisit.argNode)) {
+					continue;
 				}
-			});
+
+				if (newVisit.distance == distance) {
+					// Covering edge has zero weight which would break BFS if we did not push it to its correct place in queue
+					//	e.g. to the front which is always a correct place
+					queue.addFirst(newVisit);
+				} else {
+					assert newVisit.distance == distance + 1;
+					queue.addLast(newVisit);
+				}
+			}
 		}
+	}
+
+	public Collection<Visit<S, A>> walkDefault(Visit<S, A> visit) {
+		ArgNode<S, A> argNode = visit.argNode;
+		int distance = visit.distance;
+
+		if (argNode.getCoveringNode().isPresent()) {
+			ArgNode<S, A> coveringNode = argNode.getCoveringNode().get();
+			return List.of(new Visit<>(coveringNode, distance));
+		}
+
+		Collection<Visit<S, A>> newVisits = new ArrayList<>((int) argNode.getSuccNodes().count());
+		argNode.getSuccNodes().forEach(succNode -> newVisits.add(new Visit<>(succNode, distance + 1)));
+		return newVisits;
 	}
 
 	// parents: node -> parent

@@ -206,7 +206,7 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
 				}
 
 				return false;
-			});
+			}, arg::walkDefault);
 		}
 	}
 
@@ -342,7 +342,7 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
 			astarNodesNew.put(argNode, astarNode);
 			reachedSet.add(argNode);
 			return false;
-		});
+		}, arg::walkDefault);
 		astarNodes = astarNodesNew;
 	}
 
