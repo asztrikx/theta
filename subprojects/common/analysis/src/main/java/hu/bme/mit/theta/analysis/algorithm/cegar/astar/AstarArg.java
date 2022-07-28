@@ -198,12 +198,8 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
 
 				// if we reach a part where target is reachable then root should also reach it
 				assert astarNode.getDistance().getType() != Distance.Type.EXACT;
-				assert argNode.isCovered() || argNode.isExpanded();
+				assert argNode.isCovered() || argNode.isExpanded() || astarNode.getHeuristic().getType() == Distance.Type.INFINITE;
 				astarNode.setDistance(new Distance(Distance.Type.INFINITE));
-
-				if (argNode.getCoveringNode().isPresent()) {
-					queue.add(argNode.getCoveringNode().get());
-				}
 
 				return false;
 			}, arg::walkDefault);
