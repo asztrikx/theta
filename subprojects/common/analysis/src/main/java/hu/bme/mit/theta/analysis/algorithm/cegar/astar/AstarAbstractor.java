@@ -459,6 +459,16 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		astarFileVisualizer.setEnabled(enabled);
 	}
 
+	private void debugInit(AstarArg<S, A, P> astarArg) {
+		debug(astarArg, astarArg.arg.getInitNodes().toList());
+	}
+
+	private void debugAll() {
+		for (int i = 0; i < astarArgStore.size(); i++) {
+			debugInit(astarArgStore.get(i));
+		}
+	}
+
 	private void close(final AstarNode<S, A> astarNode, final Collection<AstarNode<S, A>> candidates) {
 		ArgNode<S, A> argNode = astarNode.argNode;
 		assert argNode.getCoveringNode().isEmpty();
