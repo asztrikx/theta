@@ -30,7 +30,7 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
 	private Map<ArgNode<S, A>, AstarNode<S, A>> astarInitNodes = new HashContainerFactory().createMap();
 	private final PartialOrd<S> partialOrd;
 	// Covering ArgNode is searched from here
-	public final Partition<ArgNode<S, A>, ?> reachedSet;
+	public final Partition<ArgNode<S, A>, ?> reachedSet; // TODO check whether reachset can hold AstarNodes
 
 	public AstarArg(
 			final ARG<S, A> arg, P prec, final PartialOrd<S> partialOrd,
@@ -265,7 +265,8 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
 		// 5) AstarNode's with infinite heuristic distances won't be expanded therefore they won't get set distance inf
 		Stream<ArgNode<S, A>> infiniteHeuristicNodes = astarNodes.values().stream()
 				.filter(astarNode -> astarNode.getHeuristic().getType() == Distance.Type.INFINITE)
-				.map(astarNode -> astarNode.argNode);
+				.map(astarNode -> astarNode.argNode)
+				.filter(argNode -> argNode.isLeaf() && !argNode.isCovered());
 		queue.addAll(infiniteHeuristicNodes.filter(excludeKnownDistance).toList());
 
 		while (!queue.isEmpty()) {
