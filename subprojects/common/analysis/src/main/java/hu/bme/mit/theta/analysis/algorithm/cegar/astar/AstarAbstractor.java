@@ -163,7 +163,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 			// If node has no children it still can already be expanded, therefore expanded is already set (should not be covered).
 			// If node already has covering node, close cloud still choose another one, therefore avoid.
 			if (!argNode.isExpanded() && argNode.getSuccNodes().findAny().isEmpty() && argNode.getCoveringNode().isEmpty()) {
-				close(argNode, astarArg.reachedSet.get(argNode));
+				close(astarNode, astarArg.reachedSet.get(argNode).stream().map(astarArg::get).toList());
 			}
 			if (argNode.getCoveringNode().isPresent()) {
 				ArgNode<S, A> coveringNode = argNode.getCoveringNode().get();
@@ -219,9 +219,9 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 						succAstarNode = astarArg.createSuccAstarNode(succArgNode, astarNode);
 					}
 
-					// already existing succAstarNode
+					// already existing succAstarNode, e.g:
 					// 		although we only add leaves to startAstarNodes and findHeuristic is called upon them
-					//		they may get covered with a non leaf which has succAstarNode (from copy)
+					//		they may get covered with a non leaf which has succAstarNode (because of how copy works)
 					//		but it's provider doesn't have distance, therefore there is no heuristic
 					findHeuristic(succAstarNode, astarArg);
 					assertConsistency(astarNode, succAstarNode, false);
@@ -313,7 +313,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 			assert !argNode.isExpanded();
 			assert argNode.getSuccNodes().findAny().isEmpty();
 			assert argNode.getCoveringNode().isEmpty();
-			close(argNode, astarArg.reachedSet.get(argNode));
+			close(astarNode, astarArg.reachedSet.get(argNode).stream().map(astarArg::get).toList());
 			if (argNode.getCoveringNode().isEmpty()) {
 				//// We can get covered into already expanded node
 				//// Covering target may have been after astarNode in waitlist therefore it may not already be expanded
@@ -434,7 +434,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 
 		//// parents + (parents & covering edges) make this difficult: arg.getIncompleteNodes().map(astarArg::get).filter(n -> n.distance.getType() != DistanceType.INFINITE)
 		//// 		add to reachedSet if implemented
-		Collection<AstarNode<S, A>> incompleteAstarNodes = astarArg.getIncompleteNodes().collect(Collectors.toList());
+		Collection<AstarNode<S, A>> incompleteAstarNodes = astarArg.getIncompleteNodes().toList();
 		// If we start from incomplete nodes then we have to know their shortest depth from an init node.
 		// Unexpanded child might have shorter distance from a covered node.
 		findDistance(astarArg, initialStopCriterion, astarArg.getAllInit(), "");
@@ -459,15 +459,20 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		astarFileVisualizer.setEnabled(enabled);
 	}
 
-	private void close(final ArgNode<S, A> node, final Collection<ArgNode<S, A>> candidates) {
-		assert node.getCoveringNode().isEmpty();
-		assert node.getSuccNodes().findAny().isEmpty();
-		if (!node.isLeaf()) {
+	private void close(final AstarNode<S, A> astarNode, final Collection<AstarNode<S, A>> candidates) {
+		ArgNode<S, A> argNode = astarNode.argNode;
+		assert argNode.getCoveringNode().isEmpty();
+		assert argNode.getSuccNodes().findAny().isEmpty();
+		if (!argNode.isLeaf()) {
 			return;
 		}
-		for (final ArgNode<S, A> candidate : candidates) {
-			if (candidate.mayCover(node)) {
-				node.cover(candidate);
+		for (final AstarNode<S, A> astarCandidate : candidates) {
+			ArgNode<S, A> candidate = astarCandidate.argNode;
+			if (!candidate.mayCover(argNode)) {
+				continue;
+			}
+			if (astarCandidate.providerAstarNode == null || astarCandidate.providerAstarNode == astarNode.providerAstarNode || astarNode.providerAstarNode.argNode.getCoveringNode().isPresent() && astarNode.providerAstarNode.argNode.getCoveringNode().get() == astarCandidate.providerAstarNode.argNode){
+				argNode.cover(candidate);
 				return;
 			}
 		}
