@@ -36,6 +36,8 @@ public class AstarSearch<S extends State, A extends Action> {
 			return;
 		}
 
+		assert astarNode.getHeuristic().isKnown();
+
 		// When is this possible:
 		//   - in a different subgraph reached by covering edge
 		//   - same subgraph which was reached from a different subgraph by a covering edge
