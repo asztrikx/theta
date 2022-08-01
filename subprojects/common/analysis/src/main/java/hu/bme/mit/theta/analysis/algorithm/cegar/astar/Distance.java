@@ -55,10 +55,10 @@ public final class Distance implements Comparable<Distance> {
 
 	@Override
 	public String toString() {
-		String result = type.name();
 		if (type == Type.EXACT) {
-			result += "," + value;
+			return Integer.toString(value);
+		} else {
+			return type.name();
 		}
-		return result;
 	}
 }
