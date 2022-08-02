@@ -49,6 +49,9 @@ public final class AstarNode<S extends State, A extends Action> {
 	}
 
 	private void assertAdmissability(Distance distance) {
+		// called from updateDistancesFromConditionalNodes:
+		// 		this's heuristic can not be unknown as we are always starting from nodes with known heuristic and for all successor nodes we call findHeuristic.
+		//		This won't be the case when we start searching from leaf nodes.
 		assert getHeuristic().getType() == Distance.Type.INFINITE || getHeuristic().getType() == Distance.Type.EXACT;
 		assert distance.getType() == Distance.Type.INFINITE || distance.getType() == Distance.Type.EXACT;
 
