@@ -40,12 +40,12 @@ public final class AstarNode<S extends State, A extends Action> {
 	}
 
 	public Distance getWeight(int depth) {
-		assert getHeuristic().isKnown();
-		Distance f = getHeuristic();
-		if (f.getType() == Distance.Type.INFINITE) {
-			return f;
+		Distance heuristic = getHeuristic();
+		Distance.Type type = heuristic.getType();
+		if (type == Distance.Type.INFINITE) {
+			return heuristic;
 		}
-		return new Distance(Distance.Type.EXACT, f.getValue() + depth);
+		return new Distance(type, heuristic.getValue() + depth);
 	}
 
 	private void assertAdmissability(Distance distance) {
