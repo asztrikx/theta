@@ -29,6 +29,7 @@ import hu.bme.mit.theta.common.visualization.Graph;
 import hu.bme.mit.theta.common.visualization.LineStyle;
 import hu.bme.mit.theta.common.visualization.NodeAttributes;
 
+import javax.annotation.Nullable;
 import java.awt.*;
 import java.util.Collection;
 import java.util.Set;
@@ -56,11 +57,11 @@ public final class AstarArgVisualizer<S extends State, A extends Action, P exten
 	private final Function<? super ArgNode<? extends S, ? extends A>, String> argNodeToString;
 
 	private static class LazyHolderDefault {
-		static final AstarArgVisualizer<State, Action, Prec> INSTANCE = new AstarArgVisualizer<>(s -> s.toString(), a -> a.toString(), n -> n.toString(), n -> n.toString());
+		static final AstarArgVisualizer<State, Action, Prec> INSTANCE = new AstarArgVisualizer<>(s -> s.toString(), a -> a.toString(), astarNode -> astarNode.toString(), n -> n.toString());
 	}
 
 	private static class LazyHolderStructureOnly {
-		static final AstarArgVisualizer<State, Action, Prec> INSTANCE = new AstarArgVisualizer<>(s -> "", a -> "", n -> "", n -> "");
+		static final AstarArgVisualizer<State, Action, Prec> INSTANCE = new AstarArgVisualizer<>(s -> "", a -> "", astarNode -> "", n -> "");
 	}
 
 	private AstarArgVisualizer(
@@ -138,15 +139,10 @@ public final class AstarArgVisualizer<S extends State, A extends Action, P exten
 		final int peripheries = node.isTarget() ? 2 : 1;
 
 		// node format: information about node and it's parent (if exists)
-		String parentLabel = "-";
-		if (astarNode.providerAstarNode != null) {
-			parentLabel = argNodeToString.apply(astarNode.providerAstarNode.argNode);
-		}
-		String label = String.format("%s\\l%s\\l%s\\l%s",
+		String label = String.format("%s\\l%s\\l%s",
 				stateToString.apply(node.getState()),
-				String.format("ArgNode: %s", argNodeToString.apply(node)),
-				String.format("AstarNode: %s", astarNodeToString.apply(astarNode)),
-				String.format("Provider: %s", parentLabel)
+				String.format("Current:  %s", getAstarNodeDetailsText(astarNode)),
+				String.format("Provider: %s", getAstarNodeDetailsText(astarNode.providerAstarNode))
 		);
 
 		final NodeAttributes nAttributes = NodeAttributes.builder().label(label)
@@ -173,6 +169,13 @@ public final class AstarArgVisualizer<S extends State, A extends Action, P exten
 				createEdge(graph, node, astarNodeChild, COVER_EDGE_STYLE, "");
 			}
 		}
+	}
+
+	private <S1 extends S, A1 extends A, P1 extends P> String getAstarNodeDetailsText(@Nullable AstarNode<S1, A1> astarNode) {
+		if (astarNode == null) {
+			return "-";
+		}
+		return astarNodeToString.apply(astarNode);
 	}
 
 	private <S1 extends S, A1 extends A, P1 extends P> void createEdge(

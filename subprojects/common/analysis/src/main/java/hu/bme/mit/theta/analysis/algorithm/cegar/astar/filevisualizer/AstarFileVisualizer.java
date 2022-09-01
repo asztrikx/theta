@@ -34,13 +34,7 @@ public class AstarFileVisualizer<S extends State, A extends Action, P extends Pr
 	public String getTitle(String state, int index) {
 		// To be consistent with Logger outputs iteration should start from 1 but for avoiding confusion during debugging
 		// this will start from 0
-		StringBuilder title = new StringBuilder();
-		for (int i = astarArgStore.size() - 1; i >= index ; i--) {
-			title.append(String.format("%d.", i));
-		}
-		title.append(String.format(" %s", state));
-
-		return title.toString();
+		return String.format("%d ⁄ %d %s", index, astarArgStore.size() - 1, state);
 	}
 
 	// getVisualizerState(Collection<...>) will have same erasure
