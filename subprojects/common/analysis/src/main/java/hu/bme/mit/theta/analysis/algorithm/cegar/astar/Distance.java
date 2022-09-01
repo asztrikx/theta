@@ -54,6 +54,12 @@ public final class Distance implements Comparable<Distance> {
 	}
 
 	@Override
+	public boolean equals(Object object) {
+		if (object.getClass() != Distance.class) return false;
+		return compareTo((Distance) object) == 0;
+	}
+
+	@Override
 	public String toString() {
 		String result = "(" + type.name();
 		if (type == Type.EXACT) {
