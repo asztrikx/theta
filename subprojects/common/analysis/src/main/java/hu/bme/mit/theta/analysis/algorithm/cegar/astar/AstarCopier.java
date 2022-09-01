@@ -26,13 +26,13 @@ public class AstarCopier {
 	) {
 		Collection<Tuple2<ArgNode<S, A>, ArgNode<S, A>>> translation = new ArrayList<>();
 		Set<ArgNode<S, A>> newInitNodes = new HashContainerFactory().createSet();
-		ARG<S, A> arg = ArgCopier.createCopy(astarArg.arg, (argNode, argNodeCopy) -> {
+		ARG<S, A> argCopy = ArgCopier.createCopy(astarArg.arg, (argNode, argNodeCopy) -> {
 			translation.add(Tuple2.of(argNode, argNodeCopy));
 		}, (initArgNode, initArgNodeCopy) -> {
 			newInitNodes.add(initArgNodeCopy);
 		});
 
-		AstarArg<S, A, P> astarArgCopy = new AstarArg<>(arg, prec, partialOrd, projection);
+		AstarArg<S, A, P> astarArgCopy = new AstarArg<>(argCopy, prec, partialOrd, projection);
 
 		translation.forEach(t -> {
 			ArgNode<S, A> argNode = t.get1();
@@ -47,6 +47,9 @@ public class AstarCopier {
 			}
 			astarArgCopy.reachedSet.add(astarNodeCopy.argNode);
 		});
+
+		assert astarArg.arg.getNodes().count() == astarArgCopy.getAll().values().size();
+		assert astarArg.arg.getInitNodes().count() == astarArgCopy.getAllInit().size();
 
 		return astarArgCopy;
 	}
