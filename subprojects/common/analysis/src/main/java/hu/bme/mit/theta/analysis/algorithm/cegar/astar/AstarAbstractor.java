@@ -280,6 +280,11 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 			}
 			return newVisits;
 		});
+
+		// After processing a node and expanding it a covering node can appear, also if we could cover the node still
+		// another covering node can appear with lower distance. However shortest distance search isn't broken because ??
+		// a* can only find shortest distance if all possible neighbours are already available when processing a node and
+		// is it enough proof? maybe abstraction comes into play?
 	}
 
 	private void assertConsistency(AstarNode<S, A> parent, AstarNode<S, A> child, boolean coverEdge) {
@@ -481,7 +486,13 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 			if (!candidate.mayCover(argNode)) {
 				continue;
 			}
-			if (astarCandidate.providerAstarNode == null || astarCandidate.providerAstarNode == astarNode.providerAstarNode || astarNode.providerAstarNode.argNode.getCoveringNode().isPresent() && astarNode.providerAstarNode.argNode.getCoveringNode().get() == astarCandidate.providerAstarNode.argNode){
+
+			// Out goal is to keep consistency.
+			// E.g. keeping monotone covering edges would guarantee that but is a stronger property.
+			// TODO what if candidate has lowerbound distance
+			assert astarNode.providerAstarNode == null ||
+					astarNode.providerAstarNode.getDistance().getType() != Distance.Type.INFINITE;
+			if (astarNode.providerAstarNode == null || astarNode.providerAstarNode.getDistance().compareTo(astarCandidate.providerAstarNode.getDistance()) <= 0) {
 				argNode.cover(candidate);
 				return;
 			}
