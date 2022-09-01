@@ -97,7 +97,7 @@ public final class ArgNode<S extends State, A extends Action> {
 	// node: what we want to cover
 	public boolean mayCover(final ArgNode<S, A> node) {
 		if (arg.partialOrd.isLeq(node.getState(), this.getState())) {
-			// TODO: why do we check these?
+			// TODO: why do we check these? one reason is to avoid already covered nodes (issubsumed contains this)
 			return ancestors().noneMatch(n -> n.equals(node) || n.isSubsumed());
 		} else {
 			return false;
