@@ -172,6 +172,9 @@ public final class ArgNode<S extends State, A extends Action> {
 	 * node.
 	 */
 	public boolean isCovered() {
+		if (coveringNode.isPresent()) {
+			assert !expanded;
+		}
 		return coveringNode.isPresent();
 	}
 
@@ -210,6 +213,9 @@ public final class ArgNode<S extends State, A extends Action> {
 	 * Checks if the node is expanded, i.e., all of its successors are present.
 	 */
 	public boolean isExpanded() {
+		if (expanded) {
+			assert coveringNode.isEmpty();
+		}
 		return expanded;
 	}
 

@@ -85,6 +85,7 @@ public final class ARG<S extends State, A extends Action> {
 
 	// Get expanded (not covered) nodes with no outedge
 	public Stream<ArgNode<S, A>> getCompleteLeafNodes() {
+		// TODO how could it be both expanded and covered?
 		return getInitNodes().flatMap(ArgNode::unexcludedDescendants).filter(n -> n.isExpanded() && n.getSuccNodes().findAny().isEmpty() && !n.isCovered());
 	}
 
