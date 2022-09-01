@@ -233,7 +233,7 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
 		//    | | |
 		//    b d f
 
-		// All cases
+		// Not a target, Doesn't have distance
 		//	- covered
 		//		1) covered to ancestor: not handled
 		//		- not covered to ancestor
@@ -241,11 +241,12 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
 		//			3) coverer not marked as infinite (will be added in while loop if it gets marked as infinite)
 		//	- not covered
 		//		- expanded
-		//			4) leaf
+		//			4) leaf (non leaves will be added by their leaves as they must also be infinite)
 		//		- not expanded
 		//			5) has infinite heuristic
 
-		// 2) Node can get covered into already infinite node, therefore it won't be set to infinite
+		// 2) Covered, coverer marked as infinite
+		// Node can get covered into already infinite node, therefore it won't be set to infinite
 		Stream<ArgNode<S, A>> lateCoveredNodes = arg.getCoveredNodes().filter(coveredNode -> {
 			assert coveredNode.getCoveringNode().isPresent();
 			ArgNode<S, A> covererNode = coveredNode.getCoveringNode().get();
@@ -254,15 +255,32 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
 		});
 		queue.addAll(lateCoveredNodes.filter(excludeKnownDistance).toList());
 
-		// 4) Not covered leaf
+		// 4) Not covered > expanded > leaf
 		queue.addAll(arg.getCompleteLeafNodes().filter(excludeKnownDistance.and(excludeTarget)).toList());
 
-		// 5) AstarNode's with infinite heuristic distances won't be expanded therefore they won't get set distance inf
+		// 5) Not covered > not expanded
+		// AstarNode's with infinite heuristic distances won't be expanded therefore they won't get set distance inf
 		Stream<ArgNode<S, A>> infiniteHeuristicNodes = astarNodes.values().stream()
 				.filter(astarNode -> astarNode.getHeuristic().getType() == Distance.Type.INFINITE)
-				.map(astarNode -> astarNode.argNode)
-				.filter(argNode -> argNode.isLeaf() && !argNode.isCovered());
+				.filter(astarNode -> {
+					ArgNode<S, A> argNode = astarNode.argNode;
+					// Infinite heuristic can be a leaf (therefore expanded) it was copied from previous iteration
+					if (argNode.isExpanded()) {
+						// TODO if we stop copying infinite subgraph then uncomment this
+						//assert argNode.isLeaf();
+						assert astarNode.providerAstarNode != null && argNode.toString().equals(astarNode.providerAstarNode.argNode.toString());
+					}
+					//assert !argNode.isCovered(); // TODO same
+					return !argNode.isExpanded() && !argNode.isCovered();
+				})
+				.map(astarNode -> astarNode.argNode);
+
 		queue.addAll(infiniteHeuristicNodes.filter(excludeKnownDistance).toList());
+
+		// TODO filter heuristic known and is target here
+
+		// The cases should be disjoint
+		assert queue.size() == new HashSet<>(queue).size();
 
 		while (!queue.isEmpty()) {
 			ArgNode<S, A> argNode = queue.remove();
