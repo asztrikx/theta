@@ -8,7 +8,9 @@ import hu.bme.mit.theta.analysis.waitlist.Waitlist;
 import hu.bme.mit.theta.common.container.factory.HashContainerFactory;
 
 import javax.annotation.Nullable;
+import java.util.ArrayDeque;
 import java.util.Map;
+import java.util.Queue;
 import java.util.Set;
 
 public class AstarSearch<S extends State, A extends Action> {
@@ -26,6 +28,7 @@ public class AstarSearch<S extends State, A extends Action> {
 	public AstarNode<S, A> upperLimitAstarNode = null;
 	// debug
 	public Map<ArgNode<S, A>, Integer> depths = new HashContainerFactory().createMap();
+	public Queue<AstarNode<S, A>> reachedExacts = new ArrayDeque<>();
 
 	public void addToWaitlist(AstarNode<S, A> astarNode, AstarNode<S, A> parentAstarNode, int depth) {
 		if (astarNode.getHeuristic().getType() == Distance.Type.INFINITE) {

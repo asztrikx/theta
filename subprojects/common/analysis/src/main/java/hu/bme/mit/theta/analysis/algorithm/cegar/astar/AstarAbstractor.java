@@ -110,9 +110,11 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		startAstarNodes.forEach(startAstarNode -> search.addToWaitlist(startAstarNode, null, 0));
 		assert startAstarNodes.stream().allMatch(startAstarNode -> startAstarNode.getDistance().getType() != Distance.Type.EXACT);
 
-		// Implementation assumes that lower distance is set first therefore store reached targets in the order we reach them.
+		// Implementation assumes that lower distance is set first therefore we can store reached targets in the order we reach them.
 		// We save targets and nodes with exact value. In the latter the exact values must be from a previous findDistance as we set exact distances at the end of iteration.
-		Queue<AstarNode<S, A>> reachedExacts = new ArrayDeque<>();
+		Queue<AstarNode<S, A>> reachedExacts = search.reachedExacts;
+
+		// TODO: ArgCexCheckHandler.instance.setCurrentArg(new AbstractArg<S, A, P>(arg, prec)); , ...
 
 		while (!search.isWaitlistEmpty()) {
 			Edge<S, A> edge = search.removeFromWaitlist();
@@ -131,7 +133,6 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 				reachedExacts.add(search.upperLimitAstarNode);
 				search.upperLimitValue = -1;
 				if (stopCriterion.canStop(astarArg.arg, List.of(astarNode.argNode))) {
-					// TODO search lementése esetén lehet vissza kell rakni a nodeot
 					break;
 				}
 			}
