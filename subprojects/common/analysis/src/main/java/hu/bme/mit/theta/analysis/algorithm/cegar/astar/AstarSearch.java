@@ -67,7 +67,7 @@ public class AstarSearch<S extends State, A extends Action> {
 		if (!doneSet.contains(astarNode)) {
 			Distance distance = astarNode.getWeight(depth);
 			if (!minWeights.containsKey(astarNode) || minWeights.get(astarNode) > distance.getValue()) {
-				waitlist.add(new Edge<>(parentAstarNode, astarNode, depth));
+				waitlist.add(new Edge<>(astarNode, depth));
 				parents.put(astarNode.argNode, parentAstarNode == null ? null : parentAstarNode.argNode);
 				depths.put(astarNode.argNode, depth);
 				minWeights.put(astarNode, distance.getValue());
@@ -86,13 +86,10 @@ public class AstarSearch<S extends State, A extends Action> {
 	}
 
 	public static class Edge<S extends State, A extends Action> {
-		public @Nullable AstarNode<S, A> start; // TODO this is redundant as we can get it from parents however this is faster
 		public AstarNode<S, A> end;
 		public int depthFromAStartNode;
 
-		// start: can be null when init node is added to waitlist
-		public Edge(@Nullable AstarNode<S, A> start, AstarNode<S, A> end, int depthFromAStartNode) {
-			this.start = start;
+		public Edge(AstarNode<S, A> end, int depthFromAStartNode) {
 			this.end = end;
 			this.depthFromAStartNode = depthFromAStartNode;
 		}

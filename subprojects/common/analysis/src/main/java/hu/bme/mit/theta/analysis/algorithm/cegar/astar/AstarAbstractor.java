@@ -117,8 +117,8 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 
 		while (!search.isWaitlistEmpty()) {
 			Edge<S, A> edge = search.removeFromWaitlist();
-			AstarNode<S, A> parentAstarNode = edge.start;
 			AstarNode<S, A> astarNode = edge.end;
+			@Nullable AstarNode<S, A> parentAstarNode = astarArg.get(parents.get(astarNode.argNode));
 			int depth = edge.depthFromAStartNode;
 			ArgNode<S, A> argNode = astarNode.argNode;
 			assert astarNode.getHeuristic().getType() != Distance.Type.INFINITE;
@@ -129,14 +129,6 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 				continue;
 			}
 			doneSet.add(astarNode);
-
-			// debug: is parent state managed correctly
-			// TODO: remove this state management
-			if (parentAstarNode == null) {
-				assert parents.get(astarNode.argNode) == null;
-			} else {
-				assert parentAstarNode.argNode == parents.get(astarNode.argNode);
-			}
 
 			// reached upper limit: depth + heuristic distance (only depth is also correct but reached later)
 			if (astarNode.getWeight(depth).getValue() >= search.upperLimitValue && search.upperLimitValue != -1) {
