@@ -99,7 +99,6 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 	) {
 		// create search
 		AstarSearch<S, A> search = new AstarSearch<>();
-		Set<AstarNode<S, A>> doneSet = search.doneSet;
 		Map<ArgNode<S, A>, ArgNode<S, A>> parents = search.parents;
 
 		// Waitlist requires heuristic for nodes
@@ -123,12 +122,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 			ArgNode<S, A> argNode = astarNode.argNode;
 			assert astarNode.getHeuristic().getType() != Distance.Type.INFINITE;
 			assert astarNode.getDistance().getType() != Distance.Type.INFINITE;
-
-			// lazy propagation
-			if (doneSet.contains(astarNode)) {
-				continue;
-			}
-			doneSet.add(astarNode);
+			int weightValue = astarNode.getWeight(depth).getValue();
 
 			// reached upper limit: depth + heuristic distance (only depth is also correct but reached later)
 			if (astarNode.getWeight(depth).getValue() >= search.upperLimitValue && search.upperLimitValue != -1) {

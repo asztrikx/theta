@@ -13,7 +13,7 @@ import java.util.Set;
 
 public class AstarSearch<S extends State, A extends Action> {
 	// We could already have started to explore a subgraph therefore do not use global doneSet variable
-	public Set<AstarNode<S, A>> doneSet = new HashContainerFactory().createSet();
+	private Set<AstarNode<S, A>> doneSet = new HashContainerFactory().createSet();
 	// Useful to know whether the current item is smaller than the one in the waitlist (if not in doneSet)
 	private Map<AstarNode<S, A>, Integer> minWeights = new HashContainerFactory().createMap();;
 	// After we reach target we know the distance for all nodes between root and target which is visitable by parent entries
@@ -81,8 +81,17 @@ public class AstarSearch<S extends State, A extends Action> {
 		return waitlist.isEmpty();
 	}
 
-	public Edge<S, A> removeFromWaitlist() {
-		return waitlist.remove();
+	public @Nullable Edge<S, A> removeFromWaitlist() {
+		@Nullable Edge<S, A> edge;
+		do {
+			edge = waitlist.remove();
+		} while (edge != null && doneSet.contains(edge.end));
+
+		if (edge != null) {
+			doneSet.add(edge.end);
+		}
+
+		return edge;
 	}
 
 	public static class Edge<S extends State, A extends Action> {
