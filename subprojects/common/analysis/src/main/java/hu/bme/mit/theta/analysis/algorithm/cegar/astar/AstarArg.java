@@ -210,9 +210,8 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
 	public void updateDistanceInfinite() {
 		Queue<ArgNode<S, A>> queue = new ArrayDeque<>();
 		Predicate<ArgNode<S, A>> excludeKnownDistance = node -> {
-			AstarNode<S, A> astarNode = get(node);
 			// Can't reach target && not already marked as infinite
-			return astarNode.getDistance().getType() == Distance.Type.UNKNOWN;
+			return !get(node).getDistance().isKnown();
 		};
 		Predicate<ArgNode<S, A>> excludeTarget = node -> !node.isTarget();
 
@@ -311,7 +310,9 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
 				// Covered nodes added to queue have covering node with infinite distance.
 				// Nodes with infinite heuristic are not expanded therefore we have to check it before allSuccNodeDistanceInfinite.
 				if (node.isCovered() || astarNode.getHeuristic().getType() == Distance.Type.INFINITE || allSuccNodeDistanceInfinite(node)) {
-					assert astarNode.getDistance().getType() == Distance.Type.UNKNOWN;
+					// Infinite distance can't be set until all children have infinite distance.
+					// We won't revisit infinite paths so allSuccNodeDistanceInfinite will only be true 1 time.
+					assert !astarNode.getDistance().isKnown();
 					astarNode.setDistance(new Distance(Distance.Type.INFINITE));
 
 					// 3) Add covered nodes to queue
