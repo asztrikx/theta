@@ -118,7 +118,10 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		// TODO: ArgCexCheckHandler.instance.setCurrentArg(new AbstractArg<S, A, P>(arg, prec)); , ...
 
 		while (!search.isWaitlistEmpty()) {
-			Edge<S, A> edge = search.removeFromWaitlist();
+			@Nullable Edge<S, A> edge = search.removeFromWaitlist();
+			if (edge == null) {
+				break;
+			}
 			AstarNode<S, A> astarNode = edge.end;
 			@Nullable AstarNode<S, A> parentAstarNode = astarArg.get(parents.get(astarNode.argNode));
 			int depth = edge.depthFromAStartNode;
