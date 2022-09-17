@@ -61,13 +61,13 @@ public final class Distance implements Comparable<Distance> {
 
 	@Override
 	public String toString() {
-		String result = "(" + type.name();
+		String result = "(";
 		if (type == Type.EXACT) {
 			result += "E," + value;
-		} else if (type == Type.LOWERBOUND) {
-			result += "L," + value;
-		} else {
-			result += type.name();
+		} else if (type == Type.UNKNOWN) {
+			result += "U";
+		} else if (type == Type.INFINITE) {
+			result += "I";
 		}
 		return result + ")";
 	}
