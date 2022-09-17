@@ -84,16 +84,17 @@ public class AstarSearch<S extends State, A extends Action> {
 	}
 
 	public @Nullable Edge<S, A> removeFromWaitlist() {
-		@Nullable Edge<S, A> edge;
-		do {
-			edge = waitlist.remove();
-		} while (edge != null && doneSet.contains(edge.end));
+		while (true) {
+			Edge<S, A> edge = waitlist.remove();
 
-		if (edge != null) {
-			doneSet.add(edge.end);
+			if (!doneSet.contains(edge.end)) {
+				doneSet.add(edge.end);
+				return edge;
+			}
+			if (waitlist.isEmpty()) {
+				return null;
+			}
 		}
-
-		return edge;
 	}
 
 	public static class Edge<S extends State, A extends Action> {
