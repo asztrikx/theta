@@ -15,7 +15,6 @@ import javax.annotation.Nullable;
 import java.util.*;
 import java.util.function.Function;
 import java.util.function.Predicate;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -352,7 +351,7 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
 		final Map<ArgNode<S, A>, AstarNode<S, A>> astarNodesNew = new HashContainerFactory().createMap();
 		reachedSet.clear();
 
-		arg.walk(arg.getInitNodes().collect(Collectors.toList()), (argNode, distance) -> {
+		arg.walk(arg.getInitNodes().toList(), (argNode, distance) -> {
 			final AstarNode<S, A> astarNode = astarNodes.get(argNode);
 			assert astarNode != null;
 			astarNodesNew.put(argNode, astarNode);

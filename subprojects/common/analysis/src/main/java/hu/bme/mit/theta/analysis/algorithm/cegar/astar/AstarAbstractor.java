@@ -106,7 +106,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		startAstarNodes.forEach(startNode -> findHeuristic(startNode, astarArg));
 		startAstarNodes = startAstarNodes.stream()
 				.filter(startNode -> startNode.getHeuristic().getType() != Distance.Type.INFINITE)
-				.collect(Collectors.toList());
+				.toList();
 		startAstarNodes.forEach(startAstarNode -> search.addToWaitlist(startAstarNode, null, 0));
 		assert startAstarNodes.stream().allMatch(startAstarNode -> startAstarNode.getDistance().getType() != Distance.Type.EXACT);
 
