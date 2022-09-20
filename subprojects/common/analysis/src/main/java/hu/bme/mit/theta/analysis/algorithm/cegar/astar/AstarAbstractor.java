@@ -280,9 +280,9 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 	}
 
 	private void assertConsistency(AstarNode<S, A> parent, AstarNode<S, A> child, boolean coverEdge) {
-		assert parent.getHeuristic().getType() != Distance.Type.INFINITE || child.getHeuristic().getType() != Distance.Type.INFINITE;;
 		assert parent.getHeuristic().getType() != Distance.Type.INFINITE;
 		if (child.getHeuristic().getType() == Distance.Type.INFINITE) {
+			assert parent.getHeuristic().isKnown();
 			return;
 		}
 
