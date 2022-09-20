@@ -161,8 +161,8 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 				ArgNode<S, A> coveringNode = argNode.getCoveringNode().get();
 				AstarNode<S, A> coveringAstarNode = astarArg.get(coveringNode);
 
-				// If astarNode's parent is also a coveredNode then covering edges have been redirected.
-				// We have to update parents map according to that. (see ArgNode::cover)
+				// If astarNode's parent is also covered then covering edges have been redirected. (see ArgNode::cover)
+				// We have to update parents map according to that.
 				//  1) a - - -> b (argNode,coveredAstarNode)
 				//  2) a - - -> b - - -> c (coveringNode)
 				//  3) a        b - - -> c
