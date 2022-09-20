@@ -123,11 +123,12 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 				break;
 			}
 			AstarNode<S, A> astarNode = edge.end;
-			@Nullable AstarNode<S, A> parentAstarNode = astarArg.get(parents.get(astarNode.argNode));
-			int depth = edge.depthFromAStartNode;
-			ArgNode<S, A> argNode = astarNode.argNode;
 			assert astarNode.getHeuristic().getType() != Distance.Type.INFINITE;
 			assert astarNode.getDistance().getType() != Distance.Type.INFINITE;
+			@Nullable ArgNode<S, A> parentArgNode = parents.get(astarNode.argNode);
+			@Nullable AstarNode<S, A> parentAstarNode = astarArg.get(parentArgNode);
+			int depth = edge.depthFromAStartNode;
+			ArgNode<S, A> argNode = astarNode.argNode;
 			int weightValue = astarNode.getWeight(depth).getValue();
 
 			// reached upper limit: depth + heuristic distance (only depth is also correct but reached later)
@@ -159,7 +160,6 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 			if (argNode.getCoveringNode().isPresent()) {
 				ArgNode<S, A> coveringNode = argNode.getCoveringNode().get();
 				AstarNode<S, A> coveringAstarNode = astarArg.get(coveringNode);
-				findHeuristic(coveringAstarNode, astarArg);
 
 				// If astarNode's parent is also a coveredNode then covering edges have been redirected.
 				// We have to update parents map according to that. (see ArgNode::cover)
@@ -170,9 +170,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 				//     | - - - - - - - - |
 
 				AstarNode<S, A> coveredAstarNode;
-				if (parentAstarNode != null && parentAstarNode.argNode.getCoveringNode().isPresent()) {
-					assertConsistency(astarNode, coveringAstarNode, true);
-
+				if (parentArgNode != null && parentArgNode.getCoveringNode().isPresent() && parentArgNode.getCoveringNode().get() == argNode) {
 					// Because argNode is covered it can only reach coveringNode with the same distance as it's new parent
 					// therefore we can safely remove it
 					parents.remove(argNode);
@@ -183,8 +181,12 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 				} else {
 					coveredAstarNode = astarNode;
 				}
-				assertConsistency(coveredAstarNode, coveringAstarNode, true);
 
+				// New cover edge's consistency (b -> c).
+				// If rewiring happened we don't need to check the rewired edge (a -> c) for consistency
+				// as it is distributive property for this case.
+				findHeuristic(coveringAstarNode, astarArg);
+				assertConsistency(astarNode, coveringAstarNode, true);
 				// Covering edge has 0 weight
 				search.addToWaitlist(coveringAstarNode, coveredAstarNode, depth);
 				// Covering node is already found therefore already in reachedSet
