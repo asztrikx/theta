@@ -132,7 +132,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 			int weightValue = astarNode.getWeight(depth).getValue();
 
 			// reached upper limit: depth + heuristic distance (only depth is also correct but reached later)
-			if (astarNode.getWeight(depth).getValue() >= search.upperLimitValue && search.upperLimitValue != -1) {
+			if (weightValue >= search.upperLimitValue && search.upperLimitValue != -1) {
 				// Otherwise we might miss shorter upperlimits overwritten before first upperlimit process
 				assert reachedExacts.size() == 0;
 				reachedExacts.add(search.upperLimitAstarNode);
