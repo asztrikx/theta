@@ -187,9 +187,9 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 				// as it is distributive property for this case.
 				findHeuristic(coveringAstarNode, astarArg);
 				assertConsistency(astarNode, coveringAstarNode, true);
-				// Covering edge has 0 weight
+				// Covering edge has 0 weight therefore depth doesn't increase
 				search.addToWaitlist(coveringAstarNode, coveredAstarNode, depth);
-				// Covering node is already found therefore already in reachedSet
+				// Covering node is not a new node therefore it's already in reachedSet
 
 				continue;
 			}
@@ -218,7 +218,6 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 					//		but it's provider doesn't have distance, therefore there is no heuristic
 					findHeuristic(succAstarNode, astarArg);
 					assertConsistency(astarNode, succAstarNode, false);
-
 					search.addToWaitlist(succAstarNode, astarNode, depth + 1);
 				}
 			}
