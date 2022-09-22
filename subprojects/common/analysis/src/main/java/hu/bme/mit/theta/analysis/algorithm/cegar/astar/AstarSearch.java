@@ -45,23 +45,24 @@ public class AstarSearch<S extends State, A extends Action> {
 		//   - in a different subgraph reached by covering edge
 		//   - same subgraph which was reached from a different subgraph by a covering edge
 		// We have a target in x distance therefore we have an upper bound
-		// Node can already be marked done therefore
-		// Can be in doneSet if not firstCex
-		//	- otherwise can move to if statement below
-		//	- we can't put into waitlist as it will drop it (in doneSet) otherwise it's an optimization to handle here
+		// [Multitarget] Exact nodes can only be from previous search as we are setting them at the end of the search.
+		//// Node can already be marked done therefore
+		//// Can be in doneSet if not firstCex
+		////	- otherwise can move to if statement below
+		////	- we can't put into waitlist as it will drop it (in doneSet) otherwise it's an optimization to handle here
 		if (astarNode.getDistance().getType() == Distance.Type.EXACT) {
 			assert !doneSet.contains(astarNode);
 
 			if (upperLimitValue > depth + astarNode.getDistance().getValue() || upperLimitValue == -1) {
 				upperLimitValue = depth + astarNode.getDistance().getValue();
 				upperLimitAstarNode = astarNode;
-				// Only happens if a startAstarNode already have distance
+
+				// We can have upper limit from cover edges and (if visitCoverEdge is set) from normal edges
+				// (no edges would be the case if we wouldn't filter out startNodes with exact distances).
+				// Therefore, we must have a parent.
 				assert parentAstarNode != null;
-				// [Multi target?]
-				// Multiple node can be covered into the same node, therefore in that way it can have multiple parent
-				if (parents.containsKey(astarNode.argNode)) {
-					assert parents.get(astarNode.argNode).getCoveringNode().get() == astarNode.argNode;
-				}
+
+				// Other nodes can cover into this node for upperLimit with lower depth
 				parents.put(astarNode.argNode, parentAstarNode.argNode);
 			}
 			return;
