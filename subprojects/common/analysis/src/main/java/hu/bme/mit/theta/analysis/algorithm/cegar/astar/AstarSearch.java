@@ -51,21 +51,10 @@ public class AstarSearch<S extends State, A extends Action> {
 		////	- otherwise can move to if statement below
 		////	- we can't put into waitlist as it will drop it (in doneSet) otherwise it's an optimization to handle here
 		if (astarNode.getDistance().getType() == Distance.Type.EXACT) {
-			assert !doneSet.contains(astarNode);
-
-			if (upperLimitValue > depth + astarNode.getDistance().getValue() || upperLimitValue == -1) {
-				upperLimitValue = depth + astarNode.getDistance().getValue();
-				upperLimitAstarNode = astarNode;
-
-				// We can have upper limit from cover edges and (if visitCoverEdge is set) from normal edges
-				// (no edges would be the case if we wouldn't filter out startNodes with exact distances).
-				// Therefore, we must have a parent.
-				assert parentAstarNode != null;
-
-				// Other nodes can cover into this node for upperLimit with lower depth
-				parents.put(astarNode.argNode, parentAstarNode.argNode);
-			}
-			return;
+			// We can have upper limit from cover edges and (if visitCoverEdge is set) from normal edges
+			// (no edges would be the case if we wouldn't filter out startNodes with exact distances).
+			// Therefore, we must have a parent.
+			assert parentAstarNode != null;
 		}
 
 		if (!doneSet.contains(astarNode)) {
@@ -87,10 +76,27 @@ public class AstarSearch<S extends State, A extends Action> {
 	public @Nullable Edge<S, A> removeFromWaitlist() {
 		while (true) {
 			Edge<S, A> edge = waitlist.remove();
+			AstarNode<S, A> astarNode = edge.end;
+			int depth = edge.depthFromAStartNode;
 
-			if (!doneSet.contains(edge.end)) {
-				doneSet.add(edge.end);
-				return edge;
+			assert astarNode.getDistance().getType() != Distance.Type.INFINITE;
+
+			if (!doneSet.contains(astarNode)) {
+				doneSet.add(astarNode);
+
+				if (astarNode.getDistance().getType() != Distance.Type.EXACT) {
+					return edge;
+				} else {
+					// finomodhat-e target node nem targetté
+					// => coverelhet e sima nodeot target
+					// This will come out the list before reaching upperLimitValue
+					// as we are not using depth + distance but depth + heuristic
+					// which is leq than distance.
+					if (upperLimitValue > depth + astarNode.getDistance().getValue() || upperLimitValue == -1) {
+						upperLimitValue = depth + astarNode.getDistance().getValue();
+						upperLimitAstarNode = astarNode;
+					}
+				}
 			}
 			if (waitlist.isEmpty()) {
 				return null;
