@@ -482,9 +482,8 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 			// Out goal is to keep consistency.
 			// E.g. keeping monotone covering edges would guarantee that but is a stronger property.
 			// TODO what if candidate has lowerbound distance
-			assert astarNode.providerAstarNode == null ||
-					astarNode.providerAstarNode.getDistance().getType() != Distance.Type.INFINITE;
-			if (astarNode.providerAstarNode == null || astarNode.providerAstarNode.getDistance().compareTo(astarCandidate.providerAstarNode.getDistance()) <= 0) {
+			assert astarNode.getHeuristic().getType() != Distance.Type.INFINITE;
+			if (astarNode.getHeuristic().compareTo(astarCandidate.getHeuristic()) <= 0) {
 				argNode.cover(candidate);
 				return;
 			}
