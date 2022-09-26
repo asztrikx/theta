@@ -411,6 +411,17 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 				return;
 			}
 
+			// We made already have a heuristic in covering node see comment in handle after close().
+			assert parentAstarNode.argNode.getCoveringNode().isEmpty();
+
+			// We can't have a consistency problem in a normal edge as it would mean there is a shorter distance to the node we are decreasing from.
+			//   c (decreasing from, c is the distance)
+			//   |
+			//  ...
+			//  c-e (decreased heuristic for provided node)
+			//   |
+			//   h (end of current edge)
+			// if h < c-e-1 => h+e+1 < c which is contradiction as c is shortest distance
 			assert parentAstarNode.getHeuristic().isKnown();
 			int parentHeuristicValue = parentAstarNode.getHeuristic().getValue();
 			parentHeuristicValue = Math.max(parentHeuristicValue - 1, 0);
