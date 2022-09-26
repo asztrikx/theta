@@ -291,7 +291,7 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
 						//assert argNode.isLeaf();
 						assert astarNode.providerAstarNode != null && argNode.toString().equals(astarNode.providerAstarNode.argNode.toString());
 					}
-					//assert !argNode.isCovered(); // TODO same
+					//assert !argNode.isCovered(); // TODO if we stop copying infinite subgraph then uncomment this
 					return !argNode.isExpanded() && !argNode.isCovered();
 				})
 				.map(astarNode -> astarNode.argNode);
