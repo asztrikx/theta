@@ -63,7 +63,7 @@ public final class Distance implements Comparable<Distance> {
 	public String toString() {
 		String result = "(";
 		if (type == Type.EXACT) {
-			result += "E," + value;
+			result += "E" + value;
 		} else if (type == Type.UNKNOWN) {
 			result += "U";
 		} else if (type == Type.INFINITE) {

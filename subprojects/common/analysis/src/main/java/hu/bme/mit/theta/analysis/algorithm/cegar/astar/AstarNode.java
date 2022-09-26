@@ -64,6 +64,6 @@ public final class AstarNode<S extends State, A extends Action> {
 	@Override
 	public String toString() {
 		// Can't print depth nor weight as it is dependent on the search (where it is started from)
-		return String.format("%s, %s", argNode.toString(), distance.toString());
+		return String.format("%s D%s H%s", argNode.toString(), distance.toString(), heuristic.toString());
 	}
 }
