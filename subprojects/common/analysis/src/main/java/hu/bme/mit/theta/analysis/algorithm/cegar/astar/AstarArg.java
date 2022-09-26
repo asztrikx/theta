@@ -324,7 +324,9 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
 
 				// When updating nodes reaching a target, they can already have distance without all children having distance
 				if (astarNode.getDistance().isKnown()) {
-					assert astarNode.getDistance().getType() == Distance.Type.EXACT;
+					if (astarNode.getDistance().getType() == Distance.Type.INFINITE) {
+						assert astarNode.getHeuristic().getType() == Distance.Type.INFINITE;
+					}
 					return true;
 				}
 
