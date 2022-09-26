@@ -32,8 +32,8 @@ import hu.bme.mit.theta.analysis.algorithm.cegar.abstractor.StopCriterions;
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarAbstractor;
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarCegarChecker;
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.argstore.AstarArgStore;
-import hu.bme.mit.theta.analysis.algorithm.cegar.astar.argstore.AstarArgStoreFull;
-import hu.bme.mit.theta.analysis.algorithm.cegar.astar.argstore.AstarArgStoreSemiOndemand;
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.argstore.AstarArgStorePrevious;
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.argstore.AstarArgStoreAll;
 import hu.bme.mit.theta.analysis.expl.ExplAnalysis;
 import hu.bme.mit.theta.analysis.expl.ExplPrec;
 import hu.bme.mit.theta.analysis.expl.ExplState;
@@ -75,7 +75,6 @@ import hu.bme.mit.theta.sts.analysis.initprec.StsEmptyInitPrec;
 import hu.bme.mit.theta.sts.analysis.initprec.StsInitPrec;
 import hu.bme.mit.theta.sts.analysis.initprec.StsPropInitPrec;
 
-import java.util.function.Function;
 import java.util.function.Predicate;
 
 import static hu.bme.mit.theta.core.type.booltype.BoolExprs.Not;
@@ -217,9 +216,9 @@ public final class StsConfigBuilder {
 				case ASTAR -> {
 					final AstarArgStore<ExplState, StsAction, ExplPrec> astarArgStore;
 					if (isMultiSeq) {
-						astarArgStore = new AstarArgStoreFull<>();
+						astarArgStore = new AstarArgStorePrevious<>();
 					} else {
-						astarArgStore = new AstarArgStoreSemiOndemand<>();
+						astarArgStore = new AstarArgStoreAll<>();
 					}
 					final AstarAbstractor<ExplState, StsAction, ExplPrec> abstractor = AstarAbstractor
 							.builder(argBuilder)
@@ -298,9 +297,9 @@ public final class StsConfigBuilder {
 				case ASTAR -> {
 					final AstarArgStore<PredState, StsAction, PredPrec> astarArgStore;
 					if (isMultiSeq) {
-						astarArgStore = new AstarArgStoreFull<>();
+						astarArgStore = new AstarArgStorePrevious<>();
 					} else {
-						astarArgStore = new AstarArgStoreSemiOndemand<>();
+						astarArgStore = new AstarArgStoreAll<>();
 					}
 					final AstarAbstractor<PredState, StsAction, PredPrec> abstractor = AstarAbstractor
 							.builder(argBuilder)

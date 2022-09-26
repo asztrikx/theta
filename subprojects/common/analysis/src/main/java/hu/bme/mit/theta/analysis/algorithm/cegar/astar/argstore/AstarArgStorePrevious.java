@@ -5,7 +5,7 @@ import hu.bme.mit.theta.analysis.Prec;
 import hu.bme.mit.theta.analysis.State;
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarArg;
 
-public class AstarArgStoreFull<S extends State, A extends Action, P extends Prec> implements AstarArgStore<S, A, P> {
+public class AstarArgStorePrevious<S extends State, A extends Action, P extends Prec> implements AstarArgStore<S, A, P> {
 	private AstarArg<S, A, P> previous = null;
 	private AstarArg<S, A, P> current = null;
 	private int size = 0;

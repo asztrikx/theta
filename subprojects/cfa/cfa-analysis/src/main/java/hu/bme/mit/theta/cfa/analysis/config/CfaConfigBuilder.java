@@ -31,8 +31,8 @@ import hu.bme.mit.theta.analysis.algorithm.cegar.abstractor.StopCriterions;
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarAbstractor;
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarCegarChecker;
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.argstore.AstarArgStore;
-import hu.bme.mit.theta.analysis.algorithm.cegar.astar.argstore.AstarArgStoreFull;
-import hu.bme.mit.theta.analysis.algorithm.cegar.astar.argstore.AstarArgStoreSemiOndemand;
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.argstore.AstarArgStorePrevious;
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.argstore.AstarArgStoreAll;
 import hu.bme.mit.theta.analysis.expl.ExplPrec;
 import hu.bme.mit.theta.analysis.expl.ExplState;
 import hu.bme.mit.theta.analysis.expl.ExplStmtAnalysis;
@@ -389,9 +389,9 @@ public class CfaConfigBuilder {
 				case ASTAR -> {
 					final AstarArgStore<CfaState<ExplState>, CfaAction, CfaPrec<ExplPrec>> astarArgStore;
 					if (isMultiSeq) {
-						astarArgStore = new AstarArgStoreFull<>();
+						astarArgStore = new AstarArgStorePrevious<>();
 					} else {
-						astarArgStore = new AstarArgStoreSemiOndemand<>();
+						astarArgStore = new AstarArgStoreAll<>();
 					}
 					final AstarAbstractor<CfaState<ExplState>, CfaAction, CfaPrec<ExplPrec>> abstractor = AstarAbstractor
 							.builder(argBuilder)
@@ -513,9 +513,9 @@ public class CfaConfigBuilder {
 				case ASTAR -> {
 					final AstarArgStore<CfaState<PredState>, CfaAction, CfaPrec<PredPrec>> astarArgStore;
 					if (isMultiSeq) {
-						astarArgStore = new AstarArgStoreFull<>();
+						astarArgStore = new AstarArgStorePrevious<>();
 					} else {
-						astarArgStore = new AstarArgStoreSemiOndemand<>();
+						astarArgStore = new AstarArgStoreAll<>();
 					}
 					final AstarAbstractor<CfaState<PredState>, CfaAction, CfaPrec<PredPrec>> abstractor = AstarAbstractor
 							.builder(argBuilder)

@@ -8,7 +8,7 @@ import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarArg;
 import java.util.ArrayList;
 import java.util.List;
 
-public class AstarArgStoreSemiOndemand<S extends State, A extends Action, P extends Prec> implements AstarArgStore<S, A, P> {
+public class AstarArgStoreAll<S extends State, A extends Action, P extends Prec> implements AstarArgStore<S, A, P> {
 	protected final List<AstarArg<S, A, P>> astarArgs = new ArrayList<>();
 
 	@Override
