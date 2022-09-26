@@ -240,6 +240,10 @@ public final class ArgNode<S extends State, A extends Action> {
 		return isExpanded() || isExcluded();
 	}
 
+	public boolean isInit() {
+		return inEdge.isEmpty();
+	}
+
 	////
 
 	public Stream<ArgNode<S, A>> properAncestors() {
