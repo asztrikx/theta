@@ -326,6 +326,10 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 					// We don't add it to waitlist therefore we don't need to find heuristic
 				});
 
+				// Children can be either target or not.
+				// Do not set distance for target as they will be filtered out when adding them to waitlist
+				// therefore they won't be expanded.
+
 				break;
 			}
 

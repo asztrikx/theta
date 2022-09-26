@@ -19,7 +19,7 @@ public final class AstarNode<S extends State, A extends Action> {
 	AstarNode(final ArgNode<S, A> argNode, @Nullable final AstarNode<S, A> providerAstarNode) {
 		this.argNode = checkNotNull(argNode);
 		this.providerAstarNode = providerAstarNode;
-		this.distance = new Distance(Distance.Type.UNKNOWN);
+		// providerAstarNode's distance can change after ctor ran
 	}
 
 	public void setDistance(Distance distance) {
