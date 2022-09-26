@@ -174,6 +174,7 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
 
 				// This can't be the start node as we filter the ones with a distance.
 				if (astarNode.getDistance().getType() == Distance.Type.EXACT) {
+					assert !node.isCovered();
 					// The previously set node will have an exact distance therefore get() won't fail.
 					Distance minDistance = node.getSuccNodes().map(child -> get(child).getDistance()).filter(Distance::isKnown).min(Distance::compareTo).get();
 					if (node.isTarget()) {
@@ -414,6 +415,7 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
 
 		// Init nodes don't have parents
 		if (parentAstarNode == null) {
+			assert argNode.isInit();
 			providerCandidates = providerAstarArg.getAllInitArg().stream();
 		} else {
 			AstarNode<S, A> parentProviderAstarNode = parentAstarNode.providerAstarNode;
