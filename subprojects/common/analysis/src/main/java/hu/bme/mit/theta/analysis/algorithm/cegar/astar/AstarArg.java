@@ -33,12 +33,13 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
 
 	public AstarArg(
 			final ARG<S, A> arg, P prec, final PartialOrd<S> partialOrd,
-			final Function<? super S, ?> projection
+			final Function<? super S, ?> projection, @Nullable AstarArg<S, A, P> provider
 	) {
 		this.arg = checkNotNull(arg);
 		this.prec = prec;
 		this.partialOrd = checkNotNull(partialOrd);
 		this.reachedSet = Partition.of(n -> projection.apply(n.getState()));
+		this.provider = provider;
 	}
 
 	// Propagate exact distance up from target until a node in a set is reached
@@ -421,15 +422,18 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
 			providerCandidates = providerAstarArg.getAllInitArg().stream();
 		} else {
 			AstarNode<S, A> parentProviderAstarNode = parentAstarNode.providerAstarNode;
+			// Parent doesn't have provider then we also won't have.
+			if (parentProviderAstarNode == null) {
+				return null;
+			}
 			ArgNode<S, A> parentProviderNode = parentProviderAstarNode.argNode;
 
 			// parentAstarNode had to be in waitlist
 			// 		therefore it's heuristic is known
 			// 		therefore it's provider's distance is known
-			assert parentProviderAstarNode.getDistance().isKnown();
-			// 		therefore it's heuristic is known
-			//		therefore it must be expanded or covered (targets are also expanded)
-			assert parentProviderNode.isExpanded() || parentProviderNode.isCovered();
+			if (AstarAbstractor.heuristicSearchType != AstarAbstractor.HeuristicSearchType.DECREASING) {
+				assert parentProviderAstarNode.getDistance().isKnown();
+			}
 
 			// Even if we checked provider node before setting it whether it is covered,
 			// later it still can be covered if it's not yet expanded.
@@ -447,8 +451,17 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
 				parentProviderAstarNode = parentAstarNode.providerAstarNode = providerAstarArg.get(parentProviderCoveringNode);
 				parentProviderNode = parentProviderAstarNode.argNode;
 
-				assert parentProviderAstarNode.getDistance().isKnown();
+				if (AstarAbstractor.heuristicSearchType != AstarAbstractor.HeuristicSearchType.DECREASING) {
+					assert parentProviderAstarNode.getDistance().isKnown();
+				}
+			}
+
+			// parentAstarNode had to be in waitlist
+			// 		therefore it's heuristic is known
+			//		therefore it must be expanded or covered (targets are also expanded)
+			if (AstarAbstractor.heuristicSearchType != AstarAbstractor.HeuristicSearchType.DECREASING) {
 				assert parentProviderNode.isExpanded();
+				assert !parentProviderNode.isCovered();
 			}
 
 			providerCandidates = parentProviderNode.getOutEdges().map(ArgEdge::getTarget);
@@ -459,7 +472,16 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
 				partialOrd.isLeq(argNode.getState(), providerCandidate.getState())
 		);
 		Optional<ArgNode<S,A>> providerNode = providerCandidates.findAny();
-		assert providerNode.isPresent();
+
+		if (AstarAbstractor.heuristicSearchType != AstarAbstractor.HeuristicSearchType.DECREASING) {
+			assert providerNode.isPresent();
+		} else {
+			if (providerNode.isEmpty()) {
+				assert !argNode.isInit();
+				// TODO assert it is not expanded nor covered.
+				return null;
+			}
+		}
 		return providerAstarArg.get(providerNode.get());
 	}
 

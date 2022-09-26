@@ -13,13 +13,6 @@ public class AstarArgStoreSemiOndemand<S extends State, A extends Action, P exte
 
 	@Override
 	public void add(final AstarArg<S, A, P> astarArg) {
-		// set parent
-		if (astarArgs.isEmpty()) {
-			astarArg.provider = null;
-		} else {
-			astarArg.provider = getLast();
-		}
-
 		astarArgs.add(astarArg);
 	}
 

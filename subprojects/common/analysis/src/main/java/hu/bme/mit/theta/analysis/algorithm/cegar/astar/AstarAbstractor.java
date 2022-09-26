@@ -28,13 +28,8 @@ import hu.bme.mit.theta.analysis.algorithm.cegar.AbstractorResult;
 import hu.bme.mit.theta.analysis.algorithm.cegar.abstractor.StopCriterion;
 import hu.bme.mit.theta.analysis.algorithm.cegar.abstractor.StopCriterions;
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarSearch.Edge;
-import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarCegarChecker.Type;
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.argstore.AstarArgStore;
-import hu.bme.mit.theta.analysis.algorithm.cegar.astar.argstore.AstarArgStoreFull;
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.filevisualizer.AstarFileVisualizer;
-import hu.bme.mit.theta.analysis.waitlist.FifoWaitlist;
-import hu.bme.mit.theta.analysis.waitlist.Waitlist;
-import hu.bme.mit.theta.common.container.factory.HashContainerFactory;
 import hu.bme.mit.theta.common.logging.Logger;
 import hu.bme.mit.theta.common.logging.Logger.Level;
 import hu.bme.mit.theta.common.logging.NullLogger;
@@ -60,15 +55,19 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 	private final Logger logger;
 	private final AstarArgStore<S, A, P> astarArgStore;
 	private final AstarFileVisualizer<S, A, P> astarFileVisualizer;
-	private final Type type;
 	private PartialOrd<S> partialOrd; // Good for debugging
+
+	public enum HeuristicSearchType {
+		FULL, SEMI_ONDEMAND, DECREASING
+	}
+
+	public static HeuristicSearchType heuristicSearchType = HeuristicSearchType.DECREASING;
 
 	private AstarAbstractor(final ArgBuilder<S, A, P> argBuilder,
 							final Function<? super S, ?> projection,
 							final StopCriterion<S, A> initialStopCriterion,
 							final Logger logger,
 							final AstarArgStore<S, A, P> astarArgStore,
-							final Type type,
 							final PartialOrd<S> partialOrd
 	) {
 		this.argBuilder = checkNotNull(argBuilder);
@@ -77,7 +76,6 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		assert initialStopCriterion instanceof StopCriterions.FirstCex<S,A>;
 		this.logger = checkNotNull(logger);
 		this.astarArgStore = checkNotNull(astarArgStore);
-		this.type = type;
 		this.astarFileVisualizer = new AstarFileVisualizer<>(false, astarArgStore);
 		this.partialOrd = partialOrd;
 	}
@@ -104,7 +102,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 
 		// Waitlist requires heuristic for nodes
 		// 	  node for which distance we are going back may not have heuristic
-		startAstarNodes.forEach(startNode -> findHeuristic(startNode, astarArg));
+		startAstarNodes.forEach(startNode -> findHeuristic(startNode, astarArg, null));
 		startAstarNodes = startAstarNodes.stream()
 				.filter(startNode -> startNode.getHeuristic().getType() != Distance.Type.INFINITE)
 				.toList();
@@ -161,6 +159,14 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 				ArgNode<S, A> coveringNode = argNode.getCoveringNode().get();
 				AstarNode<S, A> coveringAstarNode = astarArg.get(coveringNode);
 
+				// We are either covered into
+				// - completed node (was in waitlist => has heuristic)
+				// - completed node's child (in waitlist => has heuristic)
+				// - leftover from prune (after copy we apply decreasing for all nodes => has heuristic)
+				if (heuristicSearchType == HeuristicSearchType.DECREASING) {
+					assert coveringAstarNode.getHeuristic().isKnown();
+				}
+
 				// If astarNode's parent is also covered then covering edges have been redirected. (see ArgNode::cover)
 				// We have to update parents map according to that.
 				//  1) a - - -> b (argNode,coveredAstarNode)
@@ -185,7 +191,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 				// New cover edge's consistency (b -> c).
 				// If rewiring happened we don't need to check the rewired edge (a -> c) for consistency
 				// as it is distributive property for this case.
-				findHeuristic(coveringAstarNode, astarArg);
+				findHeuristic(coveringAstarNode, astarArg, astarNode);
 				assertConsistency(astarNode, coveringAstarNode, true);
 				// Covering edge has 0 weight therefore depth doesn't increase
 				search.addToWaitlist(coveringAstarNode, coveredAstarNode, depth);
@@ -216,7 +222,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 					// 		although we only add leaves to startAstarNodes and findHeuristic is called upon them
 					//		they may get covered with a non leaf which has succAstarNode (because of how copy works)
 					//		but it's provider doesn't have distance, therefore there is no heuristic
-					findHeuristic(succAstarNode, astarArg);
+					findHeuristic(succAstarNode, astarArg, astarNode);
 					assertConsistency(astarNode, succAstarNode, false);
 					search.addToWaitlist(succAstarNode, astarNode, depth + 1);
 				}
@@ -376,20 +382,44 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 
 	// astarNode: should already have providerNode if not in the first arg
 	// astarArg: the one in which for a node we look for heuristic
-	private void findHeuristic(AstarNode<S, A> astarNode, AstarArg<S, A, P> astarArg) {
-		// no previous astar arg exists: getHeuristic returns (EXACT, 0)
-		if (astarArg.provider == null) {
-			return;
-		}
-		checkNotNull(astarNode.providerAstarNode);
+	public void findHeuristic(AstarNode<S, A> astarNode, AstarArg<S, A, P> astarArg, @Nullable AstarNode<S, A> parentAstarNode) {
+		// Do not return EXACT(0) when node is target as that would not create the side effect of expanding the node
 
-		// already know provider node's distance
+		// Already know provider node's distance
 		if (astarNode.getHeuristic().isKnown()) {
 			return;
 		}
-		assert type != Type.FULL;
 
-		// Do not return EXACT(0) when node is target as that would not create the side effect of expanding the node
+		// No previous astar arg exists: we must return the lowest lower bound
+		if (astarArg.provider == null) {
+			astarNode.setHeuristic(new Distance(Distance.Type.EXACT, 0));
+			return;
+		}
+		assert heuristicSearchType != HeuristicSearchType.FULL;
+
+		if (astarNode.providerAstarNode != null && astarNode.providerAstarNode.getDistance().isKnown()) {
+			astarNode.setHeuristic(astarNode.providerAstarNode.getDistance());
+			return;
+		}
+
+		// We don't have heuristic from provider therefore we decrease parent's
+		// astarArg.provider == null case could also be handled by this
+		if (heuristicSearchType == HeuristicSearchType.DECREASING) {
+			// init node as we are always starting from startNodes
+			if (parentAstarNode == null) {
+				astarNode.setHeuristic(new Distance(Distance.Type.EXACT, 0));
+				return;
+			}
+
+			assert parentAstarNode.getHeuristic().isKnown();
+			int parentHeuristicValue = parentAstarNode.getHeuristic().getValue();
+			parentHeuristicValue = Math.max(parentHeuristicValue - 1, 0);
+			astarNode.setHeuristic(new Distance(Distance.Type.EXACT, parentHeuristicValue));
+			return;
+		}
+
+		// Provider AstarNode can be null
+		checkNotNull(astarNode.providerAstarNode);
 
 		if (astarNode.providerAstarNode.getHeuristic().getType() == Distance.Type.INFINITE) {
 			assert astarNode.providerAstarNode.getDistance().getType() == Distance.Type.INFINITE;
@@ -541,7 +571,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 
 		public AstarAbstractor<S, A, P> build() {
 			assert astarArgStore != null;
-			return new AstarAbstractor<>(argBuilder, projection, stopCriterion, logger, astarArgStore, astarArgStore instanceof AstarArgStoreFull<S,A,P> ? Type.FULL : Type.SEMI_ONDEMAND, partialOrd);
+			return new AstarAbstractor<>(argBuilder, projection, stopCriterion, logger, astarArgStore, partialOrd);
 		}
 	}
 

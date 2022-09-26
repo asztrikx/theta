@@ -419,7 +419,7 @@ public class XcfaConfigBuilder {
 					precRefiner, pruneStrategy, logger);
 		}
 		final SafetyChecker checker = switch (search) {
-			case ASTAR -> AstarCegarChecker.create(abstractor, projection, refiner, logger,
+			case ASTAR -> AstarCegarChecker.create((AstarAbstractor<? extends State, ? extends Action, ? extends Prec>) abstractor, projection, refiner, logger,
 					algorithm.getPartialOrder(analysis.getPartialOrd()), astarArgStore);
 			default -> CegarChecker.create(abstractor, refiner, logger);
 		};

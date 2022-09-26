@@ -13,7 +13,8 @@ import static com.google.common.base.Preconditions.checkNotNull;
 public final class AstarNode<S extends State, A extends Action> {
 	public final ArgNode<S, A> argNode;
 	public @Nullable AstarNode<S, A> providerAstarNode;
-	private Distance distance;
+	private Distance distance = new Distance(Distance.Type.UNKNOWN);
+	private Distance heuristic = new Distance(Distance.Type.UNKNOWN);
 
 	// providerAstarNode: can be null if it is the first arg
 	AstarNode(final ArgNode<S, A> argNode, @Nullable final AstarNode<S, A> providerAstarNode) {
@@ -31,12 +32,21 @@ public final class AstarNode<S extends State, A extends Action> {
 		return distance;
 	}
 
-	// If heuristic is unknown then it *won't* find it as it is just a getter
+	// It is guaranteed that once it returns a known value it won't change.
 	public Distance getHeuristic() {
-		if (providerAstarNode == null) {
-			return new Distance(Distance.Type.EXACT, 0);
+		if (heuristic.isKnown()) {
+			// Provider distance can't change
+			if (providerAstarNode != null && providerAstarNode.getDistance().isKnown()) {
+				// Provider can change if original provider is covered => use equals
+				assert heuristic.equals(providerAstarNode.getDistance());
+			}
 		}
-		return providerAstarNode.distance;
+		return heuristic;
+	}
+
+	public void setHeuristic(Distance heuristic) {
+		assert heuristic.isKnown();
+		this.heuristic = heuristic;
 	}
 
 	public Distance getWeight(int depth) {
