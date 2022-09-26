@@ -7,6 +7,7 @@ import com.google.common.base.Stopwatch;
 import hu.bme.mit.theta.analysis.Trace;
 import hu.bme.mit.theta.analysis.algorithm.SafetyResult;
 import hu.bme.mit.theta.analysis.algorithm.cegar.CegarStatistics;
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarAbstractor;
 import hu.bme.mit.theta.analysis.expr.refinement.PruneStrategy;
 import hu.bme.mit.theta.analysis.utils.ArgVisualizer;
 import hu.bme.mit.theta.analysis.utils.TraceVisualizer;
@@ -50,6 +51,9 @@ public class XstsCli {
 
 	@Parameter(names = {"--search"}, description = "Search strategy")
 	Search search = Search.BFS;
+
+	@Parameter(names = "--heuristicSearchType", required = true)
+	AstarAbstractor.HeuristicSearchType heuristicSearchType;
 
 	@Parameter(names = {"--predsplit"}, description = "Predicate splitting")
 	PredSplit predSplit = PredSplit.WHOLE;
@@ -202,7 +206,7 @@ public class XstsCli {
 		try {
 			return new XstsConfigBuilder(domain, refinement, Z3SolverFactory.getInstance())
 					.maxEnum(maxEnum).autoExpl(autoExpl).initPrec(initPrec).pruneStrategy(pruneStrategy)
-					.search(search).predSplit(predSplit).optimizeStmts(optimizeStmts).logger(logger).build(xsts);
+					.search(search).heuristicSearchType(heuristicSearchType).predSplit(predSplit).optimizeStmts(optimizeStmts).logger(logger).build(xsts);
 		} catch (final Exception ex) {
 			throw new Exception("Could not create configuration: " + ex.getMessage(), ex);
 		}

@@ -89,6 +89,7 @@ import hu.bme.mit.theta.core.utils.StmtUtils;
 import hu.bme.mit.theta.solver.Solver;
 import hu.bme.mit.theta.solver.SolverFactory;
 
+import javax.annotation.Nullable;
 import java.util.function.Function;
 import java.util.LinkedHashSet;
 import java.util.Optional;
@@ -216,6 +217,7 @@ public class CfaConfigBuilder {
 	private final Domain domain;
 	private final Refinement refinement;
 	private Search search = Search.BFS;
+	private @Nullable AstarAbstractor.HeuristicSearchType heuristicSearchType = null;
 	private PredSplit predSplit = PredSplit.WHOLE;
 	private PrecGranularity precGranularity = PrecGranularity.GLOBAL;
 	private Encoding encoding = Encoding.LBE;
@@ -244,6 +246,11 @@ public class CfaConfigBuilder {
 
 	public CfaConfigBuilder search(final Search search) {
 		this.search = search;
+		return this;
+	}
+
+	public CfaConfigBuilder heuristicSearchType(final AstarAbstractor.HeuristicSearchType heuristicSearchType) {
+		this.heuristicSearchType = heuristicSearchType;
 		return this;
 	}
 
@@ -387,12 +394,18 @@ public class CfaConfigBuilder {
 			final boolean isMultiSeq = refinement == Refinement.MULTI_SEQ;
 			switch (search) {
 				case ASTAR -> {
-					final AstarArgStore<CfaState<ExplState>, CfaAction, CfaPrec<ExplPrec>> astarArgStore;
-					if (isMultiSeq) {
-						astarArgStore = new AstarArgStorePrevious<>();
-					} else {
-						astarArgStore = new AstarArgStoreAll<>();
+					if (heuristicSearchType == null) {
+						if (isMultiSeq) {
+							heuristicSearchType = AstarAbstractor.HeuristicSearchType.FULL;
+						} else {
+							heuristicSearchType = AstarAbstractor.HeuristicSearchType.DECREASING;
+						}
 					}
+					final AstarArgStore<CfaState<ExplState>, CfaAction, CfaPrec<ExplPrec>> astarArgStore = switch (heuristicSearchType) {
+						case FULL, DECREASING -> new AstarArgStorePrevious<>();
+						case SEMI_ONDEMAND -> new AstarArgStoreAll<>();
+					};
+					AstarAbstractor.heuristicSearchType = heuristicSearchType;
 					final AstarAbstractor<CfaState<ExplState>, CfaAction, CfaPrec<ExplPrec>> abstractor = AstarAbstractor
 							.builder(argBuilder)
 							.projection(projection) //
@@ -511,12 +524,18 @@ public class CfaConfigBuilder {
 			final boolean isMultiSeq = refinement == Refinement.MULTI_SEQ;
 			switch (search) {
 				case ASTAR -> {
-					final AstarArgStore<CfaState<PredState>, CfaAction, CfaPrec<PredPrec>> astarArgStore;
-					if (isMultiSeq) {
-						astarArgStore = new AstarArgStorePrevious<>();
-					} else {
-						astarArgStore = new AstarArgStoreAll<>();
+					if (heuristicSearchType == null) {
+						if (isMultiSeq) {
+							heuristicSearchType = AstarAbstractor.HeuristicSearchType.FULL;
+						} else {
+							heuristicSearchType = AstarAbstractor.HeuristicSearchType.DECREASING;
+						}
 					}
+					final AstarArgStore<CfaState<PredState>, CfaAction, CfaPrec<PredPrec>> astarArgStore = switch (heuristicSearchType) {
+						case FULL, DECREASING -> new AstarArgStorePrevious<>();
+						case SEMI_ONDEMAND -> new AstarArgStoreAll<>();
+					};
+					AstarAbstractor.heuristicSearchType = heuristicSearchType;
 					final AstarAbstractor<CfaState<PredState>, CfaAction, CfaPrec<PredPrec>> abstractor = AstarAbstractor
 							.builder(argBuilder)
 							.projection(projection) //

@@ -91,6 +91,7 @@ import hu.bme.mit.theta.xsts.analysis.initprec.XstsEmptyInitPrec;
 import hu.bme.mit.theta.xsts.analysis.initprec.XstsInitPrec;
 import hu.bme.mit.theta.xsts.analysis.initprec.XstsPropInitPrec;
 
+import javax.annotation.Nullable;
 import java.util.Set;
 import java.util.function.Predicate;
 
@@ -174,6 +175,7 @@ public class XstsConfigBuilder {
 	private final Domain domain;
 	private final Refinement refinement;
 	private Search search = Search.BFS;
+	private @Nullable AstarAbstractor.HeuristicSearchType heuristicSearchType;
 	private PredSplit predSplit = PredSplit.WHOLE;
 	private int maxEnum = 0;
 	private InitPrec initPrec = InitPrec.EMPTY;
@@ -194,6 +196,11 @@ public class XstsConfigBuilder {
 
 	public XstsConfigBuilder search(final Search search) {
 		this.search = search;
+		return this;
+	}
+
+	public XstsConfigBuilder heuristicSearchType(final AstarAbstractor.HeuristicSearchType heuristicSearchType) {
+		this.heuristicSearchType = heuristicSearchType;
 		return this;
 	}
 
@@ -275,12 +282,18 @@ public class XstsConfigBuilder {
 			final boolean isMultiSeq = refinement == Refinement.MULTI_SEQ;
 			switch (search) {
 				case ASTAR -> {
-					final AstarArgStore<XstsState<ExplState>, XstsAction, ExplPrec> astarArgStore;
-					if (isMultiSeq) {
-						astarArgStore = new AstarArgStorePrevious<>();
-					} else {
-						astarArgStore = new AstarArgStoreAll<>();
+					if (heuristicSearchType == null) {
+						if (isMultiSeq) {
+							heuristicSearchType = AstarAbstractor.HeuristicSearchType.FULL;
+						} else {
+							heuristicSearchType = AstarAbstractor.HeuristicSearchType.DECREASING;
+						}
 					}
+					final AstarArgStore<XstsState<ExplState>, XstsAction, ExplPrec> astarArgStore = switch (heuristicSearchType) {
+						case FULL, DECREASING -> new AstarArgStorePrevious<>();
+						case SEMI_ONDEMAND -> new AstarArgStoreAll<>();
+					};
+					AstarAbstractor.heuristicSearchType = heuristicSearchType;
 					final AstarAbstractor<XstsState<ExplState>, XstsAction, ExplPrec> abstractor = AstarAbstractor
 							.builder(argBuilder)
 							.stopCriterion(isMultiSeq ? StopCriterions.fullExploration() : StopCriterions.firstCex())
@@ -363,12 +376,18 @@ public class XstsConfigBuilder {
 			final boolean isMultiSeq = refinement == Refinement.MULTI_SEQ;
 			switch (search) {
 				case ASTAR -> {
-					final AstarArgStore<XstsState<PredState>, XstsAction, PredPrec> astarArgStore;
-					if (isMultiSeq) {
-						astarArgStore = new AstarArgStorePrevious<>();
-					} else {
-						astarArgStore = new AstarArgStoreAll<>();
+					if (heuristicSearchType == null) {
+						if (isMultiSeq) {
+							heuristicSearchType = AstarAbstractor.HeuristicSearchType.FULL;
+						} else {
+							heuristicSearchType = AstarAbstractor.HeuristicSearchType.DECREASING;
+						}
 					}
+					final AstarArgStore<XstsState<PredState>, XstsAction, PredPrec> astarArgStore = switch (heuristicSearchType) {
+						case FULL, DECREASING -> new AstarArgStorePrevious<>();
+						case SEMI_ONDEMAND -> new AstarArgStoreAll<>();
+					};
+					AstarAbstractor.heuristicSearchType = heuristicSearchType;
 					final AstarAbstractor<XstsState<PredState>, XstsAction, PredPrec> abstractor = AstarAbstractor
 							.builder(argBuilder)
 							.stopCriterion(isMultiSeq ? StopCriterions.fullExploration() : StopCriterions.firstCex())
@@ -467,12 +486,18 @@ public class XstsConfigBuilder {
 			final boolean isMultiSeq = refinement == Refinement.MULTI_SEQ;
 			switch (search) {
 				case ASTAR -> {
-					final AstarArgStore<XstsState<Prod2State<ExplState, PredState>>, XstsAction, Prod2Prec<ExplPrec, PredPrec>> astarArgStore;
-					if (isMultiSeq) {
-						astarArgStore = new AstarArgStorePrevious<>();
-					} else {
-						astarArgStore = new AstarArgStoreAll<>();
+					if (heuristicSearchType == null) {
+						if (isMultiSeq) {
+							heuristicSearchType = AstarAbstractor.HeuristicSearchType.FULL;
+						} else {
+							heuristicSearchType = AstarAbstractor.HeuristicSearchType.DECREASING;
+						}
 					}
+					final AstarArgStore<XstsState<Prod2State<ExplState, PredState>>, XstsAction, Prod2Prec<ExplPrec, PredPrec>> astarArgStore = switch (heuristicSearchType) {
+						case FULL, DECREASING -> new AstarArgStorePrevious<>();
+						case SEMI_ONDEMAND -> new AstarArgStoreAll<>();
+					};
+					AstarAbstractor.heuristicSearchType = heuristicSearchType;
 					final AstarAbstractor<XstsState<Prod2State<ExplState, PredState>>, XstsAction, Prod2Prec<ExplPrec, PredPrec>> abstractor = AstarAbstractor
 							.builder(argBuilder)
 							.stopCriterion(isMultiSeq ? StopCriterions.fullExploration() : StopCriterions.firstCex())

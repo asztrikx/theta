@@ -27,6 +27,7 @@ import com.google.common.base.Stopwatch;
 import hu.bme.mit.theta.analysis.Trace;
 import hu.bme.mit.theta.analysis.algorithm.SafetyResult;
 import hu.bme.mit.theta.analysis.algorithm.cegar.CegarStatistics;
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarAbstractor;
 import hu.bme.mit.theta.analysis.expr.ExprState;
 import hu.bme.mit.theta.analysis.expr.refinement.PruneStrategy;
 import hu.bme.mit.theta.common.CliUtils;
@@ -76,6 +77,9 @@ public class StsCli {
 
 	@Parameter(names = {"--search"}, description = "Search strategy")
 	Search search = Search.BFS;
+
+	@Parameter(names = "--heuristicSearchType", required = true)
+	AstarAbstractor.HeuristicSearchType heuristicSearchType;
 
 	@Parameter(names = {"--predsplit"}, description = "Predicate splitting")
 	PredSplit predSplit = PredSplit.WHOLE;
@@ -194,7 +198,7 @@ public class StsCli {
 	private StsConfig<?, ?, ?> buildConfiguration(final STS sts) throws Exception {
 		try {
 			return new StsConfigBuilder(domain, refinement, Z3SolverFactory.getInstance())
-					.initPrec(initPrec).search(search)
+					.initPrec(initPrec).search(search).heuristicSearchType(heuristicSearchType)
 					.predSplit(predSplit).pruneStrategy(pruneStrategy).logger(logger).build(sts);
 		} catch (final Exception ex) {
 			throw new Exception("Could not create configuration: " + ex.getMessage(), ex);

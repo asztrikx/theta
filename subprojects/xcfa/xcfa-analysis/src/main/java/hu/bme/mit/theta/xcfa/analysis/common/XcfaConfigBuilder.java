@@ -86,6 +86,7 @@ import hu.bme.mit.theta.xcfa.model.XCFA;
 import hu.bme.mit.theta.xcfa.model.XcfaLocation;
 import hu.bme.mit.theta.xcfa.model.utils.XcfaUtils;
 
+import javax.annotation.Nullable;
 import java.util.List;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -257,6 +258,7 @@ public class XcfaConfigBuilder {
 	private final Algorithm algorithm;
 	private boolean preCheck = true;
 	private Search search = Search.BFS;
+	private @Nullable AstarAbstractor.HeuristicSearchType heuristicSearchType;
 	private PredSplit predSplit = PredSplit.WHOLE;
 	private int maxEnum = 0;
 	private InitPrec initPrec = InitPrec.EMPTY;
@@ -292,6 +294,11 @@ public class XcfaConfigBuilder {
 	public XcfaConfigBuilder search(final Search search) {
 		checkArgument(!(search == Search.ERR) || algorithm == Algorithm.SINGLETHREAD, "ERR search only compatible with SINGLETHREAD algorithm!");
 		this.search = search;
+		return this;
+	}
+
+	public XcfaConfigBuilder heuristicSearchType(final AstarAbstractor.HeuristicSearchType heuristicSearchType) {
+		this.heuristicSearchType = heuristicSearchType;
 		return this;
 	}
 
@@ -487,11 +494,18 @@ public class XcfaConfigBuilder {
 		final ArgBuilder argBuilder = ArgBuilder.create(lts, analysis, state -> ((XcfaState) state).isError(), true);
 		switch (search) {
 			case ASTAR -> {
-				if (isMultiSeq) {
-					astarArgStore = new AstarArgStorePrevious();
-				} else {
-					astarArgStore = new AstarArgStoreAll();
+				if (heuristicSearchType == null) {
+					if (isMultiSeq) {
+						heuristicSearchType = AstarAbstractor.HeuristicSearchType.FULL;
+					} else {
+						heuristicSearchType = AstarAbstractor.HeuristicSearchType.DECREASING;
+					}
 				}
+				astarArgStore = switch (heuristicSearchType) {
+					case FULL, DECREASING -> new AstarArgStorePrevious<>();
+					case SEMI_ONDEMAND -> new AstarArgStoreAll<>();
+				};
+				AstarAbstractor.heuristicSearchType = heuristicSearchType;
 				return AstarAbstractor
 						.builder(argBuilder)
 						.projection(projection) //

@@ -75,6 +75,7 @@ import hu.bme.mit.theta.sts.analysis.initprec.StsEmptyInitPrec;
 import hu.bme.mit.theta.sts.analysis.initprec.StsInitPrec;
 import hu.bme.mit.theta.sts.analysis.initprec.StsPropInitPrec;
 
+import javax.annotation.Nullable;
 import java.util.function.Predicate;
 
 import static hu.bme.mit.theta.core.type.booltype.BoolExprs.Not;
@@ -135,6 +136,7 @@ public final class StsConfigBuilder {
 	private final Domain domain;
 	private final Refinement refinement;
 	private Search search = Search.BFS;
+	private @Nullable AstarAbstractor.HeuristicSearchType heuristicSearchType;
 	private PredSplit predSplit = PredSplit.WHOLE;
 	private InitPrec initPrec = InitPrec.EMPTY;
 	private PruneStrategy pruneStrategy = PruneStrategy.LAZY;
@@ -152,6 +154,11 @@ public final class StsConfigBuilder {
 
 	public StsConfigBuilder search(final Search search) {
 		this.search = search;
+		return this;
+	}
+
+	public StsConfigBuilder heuristicSearchType(final AstarAbstractor.HeuristicSearchType heuristicSearchType) {
+		this.heuristicSearchType = heuristicSearchType;
 		return this;
 	}
 
@@ -214,12 +221,18 @@ public final class StsConfigBuilder {
 			final boolean isMultiSeq = refinement == Refinement.MULTI_SEQ;
 			switch (search) {
 				case ASTAR -> {
-					final AstarArgStore<ExplState, StsAction, ExplPrec> astarArgStore;
-					if (isMultiSeq) {
-						astarArgStore = new AstarArgStorePrevious<>();
-					} else {
-						astarArgStore = new AstarArgStoreAll<>();
+					if (heuristicSearchType == null) {
+						if (isMultiSeq) {
+							heuristicSearchType = AstarAbstractor.HeuristicSearchType.FULL;
+						} else {
+							heuristicSearchType = AstarAbstractor.HeuristicSearchType.DECREASING;
+						}
 					}
+					final AstarArgStore<ExplState, StsAction, ExplPrec> astarArgStore = switch (heuristicSearchType) {
+						case FULL, DECREASING -> new AstarArgStorePrevious<>();
+						case SEMI_ONDEMAND -> new AstarArgStoreAll<>();
+					};
+					AstarAbstractor.heuristicSearchType = heuristicSearchType;
 					final AstarAbstractor<ExplState, StsAction, ExplPrec> abstractor = AstarAbstractor
 							.builder(argBuilder)
 							.stopCriterion(isMultiSeq ? StopCriterions.fullExploration() : StopCriterions.firstCex())
@@ -295,12 +308,18 @@ public final class StsConfigBuilder {
 			final boolean isMultiSeq = refinement == Refinement.MULTI_SEQ;
 			switch (search) {
 				case ASTAR -> {
-					final AstarArgStore<PredState, StsAction, PredPrec> astarArgStore;
-					if (isMultiSeq) {
-						astarArgStore = new AstarArgStorePrevious<>();
-					} else {
-						astarArgStore = new AstarArgStoreAll<>();
+					if (heuristicSearchType == null) {
+						if (isMultiSeq) {
+							heuristicSearchType = AstarAbstractor.HeuristicSearchType.FULL;
+						} else {
+							heuristicSearchType = AstarAbstractor.HeuristicSearchType.DECREASING;
+						}
 					}
+					final AstarArgStore<PredState, StsAction, PredPrec> astarArgStore = switch (heuristicSearchType) {
+						case FULL, DECREASING -> new AstarArgStorePrevious<>();
+						case SEMI_ONDEMAND -> new AstarArgStoreAll<>();
+					};
+					AstarAbstractor.heuristicSearchType = heuristicSearchType;
 					final AstarAbstractor<PredState, StsAction, PredPrec> abstractor = AstarAbstractor
 							.builder(argBuilder)
 							.stopCriterion(isMultiSeq ? StopCriterions.fullExploration() : StopCriterions.firstCex())

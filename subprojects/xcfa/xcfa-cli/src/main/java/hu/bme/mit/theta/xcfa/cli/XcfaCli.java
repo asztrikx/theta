@@ -24,6 +24,7 @@ import hu.bme.mit.theta.analysis.LTS;
 import hu.bme.mit.theta.analysis.TransFunc;
 import hu.bme.mit.theta.analysis.algorithm.SafetyResult;
 import hu.bme.mit.theta.analysis.algorithm.bmc.IterativeBmcChecker;
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarAbstractor;
 import hu.bme.mit.theta.analysis.algorithm.runtimecheck.ArgCexCheckHandler;
 import hu.bme.mit.theta.common.exception.NotSolvableException;
 import hu.bme.mit.theta.analysis.expl.ExplPrec;
@@ -149,6 +150,9 @@ public class XcfaCli {
 
 	@Parameter(names = "--search", description = "Search strategy")
 	XcfaConfigBuilder.Search search = XcfaConfigBuilder.Search.ERR;
+
+	@Parameter(names = "--heuristicSearchType", required = true)
+	AstarAbstractor.HeuristicSearchType heuristicSearchType;
 
 	@Parameter(names = "--predsplit", description = "Predicate splitting (for predicate abstraction)")
 	XcfaConfigBuilder.PredSplit predSplit = XcfaConfigBuilder.PredSplit.WHOLE;
@@ -357,6 +361,7 @@ public class XcfaCli {
 					cfa = null;
 				}
 				if (cfa != null) {
+					assert false;
 					List<String> args = new ArrayList<>();
 					args.add("--domain");
 					args.add(domain.name());
@@ -530,7 +535,7 @@ public class XcfaCli {
 				return XcfaConfig.create(bmcChecker, XcfaPrec.create(ExplPrec.empty()));
 			} else {
 				return new XcfaConfigBuilder(domain, refinement, refinementSolverFactory, abstractionSolverFactory, algorithm)
-						.search(search).predSplit(predSplit).maxEnum(maxEnum).initPrec(initPrec).preCheck(preCheck)
+						.search(search).heuristicSearchType(heuristicSearchType).predSplit(predSplit).maxEnum(maxEnum).initPrec(initPrec).preCheck(preCheck)
 						.pruneStrategy(pruneStrategy).logger(new ConsoleLogger(logLevel)).autoExpl(autoExpl).build(xcfa);
 			}
 

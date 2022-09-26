@@ -34,6 +34,7 @@ import hu.bme.mit.theta.analysis.Trace;
 import hu.bme.mit.theta.analysis.algorithm.SafetyResult;
 import hu.bme.mit.theta.analysis.algorithm.SafetyResult.Unsafe;
 import hu.bme.mit.theta.analysis.algorithm.cegar.CegarStatistics;
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarAbstractor;
 import hu.bme.mit.theta.analysis.expl.ExplState;
 import hu.bme.mit.theta.analysis.expr.refinement.PruneStrategy;
 import hu.bme.mit.theta.cfa.CFA;
@@ -85,6 +86,9 @@ public class CfaCli {
 
 	@Parameter(names = "--search", description = "Search strategy")
 	Search search = Search.BFS;
+
+	@Parameter(names = "--heuristicSearchType", required = true)
+	AstarAbstractor.HeuristicSearchType heuristicSearchType;
 
 	@Parameter(names = "--predsplit", description = "Predicate splitting (for predicate abstraction)")
 	PredSplit predSplit = PredSplit.WHOLE;
@@ -265,7 +269,7 @@ public class CfaCli {
 	private CfaConfig<?, ?, ?> buildConfiguration(final CFA cfa, final CFA.Loc errLoc, final SolverFactory abstractionSolverFactory, final SolverFactory refinementSolverFactory) throws Exception {
 		try {
 			return new CfaConfigBuilder(domain, refinement, abstractionSolverFactory, refinementSolverFactory)
-					.precGranularity(precGranularity).search(search)
+					.precGranularity(precGranularity).search(search).heuristicSearchType(heuristicSearchType)
 					.predSplit(predSplit).encoding(encoding).maxEnum(maxEnum).initPrec(initPrec)
 					.pruneStrategy(pruneStrategy).logger(logger).build(cfa, errLoc);
 		} catch (final Exception ex) {
