@@ -397,11 +397,6 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		}
 		assert heuristicSearchType != HeuristicSearchType.FULL;
 
-		if (astarNode.providerAstarNode != null && astarNode.providerAstarNode.getDistance().isKnown()) {
-			astarNode.setHeuristic(astarNode.providerAstarNode.getDistance());
-			return;
-		}
-
 		// We don't have heuristic from provider therefore we decrease parent's
 		// astarArg.provider == null case could also be handled by this
 		if (heuristicSearchType == HeuristicSearchType.DECREASING) {

@@ -43,6 +43,10 @@ public final class AstarNode<S extends State, A extends Action> {
 				// Provider can change if original provider is covered => use equals
 				assert heuristic.equals(providerAstarNode.getDistance());
 			}
+		} else {
+			if (providerAstarNode != null && providerAstarNode.getDistance().isKnown()) {
+				heuristic = providerAstarNode.getDistance();
+			}
 		}
 		return heuristic;
 	}

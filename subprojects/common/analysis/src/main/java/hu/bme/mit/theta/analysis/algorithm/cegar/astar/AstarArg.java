@@ -85,10 +85,8 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
 				List<Tuple2<ArgNode<S, A>, Integer>> nonParentCoveredNodes = node.getCoveredNodes()
 						// Node's parent is a covered node, do not call updateDistancesFromNodes as it's distance will be known
 						.filter(coveredNode -> coveredNode != parentAstarNode)
-						.map(coveredNode -> {
-							assert !get(coveredNode).getDistance().isKnown();
-							return Tuple2.of(coveredNode, lambdaDistance);
-						})
+						// If a target is covered its distance may be known
+						.map(coveredNode ->  Tuple2.of(coveredNode, lambdaDistance))
 						.toList();
 				conditionalNodes.addAll(nonParentCoveredNodes);
 
@@ -136,15 +134,24 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
 	// Propagate exact distance up
 	// nodes: all should be either covered or have > 0 children
 	public void updateDistancesFromConditionalNodes(List<Tuple2<ArgNode<S, A>, Integer>> nodes) {
-		// TODO reword, recheck
-		// distance can already be known:
-		//	parents: c's is b, b's is a
-		//  updateDistancesFromTargetUntil calls with a as in general case inedge's source is not the covering node's ancestor
-		//  see comment in that function
-		//      a
-		//    /  \
-		//   b- ->c
-		nodes = nodes.stream().filter(t -> !get(t.get1()).getDistance().isKnown()).toList();
+		nodes = nodes.stream()
+				.filter(t -> {
+					ArgNode<S, A> argNode = t.get1();
+					AstarNode<S, A> astarNode = get(argNode);
+
+					// TODO reword, recheck
+					// distance can already be known:
+					//	parents: c's is b, b's is a
+					//  updateDistancesFromTargetUntil calls with a as in general case inedge's source is not the covering node's ancestor
+					//  see comment in that function
+					//      a
+					//    /  \
+					//   b- ->c
+					return !astarNode.getDistance().isKnown()
+						// We can get covered into a target which will be processed in a later updateDistancesFromTargetUntil call
+						&& !argNode.isTarget();
+				})
+				.toList();
 		Queue<Tuple2<ArgNode<S, A>, Integer>> queue = new ArrayDeque<>(nodes);
 
 		// We also know the distance to all covered nodes as there is no other path for shorter distance.
