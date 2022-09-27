@@ -25,6 +25,9 @@ public final class AstarNode<S extends State, A extends Action> {
 
 	public void setDistance(Distance distance) {
 		assertAdmissability(distance);
+		if (argNode.isTarget()) {
+			assert distance.getType() == Distance.Type.EXACT && distance.getValue() == 0;
+		}
 		this.distance = distance;
 	}
 
@@ -46,6 +49,10 @@ public final class AstarNode<S extends State, A extends Action> {
 
 	public void setHeuristic(Distance heuristic) {
 		assert heuristic.isKnown();
+		// Requirement for astar h(target) == 0
+		if (argNode.isTarget()) {
+			assert heuristic.getType() == Distance.Type.EXACT && heuristic.getValue() == 0;
+		}
 		this.heuristic = heuristic;
 	}
 
