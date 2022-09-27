@@ -50,7 +50,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 	// can't have waitlist common in AstarAbstractor instance as checkFromNode is recursively called
 
 	// When we are exploring an arg first time we use the StopCriterion provided in constructor
-	private final StopCriterion<S, A> initialStopCriterion;
+	private StopCriterion<S, A> initialStopCriterion;
 	// We can't stop when a target node is children of a node because there might be another
 	private final Logger logger;
 	private final AstarArgStore<S, A, P> astarArgStore;
@@ -61,7 +61,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		FULL, SEMI_ONDEMAND, DECREASING
 	}
 
-	public static HeuristicSearchType heuristicSearchType = HeuristicSearchType.DECREASING;
+	public static HeuristicSearchType heuristicSearchType;
 
 	private AstarAbstractor(final ArgBuilder<S, A, P> argBuilder,
 							final Function<? super S, ?> projection,
@@ -73,11 +73,18 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		this.argBuilder = checkNotNull(argBuilder);
 		this.projection = checkNotNull(projection);
 		this.initialStopCriterion = checkNotNull(initialStopCriterion);
-		assert initialStopCriterion instanceof StopCriterions.FirstCex<S,A>;
 		this.logger = checkNotNull(logger);
 		this.astarArgStore = checkNotNull(astarArgStore);
 		this.astarFileVisualizer = new AstarFileVisualizer<>(false, astarArgStore);
 		this.partialOrd = partialOrd;
+
+		if (heuristicSearchType == HeuristicSearchType.FULL) {
+			this.initialStopCriterion = StopCriterions.fullExploration();
+			assert this.initialStopCriterion instanceof StopCriterions.FullExploration;
+		}
+		if (heuristicSearchType == HeuristicSearchType.FULL || heuristicSearchType == HeuristicSearchType.DECREASING) {
+			//assert astarArgStore instanceof AstarArgStorePrevious<S,A,P>;
+		}
 	}
 
 	public static <S extends State, A extends Action, P extends Prec> Builder<S, A, P> builder(
@@ -129,6 +136,12 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 			ArgNode<S, A> argNode = astarNode.argNode;
 			int weightValue = astarNode.getWeight(depth).getValue();
 
+			// TODO n-cexs, SEMI_ONDEMAND causes problem hereq
+			// Current implementation doesn't support multiple upperLimitValue
+			if (heuristicSearchType == HeuristicSearchType.FULL) {
+				assert search.upperLimitValue == -1;
+			}
+
 			// reached upper limit: depth + heuristic distance (only depth is also correct but reached later)
 			if (weightValue >= search.upperLimitValue && search.upperLimitValue != -1) {
 				// Otherwise we might miss shorter upperlimits overwritten before first upperlimit process
@@ -146,7 +159,9 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 				if (stopCriterion.canStop(astarArg.arg, List.of(astarNode.argNode))) {
 					break;
 				}
-				continue;
+				if (heuristicSearchType != HeuristicSearchType.FULL) {
+					continue;
+				}
 			}
 
 			// After prune node may have children but not fully expanded (isExpanded false).
@@ -201,7 +216,10 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 			}
 
 			if (argNode.isFeasible()) {
-				assert !argNode.isTarget() && !argNode.isCovered();
+				if (heuristicSearchType != HeuristicSearchType.FULL) {
+					assert !argNode.isTarget();
+				}
+				assert !argNode.isCovered();
 
 				// expand: create nodes
 				if (!argNode.isExpanded()) {
@@ -257,6 +275,9 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 			startAstarNodes.forEach(astarArg::updateDistancesFromRootInfinite);
 		}
 
+		if (heuristicSearchType == HeuristicSearchType.FULL) {
+			assert astarArg.getAll().values().stream().allMatch(astarNode -> astarNode.getDistance().isKnown());
+		}
 		assertShortestDistance(astarArg);
 	}
 

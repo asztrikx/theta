@@ -170,9 +170,11 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
 			}, (node, _distance) -> {
 				AstarNode<S, A> astarNode = get(node);
 
+				// full expand or n-cex can have multiple target with unset distance
 				if (node.isTarget()) {
-					assert astarNode.getDistance().getType() == Distance.Type.EXACT;
+					return true;
 				}
+
 				// Covered nodes are added to the queue and arg.walkUpParents is started from them
 				if (node.isCovered()) {
 					assert node == coveredNode && _distance == 0;

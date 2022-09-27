@@ -77,7 +77,7 @@ public final class StopCriterions {
 		}
 	}
 
-	private static final class FullExploration<S extends State, A extends Action> implements StopCriterion<S, A> {
+	public static final class FullExploration<S extends State, A extends Action> implements StopCriterion<S, A> {
 		@Override
 		public boolean canStop(final ARG<S, A> arg) {
 			return false;
