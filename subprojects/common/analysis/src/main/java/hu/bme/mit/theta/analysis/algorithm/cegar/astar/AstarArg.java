@@ -97,11 +97,7 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
 					// Can be an init node.
 					if (node.getParent().isPresent()) {
 						ArgNode<S, A> graphParent = node.getParent().get();
-						AstarNode<S, A> astarGraphParent = get(graphParent);
-						// Graph parent may already have distance
-						if (!astarGraphParent.getDistance().isKnown()) {
-							conditionalNodes.add(Tuple2.of(graphParent, Integer.MIN_VALUE));
-						}
+						conditionalNodes.add(Tuple2.of(graphParent, Integer.MIN_VALUE));
 					}
 				}
 
