@@ -29,6 +29,7 @@ import hu.bme.mit.theta.analysis.algorithm.cegar.abstractor.StopCriterion;
 import hu.bme.mit.theta.analysis.algorithm.cegar.abstractor.StopCriterions;
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarSearch.Edge;
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.argstore.AstarArgStore;
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.argstore.AstarArgStorePrevious;
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.filevisualizer.AstarFileVisualizer;
 import hu.bme.mit.theta.common.logging.Logger;
 import hu.bme.mit.theta.common.logging.Logger.Level;
@@ -83,7 +84,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 			assert this.initialStopCriterion instanceof StopCriterions.FullExploration;
 		}
 		if (heuristicSearchType == HeuristicSearchType.FULL || heuristicSearchType == HeuristicSearchType.DECREASING) {
-			//assert astarArgStore instanceof AstarArgStorePrevious<S,A,P>;
+			assert astarArgStore instanceof AstarArgStorePrevious<S,A,P>;
 		}
 	}
 
@@ -248,6 +249,13 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
  		}
 		// If we are looking for n targets then it is possible that we reached [1,n) target when reaching this line
 
+		if (heuristicSearchType == HeuristicSearchType.FULL) {
+			Collection<ArgNode<S, A>> targetsArgNodes = reachedExacts.stream().map(astarNode -> astarNode.argNode).toList();
+			assert targetsArgNodes.stream().allMatch(ArgNode::isTarget);
+			updateDistancesAllTarget(astarArg, targetsArgNodes);
+			return;
+		}
+
 		// Upper limit was not handled as no more nodes left to reach limit.
 		// If we reach target and there is no more node left in queue we can also process upperlimits as targets can only
 		// appear as a descendant of current target which won't provide exact heuristic for currently known nodes.
@@ -275,9 +283,34 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 			startAstarNodes.forEach(astarArg::updateDistancesFromRootInfinite);
 		}
 
-		if (heuristicSearchType == HeuristicSearchType.FULL) {
-			assert astarArg.getAll().values().stream().allMatch(astarNode -> astarNode.getDistance().isKnown());
-		}
+		assertShortestDistance(astarArg);
+	}
+
+	private void updateDistancesAllTarget(AstarArg<S, A, P> astarArg, Collection<ArgNode<S, A>> targets) {
+		ARG<S, A> arg = astarArg.arg;
+
+		arg.walk(targets, arg::walkSkipNever, visits -> {
+			ArgNode<S, A> argNode = visits.argNode;
+			int distance = visits.distance;
+
+			// Covered to ancestor case won't be a problem
+			AstarNode<S, A> astarNode = astarArg.get(argNode);
+			astarNode.setDistance(new Distance(Distance.Type.EXACT, distance));
+
+			Collection<Visit<S, A>> newVisits = new ArrayList<>();
+			if (argNode.getParent().isPresent()) {
+				newVisits.add(new Visit<>(argNode.getParent().get(), distance + 1));
+			}
+			newVisits.addAll(argNode.getCoveredNodes().map(coveredNode -> new Visit<>(coveredNode, distance)).toList());
+			return newVisits;
+		});
+
+		// Don't use updateDistanceInfinite() as it is for when we are not sure that all nodes without distance is infinite.
+		astarArg.getAll().values().stream()
+				.filter(astarNode -> !astarNode.getDistance().isKnown())
+				.forEach(astarNode -> astarNode.setDistance(new Distance(Distance.Type.INFINITE)));
+
+		assert astarArg.getAll().values().stream().allMatch(astarNode -> astarNode.getDistance().isKnown());
 		assertShortestDistance(astarArg);
 	}
 

@@ -291,6 +291,10 @@ public final class ARG<S extends State, A extends Action> {
 		return newVisits;
 	}
 
+	public boolean walkSkipNever(ArgNode<S, A> argNode, Integer distance) {
+		return false;
+	}
+
 	// parents: node -> parent
 	public void walkUpParents(ArgNode<S, A> start, Function<ArgNode<S, A>, ArgNode<S, A>> getParent, BiFunction<ArgNode<S, A>, Integer, Boolean> skip) {
 		checkNotNull(start);
