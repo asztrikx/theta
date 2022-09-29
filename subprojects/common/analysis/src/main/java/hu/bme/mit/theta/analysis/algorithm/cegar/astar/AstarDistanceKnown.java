@@ -17,7 +17,7 @@ public class AstarDistanceKnown<S extends State, A extends Action> implements St
 
 	@Override
 	public boolean canStop(ARG<S, A> arg) {
-		return true; // TODO
+		return true;
 	}
 
 	@Override

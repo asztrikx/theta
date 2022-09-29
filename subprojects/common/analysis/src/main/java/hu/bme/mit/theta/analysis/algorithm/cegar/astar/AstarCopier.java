@@ -79,7 +79,6 @@ public class AstarCopier {
 					handleCoverEdgeConsistency.accept(argNodeCopy, argNodeCopy.getCoveringNode().get());
 				}
 				argNodeCopy.getCoveredNodes().toList().forEach(coveredNodeCopy -> {
-					// TODO concurrent modification
 					handleCoverEdgeConsistency.accept(coveredNodeCopy, argNodeCopy);
 				});
 			}

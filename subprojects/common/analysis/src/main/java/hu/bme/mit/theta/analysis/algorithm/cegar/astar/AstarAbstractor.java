@@ -143,6 +143,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 				assert search.upperLimitValue == -1;
 			}
 
+			// TODO comment that it is not a case when first expanding an arg
 			// reached upper limit: depth + heuristic distance (only depth is also correct but reached later)
 			if (weightValue >= search.upperLimitValue && search.upperLimitValue != -1) {
 				// Otherwise we might miss shorter upperlimits overwritten before first upperlimit process
