@@ -11,7 +11,7 @@ public final class Distance implements Comparable<Distance> {
 	}
 
 	public Distance(Type type) {
-		assert type != Type.EXACT;
+		//assert type != Type.EXACT;
 		this.type = type;
 		this.value = 0;
 	}
@@ -26,7 +26,7 @@ public final class Distance implements Comparable<Distance> {
 	}
 
 	public int getValue() {
-		assert type == Type.EXACT;
+		//assert type == Type.EXACT;
 		return value;
 	}
 
@@ -37,8 +37,8 @@ public final class Distance implements Comparable<Distance> {
 	// Both distances should be known
 	@Override
 	public int compareTo(Distance distance) {
-		assert isKnown();
-		assert distance.isKnown();
+		//assert isKnown();
+		//assert distance.isKnown();
 		if (getType() == Type.INFINITE && distance.getType() == Type.INFINITE) {
 			return 0;
 		}

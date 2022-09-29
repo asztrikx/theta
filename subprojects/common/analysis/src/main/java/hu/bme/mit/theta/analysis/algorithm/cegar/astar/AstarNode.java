@@ -24,10 +24,10 @@ public final class AstarNode<S extends State, A extends Action> {
 	}
 
 	public void setDistance(Distance distance) {
-		assertAdmissability(distance);
-		if (argNode.isTarget()) {
+		//assertAdmissability(distance);
+		/*if (argNode.isTarget()) {
 			assert distance.getType() == Distance.Type.EXACT && distance.getValue() == 0;
-		}
+		}*/
 		this.distance = distance;
 	}
 
@@ -39,10 +39,10 @@ public final class AstarNode<S extends State, A extends Action> {
 	public Distance getHeuristic() {
 		if (heuristic.isKnown()) {
 			// Provider distance can't change
-			if (providerAstarNode != null && providerAstarNode.getDistance().isKnown()) {
+			/*if (providerAstarNode != null && providerAstarNode.getDistance().isKnown()) {
 				// Provider can change if original provider is covered => use equals
 				assert heuristic.equals(providerAstarNode.getDistance());
-			}
+			}*/
 		} else {
 			if (providerAstarNode != null && providerAstarNode.getDistance().isKnown()) {
 				heuristic = providerAstarNode.getDistance();
@@ -52,11 +52,11 @@ public final class AstarNode<S extends State, A extends Action> {
 	}
 
 	public void setHeuristic(Distance heuristic) {
-		assert heuristic.isKnown();
+		//assert heuristic.isKnown();
 		// Requirement for astar h(target) == 0
-		if (argNode.isTarget()) {
+		/*if (argNode.isTarget()) {
 			assert heuristic.getType() == Distance.Type.EXACT && heuristic.getValue() == 0;
-		}
+		}*/
 		this.heuristic = heuristic;
 	}
 
@@ -67,19 +67,6 @@ public final class AstarNode<S extends State, A extends Action> {
 			return heuristic;
 		}
 		return new Distance(type, heuristic.getValue() + depth);
-	}
-
-	private void assertAdmissability(Distance distance) {
-		// called from updateDistancesFromConditionalNodes:
-		// 		this's heuristic can not be unknown as we are always starting from nodes with known heuristic and for all successor nodes we call findHeuristic.
-		//		This won't be the case when we start searching from leaf nodes.
-		assert getHeuristic().getType() == Distance.Type.INFINITE || getHeuristic().getType() == Distance.Type.EXACT;
-		assert distance.getType() == Distance.Type.INFINITE || distance.getType() == Distance.Type.EXACT;
-
-		assert !(getHeuristic().getType() == Distance.Type.INFINITE && distance.getType() != Distance.Type.INFINITE);
-		if (getHeuristic().getType() != Distance.Type.INFINITE && distance.getType() != Distance.Type.INFINITE) {
-			assert getHeuristic().getValue() <= distance.getValue();
-		}
 	}
 
 	@Override

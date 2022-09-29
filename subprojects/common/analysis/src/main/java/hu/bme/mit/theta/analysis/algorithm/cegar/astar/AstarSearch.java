@@ -39,7 +39,7 @@ public class AstarSearch<S extends State, A extends Action> {
 			return;
 		}
 
-		assert astarNode.getHeuristic().isKnown();
+		//assert astarNode.getHeuristic().isKnown();
 
 		// When is this possible:
 		//   - in a different subgraph reached by covering edge
@@ -54,7 +54,7 @@ public class AstarSearch<S extends State, A extends Action> {
 			// We can have upper limit from cover edges and (if visitCoverEdge is set) from normal edges
 			// (no edges would be the case if we wouldn't filter out startNodes with exact distances).
 			// Therefore, we must have a parent.
-			assert parentAstarNode != null;
+			//assert parentAstarNode != null;
 		}
 
 		if (!doneSet.contains(astarNode)) {
@@ -65,7 +65,7 @@ public class AstarSearch<S extends State, A extends Action> {
 				minDepths.put(astarNode, depth);
 			}
 		} else {
-			assert depths.get(astarNode.argNode) <= depth;
+			//assert depths.get(astarNode.argNode) <= depth;
 		}
 	}
 
@@ -79,7 +79,7 @@ public class AstarSearch<S extends State, A extends Action> {
 			AstarNode<S, A> astarNode = edge.end;
 			int depth = edge.depthFromAStartNode;
 
-			assert astarNode.getDistance().getType() != Distance.Type.INFINITE;
+			//assert astarNode.getDistance().getType() != Distance.Type.INFINITE;
 
 			if (!doneSet.contains(astarNode)) {
 				doneSet.add(astarNode);

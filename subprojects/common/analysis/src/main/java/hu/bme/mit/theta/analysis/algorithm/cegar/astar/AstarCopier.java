@@ -56,7 +56,7 @@ public class AstarCopier {
 			if (AstarAbstractor.heuristicSearchType == AstarAbstractor.HeuristicSearchType.DECREASING) {
 				@Nullable ArgNode<S, A> parentArgNode = astarNodeCopy.argNode.getParent().orElse(null);
 				@Nullable AstarNode<S, A> parentAstarNode = parentArgNode == null ? null : astarArgCopy.get(parentArgNode);
-				assert parentAstarNode != null || argNode.isInit();
+				//assert parentAstarNode != null || argNode.isInit();
 				astarAbstractor.findHeuristic(astarNodeCopy, astarArgCopy, parentAstarNode);
 
 				// There is no guarantee that cover edges will still be consistent
@@ -68,7 +68,7 @@ public class AstarCopier {
 					if (astarCoveredNode == null || astarCoveringNode == null) {
 						return;
 					}
-					assert astarCoveredNode.getHeuristic().isKnown() && astarCoveringNode.getHeuristic().isKnown();
+					//assert astarCoveredNode.getHeuristic().isKnown() && astarCoveringNode.getHeuristic().isKnown();
 
 					if (!astarCoveredNode.getHeuristic().equals(astarCoveringNode.getHeuristic())) {
 						coveredNode.unsetCoveringNode();
@@ -85,8 +85,8 @@ public class AstarCopier {
 			}
 		});
 
-		assert astarArg.arg.getNodes().count() == astarArgCopy.getAll().values().size();
-		assert astarArg.arg.getInitNodes().count() == astarArgCopy.getAllInit().size();
+		//assert astarArg.arg.getNodes().count() == astarArgCopy.getAll().values().size();
+		//assert astarArg.arg.getInitNodes().count() == astarArgCopy.getAllInit().size();
 
 		return astarArgCopy;
 	}

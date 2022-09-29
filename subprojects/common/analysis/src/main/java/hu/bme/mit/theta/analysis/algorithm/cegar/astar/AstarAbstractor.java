@@ -81,11 +81,11 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 
 		if (heuristicSearchType == HeuristicSearchType.FULL) {
 			this.initialStopCriterion = StopCriterions.fullExploration();
-			assert this.initialStopCriterion instanceof StopCriterions.FullExploration;
+			//assert this.initialStopCriterion instanceof StopCriterions.FullExploration;
 		}
-		if (heuristicSearchType == HeuristicSearchType.FULL || heuristicSearchType == HeuristicSearchType.DECREASING) {
+		/*if (heuristicSearchType == HeuristicSearchType.FULL || heuristicSearchType == HeuristicSearchType.DECREASING) {
 			assert astarArgStore instanceof AstarArgStorePrevious<S,A,P>;
-		}
+		}*/
 	}
 
 	public static <S extends State, A extends Action, P extends Prec> Builder<S, A, P> builder(
@@ -115,7 +115,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 				.filter(startNode -> startNode.getHeuristic().getType() != Distance.Type.INFINITE)
 				.toList();
 		startAstarNodes.forEach(startAstarNode -> search.addToWaitlist(startAstarNode, null, 0));
-		assert startAstarNodes.stream().allMatch(startAstarNode -> startAstarNode.getDistance().getType() != Distance.Type.EXACT);
+		//assert startAstarNodes.stream().allMatch(startAstarNode -> startAstarNode.getDistance().getType() != Distance.Type.EXACT);
 
 		// Implementation assumes that lower distance is set first therefore we can store reached targets in the order we reach them.
 		// We save targets and nodes with exact value. In the latter the exact values must be from a previous findDistance as we set exact distances at the end of iteration.
@@ -129,8 +129,8 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 				break;
 			}
 			AstarNode<S, A> astarNode = edge.end;
-			assert astarNode.getHeuristic().getType() != Distance.Type.INFINITE;
-			assert astarNode.getDistance().getType() != Distance.Type.INFINITE;
+			//assert astarNode.getHeuristic().getType() != Distance.Type.INFINITE;
+			//assert astarNode.getDistance().getType() != Distance.Type.INFINITE;
 			@Nullable ArgNode<S, A> parentArgNode = parents.get(astarNode.argNode);
 			@Nullable AstarNode<S, A> parentAstarNode = astarArg.get(parentArgNode);
 			int depth = edge.depthFromAStartNode;
@@ -139,14 +139,14 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 
 			// TODO n-cexs, SEMI_ONDEMAND causes problem hereq
 			// Current implementation doesn't support multiple upperLimitValue
-			if (heuristicSearchType == HeuristicSearchType.FULL) {
+			/*if (heuristicSearchType == HeuristicSearchType.FULL) {
 				assert search.upperLimitValue == -1;
-			}
+			}*/
 
 			// reached upper limit: depth + heuristic distance (only depth is also correct but reached later)
 			if (weightValue >= search.upperLimitValue && search.upperLimitValue != -1) {
 				// Otherwise we might miss shorter upperlimits overwritten before first upperlimit process
-				assert reachedExacts.size() == 0;
+				//assert reachedExacts.size() == 0;
 				reachedExacts.add(search.upperLimitAstarNode);
 				search.upperLimitValue = -1;
 				if (stopCriterion.canStop(astarArg.arg, List.of(astarNode.argNode))) {
@@ -181,9 +181,9 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 				// - completed node (was in waitlist => has heuristic)
 				// - completed node's child (in waitlist => has heuristic)
 				// - leftover from prune (after copy we apply decreasing for all nodes => has heuristic)
-				if (heuristicSearchType == HeuristicSearchType.DECREASING) {
+				/*if (heuristicSearchType == HeuristicSearchType.DECREASING) {
 					assert coveringAstarNode.getHeuristic().isKnown();
-				}
+				}*/
 
 				// If astarNode's parent is also covered then covering edges have been redirected. (see ArgNode::cover)
 				// We have to update parents map according to that.
@@ -210,7 +210,8 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 				// If rewiring happened we don't need to check the rewired edge (a -> c) for consistency
 				// as it is distributive property for this case.
 				findHeuristic(coveringAstarNode, astarArg, astarNode);
-				assertConsistency(astarNode, coveringAstarNode, true);
+				//assertConsistency(astarNode, coveringAstarNode, true);
+				// TODO assert for coveredAstarNode separate assert for astarNode (check git history why was this removed)
 				// Covering edge has 0 weight therefore depth doesn't increase
 				search.addToWaitlist(coveringAstarNode, coveredAstarNode, depth);
 				// Covering node is not a new node therefore it's already in reachedSet
@@ -219,10 +220,10 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 			}
 
 			if (argNode.isFeasible()) {
-				if (heuristicSearchType != HeuristicSearchType.FULL) {
+				/*if (heuristicSearchType != HeuristicSearchType.FULL) {
 					assert !argNode.isTarget();
-				}
-				assert !argNode.isCovered();
+				}*/
+				//assert !argNode.isCovered();
 
 				// expand: create nodes
 				if (!argNode.isExpanded()) {
@@ -244,7 +245,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 					//		they may get covered with a non leaf which has succAstarNode (because of how copy works)
 					//		but it's provider doesn't have distance, therefore there is no heuristic
 					findHeuristic(succAstarNode, astarArg, astarNode);
-					assertConsistency(astarNode, succAstarNode, false);
+					//assertConsistency(astarNode, succAstarNode, false);
 					search.addToWaitlist(succAstarNode, astarNode, depth + 1);
 				}
 			}
@@ -253,7 +254,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 
 		if (heuristicSearchType == HeuristicSearchType.FULL) {
 			Collection<ArgNode<S, A>> targetsArgNodes = reachedExacts.stream().map(astarNode -> astarNode.argNode).toList();
-			assert targetsArgNodes.stream().allMatch(ArgNode::isTarget);
+			//assert targetsArgNodes.stream().allMatch(ArgNode::isTarget);
 			updateDistancesAllTarget(astarArg, targetsArgNodes);
 			return;
 		}
@@ -285,7 +286,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 			startAstarNodes.forEach(astarArg::updateDistancesFromRootInfinite);
 		}
 
-		assertShortestDistance(astarArg);
+		//assertShortestDistance(astarArg);
 	}
 
 	private void updateDistancesAllTarget(AstarArg<S, A, P> astarArg, Collection<ArgNode<S, A>> targets) {
@@ -312,8 +313,8 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 				.filter(astarNode -> !astarNode.getDistance().isKnown())
 				.forEach(astarNode -> astarNode.setDistance(new Distance(Distance.Type.INFINITE)));
 
-		assert astarArg.getAll().values().stream().allMatch(astarNode -> astarNode.getDistance().isKnown());
-		assertShortestDistance(astarArg);
+		//assert astarArg.getAll().values().stream().allMatch(astarNode -> astarNode.getDistance().isKnown());
+		//assertShortestDistance(astarArg);
 	}
 
 	private void assertShortestDistance(AstarArg<S, A, P> astarArg) {
@@ -321,9 +322,9 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		Collection<ArgNode<S, A>> targets = arg.getNodes().filter(ArgNode::isTarget).toList();
 		arg.walk(targets, (argNode, distance) -> false, visit -> {
 			AstarNode<S, A> astarNode = astarArg.get(visit.argNode);
-			if (astarNode.getDistance().getType() == Distance.Type.EXACT) {
+			/*if (astarNode.getDistance().getType() == Distance.Type.EXACT) {
 				assert astarNode.getDistance().getValue() == visit.distance;
-			}
+			}*/
 
 			Collection<Visit<S, A>> newVisits = new ArrayList<>((int) visit.argNode.getCoveredNodes().count() + 1);
 			visit.argNode.getCoveredNodes().forEach(coveredNode -> {
@@ -341,23 +342,6 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		// is it enough proof? maybe abstraction comes into play?
 	}
 
-	private void assertConsistency(AstarNode<S, A> parent, AstarNode<S, A> child, boolean coverEdge) {
-		assert parent.getHeuristic().getType() != Distance.Type.INFINITE;
-		if (child.getHeuristic().getType() == Distance.Type.INFINITE) {
-			assert parent.getHeuristic().isKnown();
-			return;
-		}
-
-		int heuristicDistanceValue = parent.getHeuristic().getValue() - child.getHeuristic().getValue();
-		int edgeWeight;
-		if (coverEdge) {
-			edgeWeight = 0;
-		} else {
-			edgeWeight = 1;
-		}
-		assert heuristicDistanceValue <= edgeWeight;
-	}
-
 	// Expands the target (future provider node) so that the children of the provided node can also have provider nodes to choose from.
 	// Target should not already be expanded.
 	// This could be merged into normal loop, but it may make it harder to read
@@ -367,12 +351,12 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		if (argNode.isExpanded() || argNode.getCoveringNode().isPresent()) {
 			return;
 		}
-		assert argNode.getSuccNodes().findAny().isEmpty(); // TODO ask this
+		//assert argNode.getSuccNodes().findAny().isEmpty(); // TODO ask this
 
 		do {
-			assert !argNode.isExpanded();
-			assert argNode.getSuccNodes().findAny().isEmpty();
-			assert argNode.getCoveringNode().isEmpty();
+			//assert !argNode.isExpanded();
+			//assert argNode.getSuccNodes().findAny().isEmpty();
+			//assert argNode.getCoveringNode().isEmpty();
 			close(astarNode, astarArg.reachedSet.get(argNode).stream().map(astarArg::get).toList());
 			if (argNode.getCoveringNode().isEmpty()) {
 				//// We can get covered into already expanded node
@@ -384,7 +368,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 				AstarNode<S, A> lambdaAstarNode = astarNode;
 				argNode.getSuccNodes().forEach(succArgNode -> {
 					AstarNode<S, A> succAstarNode = astarArg.get(succArgNode);
-					assert succAstarNode == null;
+					//assert succAstarNode == null;
 					astarArg.createSuccAstarNode(succArgNode, lambdaAstarNode);
 					// We don't add it to waitlist therefore we don't need to find heuristic
 				});
@@ -400,7 +384,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 			argNode = argNode.getCoveringNode().get();
 			astarNode = astarArg.get(argNode);
 			// Target node's covering node must be a target.
-			assert argNode.isTarget();
+			//assert argNode.isTarget();
 			// optimization: we know the distance for a target node
 			astarNode.setDistance(new Distance(Distance.Type.EXACT, 0));
 		} while(!argNode.isExpanded()); // We can cover into an already expanded target (it can't be covered, see close())
@@ -432,7 +416,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 
 	private void initAstarArg(final AstarArg<S, A, P> astarArg) {
 		astarArg.arg.getInitNodes().forEach(initArgNode -> {
-			assert !initArgNode.isCovered();
+			//assert !initArgNode.isCovered();
 			astarArg.createInitAstarNode(initArgNode);
 		});
 	}
@@ -452,7 +436,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 			astarNode.setHeuristic(new Distance(Distance.Type.EXACT, 0));
 			return;
 		}
-		assert heuristicSearchType != HeuristicSearchType.FULL;
+		//assert heuristicSearchType != HeuristicSearchType.FULL;
 
 		// We don't have heuristic from provider therefore we decrease parent's
 		// astarArg.provider == null case could also be handled by this
@@ -464,7 +448,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 			}
 
 			// We made already have a heuristic in covering node see comment in handle after close().
-			assert parentAstarNode.argNode.getCoveringNode().isEmpty();
+			//assert parentAstarNode.argNode.getCoveringNode().isEmpty();
 
 			// We can't have a consistency problem in a normal edge as it would mean there is a shorter distance to the node we are decreasing from.
 			//   c (decreasing from, c is the distance)
@@ -474,7 +458,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 			//   |
 			//   h (end of current edge)
 			// if h < c-e-1 => h+e+1 < c which is contradiction as c is shortest distance
-			assert parentAstarNode.getHeuristic().isKnown();
+			//assert parentAstarNode.getHeuristic().isKnown();
 			int parentHeuristicValue = parentAstarNode.getHeuristic().getValue();
 			parentHeuristicValue = Math.max(parentHeuristicValue - 1, 0);
 			astarNode.setHeuristic(new Distance(Distance.Type.EXACT, parentHeuristicValue));
@@ -484,9 +468,9 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		// Provider AstarNode can be null
 		checkNotNull(astarNode.providerAstarNode);
 
-		if (astarNode.providerAstarNode.getHeuristic().getType() == Distance.Type.INFINITE) {
+		/*if (astarNode.providerAstarNode.getHeuristic().getType() == Distance.Type.INFINITE) {
 			assert astarNode.providerAstarNode.getDistance().getType() == Distance.Type.INFINITE;
-		}
+		}*/
 
 		// visualize current before going back to previous astarArg
 		String visualizerState = AstarFileVisualizer.getVisualizerState(astarNode);
@@ -499,7 +483,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 
 		String visualizerStateProvider = " " + AstarFileVisualizer.getVisualizerState(astarNode.providerAstarNode);
 		findDistance(providerAstarArg, new AstarDistanceKnown<>(providerAstarNode), List.of(providerAstarNode), visualizerStateProvider);
-		assert astarNode.getHeuristic().isKnown();
+		//assert astarNode.getHeuristic().isKnown();
 
 		// visualize current after going back to previous astarArg
 		astarFileVisualizer.visualize(String.format("resumed %s", visualizerState), astarArgStore.getIndex(astarArg));
@@ -524,7 +508,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 			initAstarArg(astarArg);
 			logger.write(Level.SUBSTEP, "done%n");
 		}
-		assert arg.isInitialized();
+		//assert arg.isInitialized();
 
 		//// parents + (parents & covering edges) make this difficult: arg.getIncompleteNodes().map(astarArg::get).filter(n -> n.distance.getType() != DistanceType.INFINITE)
 		//// 		add to reachedSet if implemented
@@ -565,8 +549,8 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 
 	private void close(final AstarNode<S, A> astarNode, final Collection<AstarNode<S, A>> candidates) {
 		ArgNode<S, A> argNode = astarNode.argNode;
-		assert argNode.getCoveringNode().isEmpty();
-		assert argNode.getSuccNodes().findAny().isEmpty();
+		//assert argNode.getCoveringNode().isEmpty();
+		//assert argNode.getSuccNodes().findAny().isEmpty();
 		if (!argNode.isLeaf()) {
 			return;
 		}
@@ -579,7 +563,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 			// Out goal is to keep consistency.
 			// E.g. keeping monotone covering edges would guarantee that but is a stronger property.
 			// TODO what if candidate has lowerbound distance
-			assert astarNode.getHeuristic().getType() != Distance.Type.INFINITE;
+			//assert astarNode.getHeuristic().getType() != Distance.Type.INFINITE;
 			if (astarNode.getHeuristic().compareTo(astarCandidate.getHeuristic()) <= 0) {
 				argNode.cover(candidate);
 				return;
