@@ -160,6 +160,8 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 				if (stopCriterion.canStop(astarArg.arg, List.of(astarNode.argNode))) {
 					break;
 				}
+
+				// We don't want to expand target fully just until we have children.
 				if (heuristicSearchType != HeuristicSearchType.FULL) {
 					continue;
 				}
@@ -257,8 +259,8 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		}
 
 		// Upper limit was not handled as no more nodes left to reach limit.
-		// If we reach target and there is no more node left in queue we can also process upperlimits as targets can only
-		// appear as a descendant of current target which won't provide exact heuristic for currently known nodes.
+		// If we reach target and there is no more node left in queue then we can also process the upperlimit
+		// as there are no more ways to reach a target sooner then upperLimitValue.
 		if (search.isWaitlistEmpty() && search.upperLimitValue != -1) {
 			reachedExacts.add(search.upperLimitAstarNode);
 		}
@@ -358,6 +360,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 
 	// Expands the target (future provider node) so that the children of the provided node can also have provider nodes to choose from.
 	// Target should not already be expanded.
+	// This could be merged into normal loop, but it may make it harder to read
 	private void expandTarget(AstarNode<S, A> astarNode, AstarArg<S, A, P> astarArg) {
 		ArgNode<S, A> argNode = astarNode.argNode;
 		// astarNode can be a coverer node for another target, therefore it can already be expanded (directly or indirectly)
