@@ -96,7 +96,7 @@ public final class BasicAbstractor<S extends State, A extends Action, P extends 
 		waitlist.clear();
 
 		reachedSet.addAll(arg.getNodes());
-		waitlist.addAll(arg.getIncompleteNodes());
+		waitlist.addAll(arg.getInitNodes());
 
 		if (!stopCriterion.canStop(arg)) {
 			while (!waitlist.isEmpty()) {
@@ -105,8 +105,12 @@ public final class BasicAbstractor<S extends State, A extends Action, P extends 
 				Collection<ArgNode<S, A>> newNodes = Collections.emptyList();
 				close(node, reachedSet.get(node));
 				if (!node.isSubsumed() && !node.isTarget()) {
-					newNodes = argBuilder.expand(node, prec);
-					reachedSet.addAll(newNodes);
+					if (!node.isExpanded()) {
+						newNodes = argBuilder.expand(node, prec);
+						reachedSet.addAll(newNodes);
+					} else {
+						newNodes = node.getSuccNodes().toList();
+					}
 					waitlist.addAll(newNodes);
 				}
 
