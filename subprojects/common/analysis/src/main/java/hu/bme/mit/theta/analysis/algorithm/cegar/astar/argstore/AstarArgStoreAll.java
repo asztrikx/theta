@@ -36,4 +36,9 @@ public class AstarArgStoreAll<S extends State, A extends Action, P extends Prec>
 		// Most of the time the requested astarArg is at the back therefore use lastIndexOf to search from back
 		return astarArgs.lastIndexOf(astarArg);
 	}
+
+	@Override
+	public void setLast(AstarArg<S, A, P> astarArg) {
+		astarArgs.set(astarArgs.size() - 1, astarArg);
+	}
 }

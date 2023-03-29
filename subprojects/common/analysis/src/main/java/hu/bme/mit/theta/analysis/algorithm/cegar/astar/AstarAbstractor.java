@@ -469,6 +469,12 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 			// We made already have a heuristic in covering node see comment in handle after close().
 			assert parentAstarNode.argNode.getCoveringNode().isEmpty();
 
+			// We could decrease from any covered nodes but that could lead to inconsistency betweeen the covering node and its parent later.
+			// This requires that all existing covering nodes to already have a heuristic, otherwise
+			// when visiting the node from the covering edge parent may not have a heuristic to decrease from.
+			// This becomes a problem when we copy AstarArgs where by default heuristics are not determined and also
+			// non-consistent covering edges are not removed.
+
 			// We can't have a consistency problem in a normal edge as it would mean there is a shorter distance to the node we are decreasing from.
 			//   c (decreasing from, c is the distance)
 			//   |
@@ -517,7 +523,17 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		checkNotNull(prec);
 		logger.write(Level.DETAIL, "|  |  Precision: %s%n", prec);
 
-		AstarArg<S, A, P> astarArg = astarArgStore.getLast();
+		AstarArg<S, A, P> astarArg;
+		if (astarArgStore.size() == 0) {
+			astarArg = new AstarArg<>(arg, prec, partialOrd, projection, null);
+			astarArgStore.add(astarArg);
+		} else {
+			astarArg = astarArgStore.getLast();
+			// prec is not modified but copied after prune by the CegarChecker
+			astarArg.prec = prec;
+			// prune was only applied to arg by the CegarChecker
+			astarArg.pruneApply();
+		}
 
 		// initialize: prune can keep initialized state
 		if (!arg.isInitialized()) {
@@ -536,13 +552,19 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		// Unexpanded child might have shorter distance from a covered node.
 		findDistance(astarArg, initialStopCriterion, astarArg.getAllInit(), "");
 
+		// AstarArg has to be copied as arg will be modified after refinement
+		AstarArg<S, A, P> astarArgCopy = AstarIterator.createIterationReplacement(astarArg, prec, partialOrd, projection, this);
+		astarArgStore.setLast(astarArgCopy);
+
+		astarArgStore.add(astarArg);
+
 		// found and isSafe is different: e.g. full expand
 		if (arg.isSafe()) {
 			// Arg may won't be expanded as we can get INFINITE heuristic avoiding expansion
 			//   therefore we don't need this: checkState(arg.isComplete(), "Returning incomplete ARG as safe");
 			return AbstractorResult.safe();
 		} else {
-			/*if (type == AstarCegarChecker.Type.FULL) {
+			/*if (type == Type.FULL) {
 				astarArg.setUnknownDistanceInfinite();
 			}*/
 			return AbstractorResult.unsafe();

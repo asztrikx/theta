@@ -51,4 +51,9 @@ public class AstarArgStorePrevious<S extends State, A extends Action, P extends 
 			throw new RuntimeException(unstoredAstarArg);
 		}
 	}
+
+	@Override
+	public void setLast(AstarArg<S, A, P> astarArg) {
+		current = astarArg;
+	}
 }

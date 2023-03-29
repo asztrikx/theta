@@ -33,7 +33,6 @@ import hu.bme.mit.theta.analysis.algorithm.cegar.CegarChecker;
 import hu.bme.mit.theta.analysis.algorithm.cegar.Refiner;
 import hu.bme.mit.theta.analysis.algorithm.cegar.abstractor.StopCriterions;
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarAbstractor;
-import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarCegarChecker;
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.argstore.AstarArgStore;
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.argstore.AstarArgStorePrevious;
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.argstore.AstarArgStoreAll;
@@ -425,11 +424,7 @@ public class XcfaConfigBuilder {
 			refiner = SingleExprTraceRefiner.create(exprTraceChecker,
 					precRefiner, pruneStrategy, logger);
 		}
-		final SafetyChecker checker = switch (search) {
-			case ASTAR -> AstarCegarChecker.create((AstarAbstractor<? extends State, ? extends Action, ? extends Prec>) abstractor, projection, refiner, logger,
-					algorithm.getPartialOrder(analysis.getPartialOrd()), astarArgStore);
-			default -> CegarChecker.create(abstractor, refiner, logger);
-		};
+		final SafetyChecker checker = CegarChecker.create(abstractor, refiner, logger);
 
 		return XcfaConfig.create(checker, prec);
 	}

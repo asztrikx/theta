@@ -30,7 +30,6 @@ import hu.bme.mit.theta.analysis.algorithm.cegar.CegarChecker;
 import hu.bme.mit.theta.analysis.algorithm.cegar.Refiner;
 import hu.bme.mit.theta.analysis.algorithm.cegar.abstractor.StopCriterions;
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarAbstractor;
-import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarCegarChecker;
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.argstore.AstarArgStore;
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.argstore.AstarArgStorePrevious;
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.argstore.AstarArgStoreAll;
@@ -240,7 +239,7 @@ public final class StsConfigBuilder {
 							.astarArgStore(astarArgStore)
 							.partialOrder(analysis.getPartialOrd())
 							.build();
-					checker = AstarCegarChecker.create(abstractor, null, refiner, logger, analysis.getPartialOrd(), astarArgStore);
+					checker = CegarChecker.create(abstractor, refiner, logger);
 				}
 				default -> {
 					final Abstractor<ExplState, StsAction, ExplPrec> abstractor = BasicAbstractor.builder(argBuilder)
@@ -327,7 +326,7 @@ public final class StsConfigBuilder {
 							.astarArgStore(astarArgStore)
 							.partialOrder(analysis.getPartialOrd())
 							.build();
-					checker = AstarCegarChecker.create(abstractor, null, refiner, logger, analysis.getPartialOrd(), astarArgStore);
+					checker = CegarChecker.create(abstractor, refiner, logger);
 				}
 				default -> {
 					final Abstractor<PredState, StsAction, PredPrec> abstractor = BasicAbstractor.builder(argBuilder)

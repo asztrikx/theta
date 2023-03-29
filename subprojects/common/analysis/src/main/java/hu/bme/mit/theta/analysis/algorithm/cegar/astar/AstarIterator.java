@@ -20,9 +20,14 @@ import java.util.function.Function;
 /**
  * copies ARG and their ArgNode shallowly (keeping action and state)
  */
-public class AstarCopier {
+public class AstarIterator {
+	// Creates a copy of the astarArg which will point to the same providerAstarNodes for each node.
+	// AstarArg's providerAstarNodes however will point to the copies.
+	// The changes also affect the provider field.
+	// provider <-- astarArg
+	// provider <-- astarArgCopy <-- astarArg
 	// astarArg: the source AstarArg from which a copy will be made
-	public static <S extends State, A extends Action, P extends Prec> AstarArg<S, A, P> createCopy(
+	public static <S extends State, A extends Action, P extends Prec> AstarArg<S, A, P> createIterationReplacement(
 			AstarArg<S, A, P> astarArg, P prec, final PartialOrd<S> partialOrd,
 			final Function<? super S, ?> projection, AstarAbstractor<S, A, P> astarAbstractor
 	) {
@@ -35,6 +40,8 @@ public class AstarCopier {
 		});
 
 		AstarArg<S, A, P> astarArgCopy = new AstarArg<>(argCopy, prec, partialOrd, projection, astarArg);
+		astarArgCopy.provider = astarArg.provider;
+		astarArg.provider = astarArgCopy;
 
 		// Covering edges are created after createCopy finished
 		//  TODO this is bad design
@@ -43,7 +50,21 @@ public class AstarCopier {
 			ArgNode<S, A> argNodeCopy = t.get2();
 
 			AstarNode<S, A> astarNode = astarArg.get(argNode);
-			AstarNode<S, A> astarNodeCopy = new AstarNode<>(argNodeCopy, astarNode);
+
+			AstarNode<S, A> astarNodeCopy = new AstarNode<>(argNodeCopy, astarNode.providerAstarNode);
+			// Heuristic has to be set first otherwise admissibility check fails
+			if (astarNode.getHeuristic().isKnown()) {
+				astarNodeCopy.setHeuristic(astarNode.getHeuristic());
+
+				if (astarNode.getDistance().isKnown()) {
+					astarNodeCopy.setDistance(astarNode.getDistance());
+				}
+			} else {
+				assert !astarNode.getDistance().isKnown();
+			}
+
+			astarNode.providerAstarNode = astarNodeCopy;
+			astarNode.reset();
 
 			astarArgCopy.put(astarNodeCopy);
 			if (newInitNodes.contains(argNodeCopy)) {
@@ -51,13 +72,17 @@ public class AstarCopier {
 			}
 			astarArgCopy.reachedSet.add(astarNodeCopy.argNode);
 
-			// We need leftovers to have a heuristic otherwise if we would need to decrease heuristic from a covered node
-			// which can lead to inconsistency.
+			// Nodes in the next iteration already have covering edges which can break the consistency requirement
+			// with the decreasing method described in the abstractor.
+			// therefore we remove it here so that we can have a strict check for consistency during search.
+			// See XstsTest 48th, 51th testcase failing at cover because of consistency check before covering.
+			// Full and Semiondemand will always give the same heuristic for covering- and covered node as they are based on distance
+			// therefore the heuristic (which is based on the distance values) will be consistent.
 			if (AstarAbstractor.heuristicSearchType == AstarAbstractor.HeuristicSearchType.DECREASING) {
-				@Nullable ArgNode<S, A> parentArgNode = astarNodeCopy.argNode.getParent().orElse(null);
-				@Nullable AstarNode<S, A> parentAstarNode = parentArgNode == null ? null : astarArgCopy.get(parentArgNode);
+				@Nullable ArgNode<S, A> parentArgNode = astarNode.argNode.getParent().orElse(null);
+				@Nullable AstarNode<S, A> parentAstarNode = parentArgNode == null ? null : astarArg.get(parentArgNode);
 				assert parentAstarNode != null || argNode.isInit();
-				astarAbstractor.findHeuristic(astarNodeCopy, astarArgCopy, parentAstarNode);
+				astarAbstractor.findHeuristic(astarNode, astarArg, parentAstarNode);
 
 				// There is no guarantee that cover edges will still be consistent
 				// - previously the shortest path may have crossed it
@@ -75,11 +100,11 @@ public class AstarCopier {
 					}
 				};
 
-				if (argNodeCopy.getCoveringNode().isPresent()) {
-					handleCoverEdgeConsistency.accept(argNodeCopy, argNodeCopy.getCoveringNode().get());
+				if (argNode.getCoveringNode().isPresent()) {
+					handleCoverEdgeConsistency.accept(argNode, argNode.getCoveringNode().get());
 				}
-				argNodeCopy.getCoveredNodes().toList().forEach(coveredNodeCopy -> {
-					handleCoverEdgeConsistency.accept(coveredNodeCopy, argNodeCopy);
+				argNode.getCoveredNodes().toList().forEach(coveredNodeCopy -> {
+					handleCoverEdgeConsistency.accept(coveredNodeCopy, argNode);
 				});
 			}
 		});

@@ -30,7 +30,6 @@ import hu.bme.mit.theta.analysis.algorithm.cegar.CegarChecker;
 import hu.bme.mit.theta.analysis.algorithm.cegar.Refiner;
 import hu.bme.mit.theta.analysis.algorithm.cegar.abstractor.StopCriterions;
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarAbstractor;
-import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarCegarChecker;
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.argstore.AstarArgStore;
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.argstore.AstarArgStorePrevious;
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.argstore.AstarArgStoreAll;
@@ -301,7 +300,7 @@ public class XstsConfigBuilder {
 							.astarArgStore(astarArgStore)
 							.partialOrder(analysis.getPartialOrd())
 							.build();
-					checker = AstarCegarChecker.create(abstractor, null, refiner, logger, analysis.getPartialOrd(), astarArgStore);
+					checker = CegarChecker.create(abstractor, refiner, logger);
 				}
 				default -> {
 					final Abstractor<XstsState<ExplState>, XstsAction, ExplPrec> abstractor = BasicAbstractor.builder(argBuilder)
@@ -395,7 +394,7 @@ public class XstsConfigBuilder {
 							.astarArgStore(astarArgStore)
 							.partialOrder(analysis.getPartialOrd())
 							.build();
-					checker = AstarCegarChecker.create(abstractor, null, refiner, logger, analysis.getPartialOrd(), astarArgStore);
+					checker = CegarChecker.create(abstractor, refiner, logger);
 				}
 				default -> {
 					final Abstractor<XstsState<PredState>, XstsAction, PredPrec> abstractor = BasicAbstractor.builder(argBuilder)
@@ -505,7 +504,7 @@ public class XstsConfigBuilder {
 							.astarArgStore(astarArgStore)
 							.partialOrder(analysis.getPartialOrd())
 							.build();
-					checker = AstarCegarChecker.create(abstractor, null, refiner, logger, analysis.getPartialOrd(), astarArgStore);
+					checker = CegarChecker.create(abstractor, refiner, logger);
 				}
 				default -> {
 					final Abstractor<XstsState<Prod2State<ExplState, PredState>>, XstsAction, Prod2Prec<ExplPrec, PredPrec>> abstractor = BasicAbstractor.builder(argBuilder)

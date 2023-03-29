@@ -11,4 +11,5 @@ public interface AstarArgStore<S extends State, A extends Action, P extends Prec
 	AstarArg<S, A, P> getLast();
 	int size();
 	int getIndex(AstarArg<S, A, P> astarArg);
+	void setLast(AstarArg<S, A, P> astarArg);
 }
