@@ -29,7 +29,7 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
 	private Map<ArgNode<S, A>, AstarNode<S, A>> astarInitNodes = new HashContainerFactory().createMap();
 	private final PartialOrd<S> partialOrd;
 	// Covering ArgNode is searched from here
-	public final Partition<ArgNode<S, A>, ?> reachedSet; // TODO check whether reachset can hold AstarNodes
+	public final Partition<ArgNode<S, A>, ?> reachedSet; // TODO check whether reachedset can hold AstarNodes
 
 	public AstarArg(
 			final ARG<S, A> arg, P prec, final PartialOrd<S> partialOrd,
