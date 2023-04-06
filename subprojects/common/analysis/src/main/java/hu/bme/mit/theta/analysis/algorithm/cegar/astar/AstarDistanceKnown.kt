@@ -1,27 +1,17 @@
-package hu.bme.mit.theta.analysis.algorithm.cegar.astar;
+package hu.bme.mit.theta.analysis.algorithm.cegar.astar
 
-import hu.bme.mit.theta.analysis.Action;
-import hu.bme.mit.theta.analysis.State;
-import hu.bme.mit.theta.analysis.algorithm.ARG;
-import hu.bme.mit.theta.analysis.algorithm.ArgNode;
-import hu.bme.mit.theta.analysis.algorithm.cegar.abstractor.StopCriterion;
+import hu.bme.mit.theta.analysis.Action
+import hu.bme.mit.theta.analysis.State
+import hu.bme.mit.theta.analysis.algorithm.ARG
+import hu.bme.mit.theta.analysis.algorithm.ArgNode
+import hu.bme.mit.theta.analysis.algorithm.cegar.abstractor.StopCriterion
 
-import java.util.Collection;
-
-public class AstarDistanceKnown<S extends State, A extends Action> implements StopCriterion<S, A> {
-	private final AstarNode<S, A> astarNode;
-
-	public AstarDistanceKnown(AstarNode<S, A> astarNode) {
-		this.astarNode = astarNode;
+class AstarDistanceKnown<S: State, A: Action>(private val astarNode: AstarNode<S, A>) : StopCriterion<S, A> {
+	override fun canStop(arg: ARG<S, A>): Boolean {
+		return true
 	}
 
-	@Override
-	public boolean canStop(ARG<S, A> arg) {
-		return true;
-	}
-
-	@Override
-	public boolean canStop(ARG<S, A> arg, Collection<ArgNode<S, A>> newNodes) {
-		return canStop(arg);
+	override fun canStop(arg: ARG<S, A>, newNodes: Collection<ArgNode<S, A>>): Boolean {
+		return canStop(arg)
 	}
 }
