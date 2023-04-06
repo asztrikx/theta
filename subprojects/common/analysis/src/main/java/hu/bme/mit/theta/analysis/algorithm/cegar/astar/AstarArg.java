@@ -76,7 +76,7 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
 
 			// Multiple targets can be visited during a check, therefore we should only keep distances from the first found target
 			if (astarNode.getDistance().getType() != Distance.Type.EXACT) {
-				assert !astarNode.getDistance().isKnown();
+				assert astarNode.getDistance().isUnknown();
 				astarNode.setDistance(new Distance(Distance.Type.EXACT, distance));
 
 				// Save covered nodes
@@ -143,7 +143,7 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
 					//      a
 					//    /  \
 					//   b- ->c
-					return !astarNode.getDistance().isKnown()
+					return astarNode.getDistance().isUnknown()
 						// We can get covered into a target which will be processed in a later updateDistancesFromTargetUntil call
 						&& !argNode.isTarget();
 				})
@@ -238,7 +238,7 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
 		Queue<ArgNode<S, A>> queue = new ArrayDeque<>();
 		Predicate<ArgNode<S, A>> excludeKnownDistance = node -> {
 			// Can't reach target && not already marked as infinite
-			return !get(node).getDistance().isKnown();
+			return get(node).getDistance().isUnknown();
 		};
 		Predicate<ArgNode<S, A>> excludeTarget = node -> !node.isTarget();
 
@@ -341,12 +341,12 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
 				if (node.isCovered() || astarNode.getHeuristic().getType() == Distance.Type.INFINITE || allSuccNodeDistanceInfinite(node)) {
 					// Infinite distance can't be set until all children have infinite distance.
 					// We won't revisit infinite paths so allSuccNodeDistanceInfinite will only be true 1 time.
-					assert !astarNode.getDistance().isKnown();
+					assert astarNode.getDistance().isUnknown();
 					astarNode.setDistance(new Distance(Distance.Type.INFINITE));
 
 					// 3) Add covered nodes to queue
 					node.getCoveredNodes().forEach(coveredNode -> {
-						assert !get(coveredNode).getDistance().isKnown();
+						assert get(coveredNode).getDistance().isUnknown();
 						queue.add(coveredNode);
 					});
 

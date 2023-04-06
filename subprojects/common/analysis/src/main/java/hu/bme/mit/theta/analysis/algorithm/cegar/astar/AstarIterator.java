@@ -60,7 +60,7 @@ public class AstarIterator {
 					astarNodeCopy.setDistance(astarNode.getDistance());
 				}
 			} else {
-				assert !astarNode.getDistance().isKnown();
+				assert astarNode.getDistance().isUnknown();
 			}
 
 			astarNode.providerAstarNode = astarNodeCopy;
