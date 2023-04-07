@@ -498,20 +498,19 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		}
 
 		// visualize current before going back to previous astarArg
-		String visualizerState = AstarFileVisualizer.getVisualizerState(astarNode);
-		astarFileVisualizer.visualize(String.format("paused %s", visualizerState), cegarHistoryStorage.indexOf(astarArg));
+		astarFileVisualizer.visualize(String.format("paused %s", astarNode.argNode.toString()), cegarHistoryStorage.indexOf(astarArg));
 		logger.write(Level.SUBSTEP, "|  |  Paused AstarArg: %s%n", astarFileVisualizer.getTitle("", cegarHistoryStorage.indexOf(astarArg)));
 
 		// get the heuristic with findDistance in parent arg
 		AstarNode<S, A> providerAstarNode = astarNode.providerAstarNode;
 		AstarArg<S, A, P> providerAstarArg = astarArg.provider;
 
-		String visualizerStateProvider = " " + AstarFileVisualizer.getVisualizerState(astarNode.providerAstarNode);
+		String visualizerStateProvider = " " + astarNode.providerAstarNode.argNode.toString();
 		findDistance(providerAstarArg, new AstarDistanceKnown<>(providerAstarNode), List.of(providerAstarNode), visualizerStateProvider);
 		assert astarNode.getHeuristic().isKnown();
 
 		// visualize current after going back to previous astarArg
-		astarFileVisualizer.visualize(String.format("resumed %s", visualizerState), cegarHistoryStorage.indexOf(astarArg));
+		astarFileVisualizer.visualize(String.format("resumed %s", astarNode.argNode.toString()), cegarHistoryStorage.indexOf(astarArg));
 		logger.write(Level.SUBSTEP, "|  |  Resumed AstarArg: %s%n", astarFileVisualizer.getTitle("", cegarHistoryStorage.indexOf(astarArg)));
 	}
 

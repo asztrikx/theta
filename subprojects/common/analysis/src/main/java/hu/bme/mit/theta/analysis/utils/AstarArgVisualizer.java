@@ -93,8 +93,8 @@ public final class AstarArgVisualizer<S extends State, A extends Action, P exten
 		return LazyHolderStructureOnly.INSTANCE;
 	}
 
-	public <S1 extends S, A1 extends A, P1 extends P>  Graph visualize(final AstarArg<S1, A1, P1> astarArg, String title, Collection<ArgNode<S1, A1>> startNodes) {
-		final Graph graph = new Graph(ARG_ID, title);
+	public <S1 extends S, A1 extends A, P1 extends P>  Graph visualize(final AstarArg<S1, A1, P1> astarArg, Collection<ArgNode<S1, A1>> startNodes) {
+		final Graph graph = new Graph(ARG_ID, ARG_LABEL);
 
 		final Set<ArgNode<S1, A1>> traversed = Containers.createSet();
 
