@@ -417,9 +417,9 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 
 		logger.write(Level.INFO, "|  |  Starting ARG: %d nodes, %d incomplete, %d unsafe%n", arg.getNodes().count(),
 				arg.getIncompleteNodes().count(), arg.getUnsafeNodes().count());
-		logger.write(Level.SUBSTEP,"|  |  Starting AstarArg: %s%n", astarFileVisualizer.getTitle("", astarArgStore.getIndex(astarArg)));
+		logger.write(Level.SUBSTEP,"|  |  Starting AstarArg: %s%n", astarFileVisualizer.getTitle("", astarArgStore.indexOf(astarArg)));
 		logger.write(Level.SUBSTEP, "|  |  Building ARG...");
-		astarFileVisualizer.visualize(String.format("start%s", visualizerState), astarArgStore.getIndex(astarArg));
+		astarFileVisualizer.visualize(String.format("start%s", visualizerState), astarArgStore.indexOf(astarArg));
 
 		// TODO: is this only for init nodes? if so delete it (DRY for target distance update)
 		//if (!stopCriterion.canStop(arg)) {
@@ -429,8 +429,8 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		logger.write(Level.SUBSTEP, "done%n");
 		logger.write(Level.INFO, "|  |  Finished ARG: %d nodes, %d incomplete, %d unsafe%n", arg.getNodes().count(),
 				arg.getIncompleteNodes().count(), arg.getUnsafeNodes().count());
-		logger.write(Level.INFO, "|  |  Finished AstarArg: %s%n", astarFileVisualizer.getTitle("", astarArgStore.getIndex(astarArg)));
-		astarFileVisualizer.visualize(String.format("end%s", visualizerState), astarArgStore.getIndex(astarArg));
+		logger.write(Level.INFO, "|  |  Finished AstarArg: %s%n", astarFileVisualizer.getTitle("", astarArgStore.indexOf(astarArg)));
+		astarFileVisualizer.visualize(String.format("end%s", visualizerState), astarArgStore.indexOf(astarArg));
 	}
 
 	private void initAstarArg(final AstarArg<S, A, P> astarArg) {
@@ -499,8 +499,8 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 
 		// visualize current before going back to previous astarArg
 		String visualizerState = AstarFileVisualizer.getVisualizerState(astarNode);
-		astarFileVisualizer.visualize(String.format("paused %s", visualizerState), astarArgStore.getIndex(astarArg));
-		logger.write(Level.SUBSTEP, "|  |  Paused AstarArg: %s%n", astarFileVisualizer.getTitle("", astarArgStore.getIndex(astarArg)));
+		astarFileVisualizer.visualize(String.format("paused %s", visualizerState), astarArgStore.indexOf(astarArg));
+		logger.write(Level.SUBSTEP, "|  |  Paused AstarArg: %s%n", astarFileVisualizer.getTitle("", astarArgStore.indexOf(astarArg)));
 
 		// get the heuristic with findDistance in parent arg
 		AstarNode<S, A> providerAstarNode = astarNode.providerAstarNode;
@@ -511,8 +511,8 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		assert astarNode.getHeuristic().isKnown();
 
 		// visualize current after going back to previous astarArg
-		astarFileVisualizer.visualize(String.format("resumed %s", visualizerState), astarArgStore.getIndex(astarArg));
-		logger.write(Level.SUBSTEP, "|  |  Resumed AstarArg: %s%n", astarFileVisualizer.getTitle("", astarArgStore.getIndex(astarArg)));
+		astarFileVisualizer.visualize(String.format("resumed %s", visualizerState), astarArgStore.indexOf(astarArg));
+		logger.write(Level.SUBSTEP, "|  |  Resumed AstarArg: %s%n", astarFileVisualizer.getTitle("", astarArgStore.indexOf(astarArg)));
 	}
 
 	@Override
@@ -574,7 +574,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 	private void debug(AstarArg<S, A, P> astarArg, Collection<ArgNode<S,A>> startNodes) {
 		boolean enabled = astarFileVisualizer.getEnabled();
 		astarFileVisualizer.setEnabled(true);
-		astarFileVisualizer.visualize("debug", astarArgStore.getIndex(astarArg), startNodes);
+		astarFileVisualizer.visualize("debug", astarArgStore.indexOf(astarArg), startNodes);
 		astarFileVisualizer.setEnabled(enabled);
 	}
 
