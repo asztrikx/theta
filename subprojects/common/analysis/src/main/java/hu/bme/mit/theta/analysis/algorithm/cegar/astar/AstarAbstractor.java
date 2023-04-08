@@ -39,6 +39,7 @@ import javax.annotation.Nullable;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import kotlin.collections.ArrayDeque;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
@@ -108,7 +109,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 	) {
 		// create search
 		AstarSearch<S, A> search = new AstarSearch<>();
-		Map<ArgNode<S, A>, ArgNode<S, A>> parents = search.parents;
+		Map<ArgNode<S, A>, ArgNode<S, A>> parents = search.getParents();
 
 		// Waitlist requires heuristic for nodes
 		// 	  node for which distance we are going back may not have heuristic
@@ -121,7 +122,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 
 		// Implementation assumes that lower distance is set first therefore we can store reached targets in the order we reach them.
 		// We save targets and nodes with exact value. In the latter the exact values must be from a previous findDistance as we set exact distances at the end of iteration.
-		Queue<AstarNode<S, A>> reachedExacts = search.reachedExacts;
+		ArrayDeque<AstarNode<S, A>> reachedExacts = search.getReachedExacts();
 
 		// TODO: ArgCexCheckHandler.instance.setCurrentArg(new AbstractArg<S, A, P>(arg, prec)); , ...
 
@@ -130,28 +131,28 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 			if (edge == null) {
 				break;
 			}
-			AstarNode<S, A> astarNode = edge.end;
+			AstarNode<S, A> astarNode = edge.getEnd();
 			assert astarNode.getHeuristic().getType() != Distance.Type.INFINITE;
 			assert astarNode.getDistance().getType() != Distance.Type.INFINITE;
 			@Nullable ArgNode<S, A> parentArgNode = parents.get(astarNode.argNode);
 			@Nullable AstarNode<S, A> parentAstarNode = astarArg.get(parentArgNode);
-			int depth = edge.depthFromAStartNode;
+			int depth = edge.getDepthFromAStartNode();
 			ArgNode<S, A> argNode = astarNode.argNode;
 			int weightValue = astarNode.getWeight(depth).getValue();
 
 			// TODO n-cexs, SEMI_ONDEMAND causes problem hereq
 			// Current implementation doesn't support multiple upperLimitValue
 			if (heuristicSearchType == HeuristicSearchType.FULL) {
-				assert search.upperLimitValue == -1;
+				assert search.getUpperLimitValue() == -1;
 			}
 
 			// TODO comment that it is not a case when first expanding an arg
 			// reached upper limit: depth + heuristic distance (only depth is also correct but reached later)
-			if (weightValue >= search.upperLimitValue && search.upperLimitValue != -1) {
+			if (weightValue >= search.getUpperLimitValue() && search.getUpperLimitValue() != -1) {
 				// Otherwise we might miss shorter upperlimits overwritten before first upperlimit process
 				assert reachedExacts.size() == 0;
-				reachedExacts.add(search.upperLimitAstarNode);
-				search.upperLimitValue = -1;
+				reachedExacts.add(search.getUpperLimitAstarNode());
+				search.setUpperLimitValue(-1);
 				if (stopCriterion.canStop(astarArg.arg, List.of(astarNode.argNode))) {
 					break;
 				}
@@ -264,8 +265,8 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		// Upper limit was not handled as no more nodes left to reach limit.
 		// If we reach target and there is no more node left in queue then we can also process the upperlimit
 		// as there are no more ways to reach a target sooner then upperLimitValue.
-		if (search.isWaitlistEmpty() && search.upperLimitValue != -1) {
-			reachedExacts.add(search.upperLimitAstarNode);
+		if (search.isWaitlistEmpty() && search.getUpperLimitValue() != -1) {
+			reachedExacts.add(search.getUpperLimitAstarNode());
 		}
 
 		// We need to have heuristic for startAstarNodes therefore we need to set distance.
@@ -273,7 +274,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		astarArg.updateDistanceInfinite();
 		Set<ArgNode<S, A>> startNodes = startAstarNodes.stream().map(astarNode -> astarNode.argNode).collect(Collectors.toSet());
 		while(!reachedExacts.isEmpty()) {
-			AstarNode<S, A> target = reachedExacts.remove();
+			AstarNode<S, A> target = reachedExacts.removeFirst();
 			astarArg.updateDistancesFromTargetUntil(target, startNodes, parents);
 
 			// All provider nodes are expected to be expanded, targets as well
