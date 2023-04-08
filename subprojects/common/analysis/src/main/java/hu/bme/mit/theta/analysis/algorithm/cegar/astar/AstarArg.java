@@ -482,7 +482,7 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
 			assert providerNode.isPresent();
 		} else {
 			if (providerNode.isEmpty()) {
-				assert !argNode.isInit();
+				assert !argNode.isInit(); // this fails for test 48,51,61 on Xsts
 				// TODO assert it is not expanded nor covered.
 				return null;
 			}
