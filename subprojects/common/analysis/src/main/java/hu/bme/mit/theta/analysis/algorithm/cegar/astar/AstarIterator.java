@@ -51,7 +51,7 @@ public class AstarIterator {
 
 			AstarNode<S, A> astarNode = astarArg.get(argNode);
 
-			AstarNode<S, A> astarNodeCopy = new AstarNode<>(argNodeCopy, astarNode.providerAstarNode);
+			AstarNode<S, A> astarNodeCopy = new AstarNode<>(argNodeCopy, astarNode.getProviderAstarNode());
 			// Heuristic has to be set first otherwise admissibility check fails
 			if (astarNode.getHeuristic().isKnown()) {
 				astarNodeCopy.setHeuristic(astarNode.getHeuristic());
@@ -63,14 +63,14 @@ public class AstarIterator {
 				assert astarNode.getDistance().isUnknown();
 			}
 
-			astarNode.providerAstarNode = astarNodeCopy;
+			astarNode.setProviderAstarNode(astarNodeCopy);
 			astarNode.reset();
 
 			astarArgCopy.put(astarNodeCopy);
 			if (newInitNodes.contains(argNodeCopy)) {
 				astarArgCopy.putInit(astarNodeCopy);
 			}
-			astarArgCopy.reachedSet.add(astarNodeCopy.argNode);
+			astarArgCopy.reachedSet.add(astarNodeCopy.getArgNode());
 
 			// Nodes in the next iteration already have covering edges which can break the consistency requirement
 			// with the decreasing method described in the abstractor.
@@ -79,7 +79,7 @@ public class AstarIterator {
 			// Full and Semiondemand will always give the same heuristic for covering- and covered node as they are based on distance
 			// therefore the heuristic (which is based on the distance values) will be consistent.
 			if (AstarAbstractor.heuristicSearchType == AstarAbstractor.HeuristicSearchType.DECREASING) {
-				@Nullable ArgNode<S, A> parentArgNode = astarNode.argNode.getParent().orElse(null);
+				@Nullable ArgNode<S, A> parentArgNode = astarNode.getArgNode().getParent().orElse(null);
 				@Nullable AstarNode<S, A> parentAstarNode = parentArgNode == null ? null : astarArg.get(parentArgNode);
 				assert parentAstarNode != null || argNode.isInit();
 				astarAbstractor.findHeuristic(astarNode, astarArg, parentAstarNode);

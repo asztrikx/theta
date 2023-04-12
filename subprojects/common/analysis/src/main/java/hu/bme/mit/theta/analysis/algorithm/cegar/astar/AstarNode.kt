@@ -1,97 +1,88 @@
-package hu.bme.mit.theta.analysis.algorithm.cegar.astar;
+package hu.bme.mit.theta.analysis.algorithm.cegar.astar
 
-import hu.bme.mit.theta.analysis.Action;
-import hu.bme.mit.theta.analysis.State;
-import hu.bme.mit.theta.analysis.algorithm.ArgNode;
+import hu.bme.mit.theta.analysis.Action
+import hu.bme.mit.theta.analysis.State
+import hu.bme.mit.theta.analysis.algorithm.ArgNode
 
-import javax.annotation.Nullable;
-
-import static com.google.common.base.Preconditions.checkNotNull;
-
-public final class AstarNode<S extends State, A extends Action> {
-	public final ArgNode<S, A> argNode;
-	public @Nullable AstarNode<S, A> providerAstarNode;
-	private Distance distance = new Distance(Distance.Type.UNKNOWN);
-	private Distance heuristic = new Distance(Distance.Type.UNKNOWN);
-
-	// providerAstarNode: can be null if it is the first arg
-	AstarNode(final ArgNode<S, A> argNode, @Nullable final AstarNode<S, A> providerAstarNode) {
-		this.argNode = checkNotNull(argNode);
-		this.providerAstarNode = providerAstarNode;
-		// providerAstarNode's distance can change after ctor ran
-	}
-
-	// Do not call with unknown distance, use reset().
-	public void setDistance(Distance distance) {
-		assertAdmissibility(distance);
-		if (argNode.isTarget()) {
-			assert distance.getType() == Distance.Type.EXACT && distance.getValue() == 0;
-		}
-		this.distance = distance;
-	}
-
-	public Distance getDistance() {
-		return distance;
-	}
-
-	// It is guaranteed that once it returns a known value it won't change unless setHeuristic is called with unknown (AstarIterator).
-	public Distance getHeuristic() {
-		if (heuristic.isKnown()) {
-			// Provider distance can't change
-			if (providerAstarNode != null && providerAstarNode.getDistance().isKnown()) {
-				// Provider can change if original provider is covered => use equals
-				assert heuristic.equals(providerAstarNode.getDistance());
+class AstarNode<S: State, A: Action>(
+	val argNode: ArgNode<S, A>,
+	// Can be null if it is the first arg
+	// Can change to its coverer as it may get covered later
+	// Its distance may change later
+	var providerAstarNode: AstarNode<S, A>?
+) {
+	private var _distance = Distance(Distance.Type.UNKNOWN)
+	var distance: Distance
+		get() {
+			if (argNode.isTarget) {
+				check(_distance.isUnknown || _distance.value == 0)
 			}
-		} else {
-			if (providerAstarNode != null && providerAstarNode.getDistance().isKnown()) {
-				// Sideeffect is neccessary as astarNode-providerAstarNode relation is one directional therefore
-				// we can't update astarNode when providerAstarNode's distance changes.
-				heuristic = providerAstarNode.getDistance();
+			return _distance
+		}
+		// Do not call with unknown distance, use reset().
+		set(value) {
+			checkAdmissibility(value)
+			if (argNode.isTarget) {
+				require(value.value == 0)
 			}
+			_distance = value
 		}
-		return heuristic;
-	}
 
-	// Do not call with unknown distance, use reset().
-	public void setHeuristic(Distance heuristic) {
-		assert heuristic.isKnown();
-
-		// Requirement for astar h(target) == 0
-		if (argNode.isTarget()) {
-			assert heuristic.getType() == Distance.Type.EXACT && heuristic.getValue() == 0;
+	private var _heuristic = Distance(Distance.Type.UNKNOWN)
+	var heuristic: Distance
+		// It is guaranteed that once it returns a known value it won't change unless reset is called (e.g. AstarIterator).
+		get() {
+			providerAstarNode?.let {
+				if (_heuristic.isUnknown && it.distance.isKnown) {
+					heuristic = it.distance
+				}
+			}
+			return _heuristic
 		}
-		this.heuristic = heuristic;
-	}
+		// Do not call with unknown distance, use reset().
+		set(value) {
+			require(value.isKnown)
 
-	public Distance getWeight(int depth) {
-		Distance heuristic = getHeuristic();
-		Distance.Type type = heuristic.getType();
-		if (type == Distance.Type.INFINITE) {
-			return heuristic;
+			providerAstarNode?.let {
+				if (it.distance.isKnown) {
+					// Provider can change if original provider is covered => use equals
+					check(value == it.distance)
+					// Once provider's distance is known it can't change in value => no need to recheck
+				} else {
+					//check(TODO("check for decreasing a* type"))
+				}
+			}
+
+			// Requirement for heuristic consistency
+			if (argNode.isTarget) {
+				check(value.value == 0)
+			}
+			_heuristic = value
 		}
-		return new Distance(type, heuristic.getValue() + depth);
+
+	// Get g(n) = h(n) + depth
+	// Depth is dependent on the search (can start from any node) therefore it is not stored here
+	fun getWeight(depth: Int) = if (heuristic.type == Distance.Type.INFINITE) {
+		heuristic
+	} else {
+		Distance(heuristic.type, heuristic.value + depth)
 	}
 
-	private void assertAdmissibility(Distance distance) {
-		// called from updateDistancesFromConditionalNodes:
-		// 		this's heuristic can not be unknown as we are always starting from nodes with known heuristic and for all successor nodes we call findHeuristic.
-		//		This won't be the case when we start searching from leaf nodes.
-		assert !(getHeuristic().getType() == Distance.Type.INFINITE && distance.getType() != Distance.Type.INFINITE);
-		assert getHeuristic().isKnown();
-		assert distance.isKnown();
-		if (getHeuristic().getType() != Distance.Type.INFINITE && distance.getType() != Distance.Type.INFINITE) {
-			assert getHeuristic().getValue() <= distance.getValue();
+	// Checks property: Heuristic <= Distance
+	// Should be called with known distance.
+	private fun checkAdmissibility(distance: Distance) {
+		check(!(heuristic.type === Distance.Type.INFINITE && distance.type !== Distance.Type.INFINITE))
+		check(distance.isKnown)
+		check(heuristic.isKnown)
+		if (heuristic.type !== Distance.Type.INFINITE && distance.type !== Distance.Type.INFINITE) {
+			check(heuristic.value <= distance.value)
 		}
 	}
 
-	public void reset() {
-		this.heuristic = new Distance(Distance.Type.UNKNOWN);
-		this.distance = new Distance(Distance.Type.UNKNOWN);
+	fun reset() {
+		_heuristic = Distance(Distance.Type.UNKNOWN)
+		_distance = Distance(Distance.Type.UNKNOWN)
 	}
 
-	@Override
-	public String toString() {
-		// Can't print depth nor weight as it is dependent on the search (where it is started from)
-		return String.format("%s D%s H%s", argNode.toString(), distance.toString(), heuristic.toString());
-	}
+	override fun toString() = "$argNode D$distance H$heuristic"
 }

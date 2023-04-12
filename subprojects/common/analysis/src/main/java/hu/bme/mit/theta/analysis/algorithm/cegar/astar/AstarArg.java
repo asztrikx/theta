@@ -65,12 +65,12 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
 		// as we set distances at the end of the iterations
 		// so the parent of the covering node will be the covered node.
 		// ([Multitarget] would obselete this comment with multiple parents, still keep it)
-		arg.walkUpParents(from.argNode, parents::get, (node, distance) -> {
+		arg.walkUpParents(from.getArgNode(), parents::get, (node, distance) -> {
 			AstarNode<S, A> astarNode = get(node);
 			distance = distance + startDistance;
 
 			// We expand targets therefore we can have a target ancestor.
-			if (node.isTarget() && from.argNode != node) {
+			if (node.isTarget() && from.getArgNode() != node) {
 				assert astarNode.getDistance().isKnown();
 			}
 
@@ -103,7 +103,7 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
 
 				return until.contains(node);
 			} else {
-				if (from.argNode != node) {
+				if (from.getArgNode() != node) {
 					assert astarNode.getDistance().getValue() <= distance;
 					return true;
 				} else {
@@ -216,7 +216,7 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
 
 	public void updateDistancesFromRootInfinite(AstarNode<S, A> from) {
 		Queue<ArgNode<S, A>> queue = new ArrayDeque<>();
-		queue.add(from.argNode);
+		queue.add(from.getArgNode());
 
 		while (!queue.isEmpty()) {
 			var item = queue.remove();
@@ -290,17 +290,17 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
 		Stream<ArgNode<S, A>> infiniteHeuristicNodes = astarNodes.values().stream()
 				.filter(astarNode -> astarNode.getHeuristic().getType() == Distance.Type.INFINITE)
 				.filter(astarNode -> {
-					ArgNode<S, A> argNode = astarNode.argNode;
+					ArgNode<S, A> argNode = astarNode.getArgNode();
 					// Infinite heuristic can be a leaf (therefore expanded) it was copied from previous iteration
 					if (argNode.isExpanded()) {
 						// TODO if we stop copying infinite subgraph then uncomment this
 						//assert argNode.isLeaf();
-						assert astarNode.providerAstarNode != null && argNode.toString().equals(astarNode.providerAstarNode.argNode.toString());
+						assert astarNode.getProviderAstarNode() != null && argNode.toString().equals(astarNode.getProviderAstarNode().getArgNode().toString());
 					}
 					//assert !argNode.isCovered(); // TODO if we stop copying infinite subgraph then uncomment this
 					return !argNode.isExpanded() && !argNode.isCovered();
 				})
-				.map(astarNode -> astarNode.argNode);
+				.map(astarNode -> astarNode.getArgNode());
 
 		queue.addAll(infiniteHeuristicNodes.filter(excludeKnownDistance).toList());
 
@@ -426,12 +426,12 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
 			assert argNode.isInit();
 			providerCandidates = providerAstarArg.getAllInitArg().stream();
 		} else {
-			AstarNode<S, A> parentProviderAstarNode = parentAstarNode.providerAstarNode;
+			AstarNode<S, A> parentProviderAstarNode = parentAstarNode.getProviderAstarNode();
 			// Parent doesn't have provider then we also won't have.
 			if (parentProviderAstarNode == null) {
 				return null;
 			}
-			ArgNode<S, A> parentProviderNode = parentProviderAstarNode.argNode;
+			ArgNode<S, A> parentProviderNode = parentProviderAstarNode.getArgNode();
 
 			// parentAstarNode had to be in waitlist
 			// 		therefore it's heuristic is known
@@ -453,8 +453,9 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
 				// Optimization: only handle covering case once
 				// We can't do this when setting parentAstarNode's provider node as covering can happen after that
 				// This change will affect visualizer midpoint
-				parentProviderAstarNode = parentAstarNode.providerAstarNode = providerAstarArg.get(parentProviderCoveringNode);
-				parentProviderNode = parentProviderAstarNode.argNode;
+				parentAstarNode.setProviderAstarNode(providerAstarArg.get(parentProviderCoveringNode));
+				parentProviderAstarNode = providerAstarArg.get(parentProviderCoveringNode);
+				parentProviderNode = parentProviderAstarNode.getArgNode();
 
 				if (AstarAbstractor.heuristicSearchType != AstarAbstractor.HeuristicSearchType.DECREASING) {
 					assert parentProviderAstarNode.getDistance().isKnown();
@@ -520,7 +521,7 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
 	/// Collection wrappers
 
 	public void put(final AstarNode<S, A> astarNode) {
-		astarNodes.put(astarNode.argNode, astarNode);
+		astarNodes.put(astarNode.getArgNode(), astarNode);
 	}
 
 	public boolean containsArg(final ArgNode<S, A> argNode) {
@@ -553,7 +554,7 @@ public final class AstarArg<S extends State, A extends Action, P extends Prec> {
 	}*/
 
 	public void putInit(final AstarNode<S, A> astarInitNode) {
-		astarInitNodes.put(astarInitNode.argNode, astarInitNode);
-		astarNodes.put(astarInitNode.argNode, astarInitNode);
+		astarInitNodes.put(astarInitNode.getArgNode(), astarInitNode);
+		astarNodes.put(astarInitNode.getArgNode(), astarInitNode);
 	}
 }

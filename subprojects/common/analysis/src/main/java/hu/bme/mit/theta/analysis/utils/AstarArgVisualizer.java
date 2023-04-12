@@ -117,7 +117,7 @@ public final class AstarArgVisualizer<S extends State, A extends Action, P exten
 	}
 
 	private <S1 extends S, A1 extends A, P1 extends P> LineStyle getLineStyle(AstarNode<S1, A1> astarNode) {
-		if (astarNode.argNode.isExpanded() && astarNode.argNode.getSuccNodes().findAny().isEmpty()) {
+		if (astarNode.getArgNode().isExpanded() && astarNode.getArgNode().getSuccNodes().findAny().isEmpty()) {
 			return LineStyle.DASHED;
 		} else {
 			return LineStyle.NORMAL;
@@ -130,7 +130,7 @@ public final class AstarArgVisualizer<S extends State, A extends Action, P exten
 			final Set<ArgNode<S1, A1>> traversed,
 			AstarArg<S1, A1, P1> astarArg
 	) {
-		final ArgNode<S1, A1> node = astarNode.argNode;
+		final ArgNode<S1, A1> node = astarNode.getArgNode();
 		if (traversed.contains(node)) {
 			return;
 		}
@@ -142,7 +142,7 @@ public final class AstarArgVisualizer<S extends State, A extends Action, P exten
 		String label = String.format("%s\\l%s\\l%s",
 				stateToString.apply(node.getState()),
 				String.format("Current:  %s", getAstarNodeDetailsText(astarNode)),
-				String.format("Provider: %s", getAstarNodeDetailsText(astarNode.providerAstarNode))
+				String.format("Provider: %s", getAstarNodeDetailsText(astarNode.getProviderAstarNode()))
 		);
 
 		final NodeAttributes nAttributes = NodeAttributes.builder().label(label)
@@ -182,7 +182,7 @@ public final class AstarArgVisualizer<S extends State, A extends Action, P exten
 			Graph graph, ArgNode<S1, A1> parent, AstarNode<S1, A1> child, LineStyle lineStyle, String actionText
 	) {
 		final String sourceId = NODE_ID_PREFIX + parent.getId();
-		final String targetId = NODE_ID_PREFIX + child.argNode.getId();
+		final String targetId = NODE_ID_PREFIX + child.getArgNode().getId();
 		final EdgeAttributes eAttributes = EdgeAttributes.builder().label(actionText).color(LINE_COLOR)
 				.alignment(LEFT).font(FONT).lineStyle(lineStyle).weight(0).build();
 		graph.addEdge(sourceId, targetId, eAttributes);
