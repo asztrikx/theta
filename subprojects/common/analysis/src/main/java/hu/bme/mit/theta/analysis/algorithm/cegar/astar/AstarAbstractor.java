@@ -20,7 +20,6 @@ import hu.bme.mit.theta.analysis.PartialOrd;
 import hu.bme.mit.theta.analysis.Prec;
 import hu.bme.mit.theta.analysis.State;
 import hu.bme.mit.theta.analysis.algorithm.ARG;
-import hu.bme.mit.theta.analysis.algorithm.ARG.Visit;
 import hu.bme.mit.theta.analysis.algorithm.ArgBuilder;
 import hu.bme.mit.theta.analysis.algorithm.ArgNode;
 import hu.bme.mit.theta.analysis.algorithm.cegar.Abstractor;
@@ -135,7 +134,8 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 			assert astarNode.getHeuristic().getType() != Distance.Type.INFINITE;
 			assert astarNode.getDistance().getType() != Distance.Type.INFINITE;
 			@Nullable ArgNode<S, A> parentArgNode = parents.get(astarNode.getArgNode());
-			@Nullable AstarNode<S, A> parentAstarNode = astarArg.get(parentArgNode);
+			@Nullable AstarNode<S, A> parentAstarNode = null;
+			if (parentArgNode != null) parentAstarNode = astarArg.get(parentArgNode);
 			int depth = edge.getDepthFromAStartNode();
 			ArgNode<S, A> argNode = astarNode.getArgNode();
 			int weightValue = astarNode.getWeight(depth).getValue();
@@ -153,7 +153,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 				assert reachedExacts.size() == 0;
 				reachedExacts.add(search.getUpperLimitAstarNode());
 				search.setUpperLimitValue(-1);
-				if (stopCriterion.canStop(astarArg.arg, List.of(astarNode.getArgNode()))) {
+				if (stopCriterion.canStop(astarArg.getArg(), List.of(astarNode.getArgNode()))) {
 					break;
 				}
 			}
@@ -161,7 +161,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 			// reached target
 			if (argNode.isTarget()) {
 				reachedExacts.add(astarNode);
-				if (stopCriterion.canStop(astarArg.arg, List.of(astarNode.getArgNode()))) {
+				if (stopCriterion.canStop(astarArg.getArg(), List.of(astarNode.getArgNode()))) {
 					break;
 				}
 
@@ -175,7 +175,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 			// If node has no children it still can already be expanded, therefore expanded is already set (should not be covered).
 			// If node already has covering node, close cloud still choose another one, therefore avoid.
 			if (!argNode.isExpanded() && argNode.getSuccNodes().findAny().isEmpty() && argNode.getCoveringNode().isEmpty()) {
-				close(astarNode, astarArg.reachedSet.get(argNode).stream().map(astarArg::get).toList());
+				close(astarNode, astarArg.getReachedSet().get(astarNode).stream().toList());
 			}
 			if (argNode.getCoveringNode().isPresent()) {
 				ArgNode<S, A> coveringNode = argNode.getCoveringNode().get();
@@ -230,18 +230,15 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 
 				// expand: create nodes
 				if (!argNode.isExpanded()) {
-					Collection<ArgNode<S, A>> newNodes = argBuilder.expand(argNode, astarArg.prec);
-					astarArg.reachedSet.addAll(newNodes);
+					var newArgNodes = argBuilder.expand(argNode, astarArg.getPrec());
+					for (ArgNode<S, A> newArgNode : newArgNodes) {
+						astarArg.createSuccAstarNode(newArgNode, astarNode); // TODO why wasnt it here?
+					}
 				}
 
 				// go over recreated and remained nodes
 				for (ArgNode<S, A> succArgNode : argNode.getSuccNodes().toList()) {
 					AstarNode<S, A> succAstarNode = astarArg.get(succArgNode);
-
-					// expand: create astar nodes
-					if (succAstarNode == null) {
-						succAstarNode = astarArg.createSuccAstarNode(succArgNode, astarNode);
-					}
 
 					// already existing succAstarNode, e.g:
 					// 		although we only add leaves to startAstarNodes and findHeuristic is called upon them
@@ -252,7 +249,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 					search.addToWaitlist(succAstarNode, astarNode, depth + 1);
 				}
 			}
- 		}
+		}
 		// If we are looking for n targets then it is possible that we reached [1,n) target when reaching this line
 
 		if (heuristicSearchType == HeuristicSearchType.FULL) {
@@ -271,14 +268,23 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 
 		// We need to have heuristic for startAstarNodes therefore we need to set distance.
 		// updateDistancesFromNodes depends on infinite distances being already set therefore set infinite distances first.
-		astarArg.updateDistanceInfinite();
+		AstarArgUtilKt.propagateUpDistanceFromInfiniteDistance(astarArg);
 		Set<ArgNode<S, A>> startNodes = startAstarNodes.stream().map(astarNode -> astarNode.getArgNode()).collect(Collectors.toSet());
-		while(!reachedExacts.isEmpty()) {
-			AstarNode<S, A> target = reachedExacts.removeFirst();
-			astarArg.updateDistancesFromTargetUntil(target, startNodes, parents);
+		while(!reachedExacts.isEmpty()) { // TODO we stop search based on the closest reachExacts element why do we process all?
+			AstarNode<S, A> nodeWithKnownDistance = reachedExacts.removeFirst();
+
+			// TODO move this to earlier place?
+			if (nodeWithKnownDistance.getArgNode().isTarget()) {
+				nodeWithKnownDistance.setDistance(new Distance(Distance.Type.EXACT, 0));
+			}
+
+			// If we cover into a node whose distance is known then it must have been set in a previous search.
+			// Therefore, its parent will be the covered node.
+			// [Multitarget] if we cover into a subgraph explored in this iteration we should have two parents (we can update distances up to the roots)
+			AstarArgUtilKt.propagateUpDistanceFromKnownDistance(astarArg, nodeWithKnownDistance, startNodes, parents);
 
 			// All provider nodes are expected to be expanded, targets as well
-			expandTarget(target, astarArg);
+			expandTarget(nodeWithKnownDistance, astarArg); // TODO this should only be for targets
 		}
 
 		// Updating distance doesn't handle loops as they are hard to implement and probably don't have the same problem
@@ -286,18 +292,16 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		// However, we need to guarantee that startAstarNodes have a distance which is not yet true if a startNode is
 		// in a loop and doesn't reach target.
 		if (startAstarNodes.stream().noneMatch(a -> a.getDistance().isKnown())) {
-			startAstarNodes.forEach(astarArg::updateDistancesFromRootInfinite);
+			AstarArgUtilKt.propagateDownDistanceFromInfiniteDistance(astarArg, startAstarNodes.stream().map(AstarNode::getArgNode).toList());
 		}
 
 		assertShortestDistance(astarArg);
 	}
 
 	private void updateDistancesAllTarget(AstarArg<S, A, P> astarArg, Collection<ArgNode<S, A>> targets) {
-		ARG<S, A> arg = astarArg.arg;
-
-		arg.walk(targets, arg::walkSkipNever, visits -> {
-			ArgNode<S, A> argNode = visits.argNode;
-			int distance = visits.distance;
+		ARGUtilKt.walk(targets, (a, d) -> false, visits -> {
+			ArgNode<S, A> argNode = visits.getArgNode();
+			int distance = visits.getDistance();
 
 			// Covered to ancestor case won't be a problem
 			AstarNode<S, A> astarNode = astarArg.get(argNode);
@@ -312,29 +316,29 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		});
 
 		// Don't use updateDistanceInfinite() as it is for when we are not sure that all nodes without distance is infinite.
-		astarArg.getAll().values().stream()
+		astarArg.getAstarNodes().values().stream()
 				.filter(astarNode -> !astarNode.getDistance().isKnown())
 				.forEach(astarNode -> astarNode.setDistance(new Distance(Distance.Type.INFINITE)));
 
-		assert astarArg.getAll().values().stream().allMatch(astarNode -> astarNode.getDistance().isKnown());
+		assert astarArg.getAstarNodes().values().stream().allMatch(astarNode -> astarNode.getDistance().isKnown());
 		assertShortestDistance(astarArg);
 	}
 
 	private void assertShortestDistance(AstarArg<S, A, P> astarArg) {
-		ARG<S, A> arg = astarArg.arg;
+		ARG<S, A> arg = astarArg.getArg();
 		Collection<ArgNode<S, A>> targets = arg.getNodes().filter(ArgNode::isTarget).toList();
-		arg.walk(targets, (argNode, distance) -> false, visit -> {
-			AstarNode<S, A> astarNode = astarArg.get(visit.argNode);
+		ARGUtilKt.walk(targets, (a, d) -> false, visit -> {
+			AstarNode<S, A> astarNode = astarArg.get(visit.getArgNode());
 			if (astarNode.getDistance().getType() == Distance.Type.EXACT) {
-				assert astarNode.getDistance().getValue() == visit.distance;
+				assert astarNode.getDistance().getValue() == visit.getDistance();
 			}
 
-			Collection<Visit<S, A>> newVisits = new ArrayList<>((int) visit.argNode.getCoveredNodes().count() + 1);
-			visit.argNode.getCoveredNodes().forEach(coveredNode -> {
-				newVisits.add(new Visit<>(coveredNode, visit.distance));
+			Collection<Visit<S, A>> newVisits = new ArrayList<>((int) visit.getArgNode().getCoveredNodes().count() + 1);
+			visit.getArgNode().getCoveredNodes().forEach(coveredNode -> {
+				newVisits.add(new Visit<>(coveredNode, visit.getDistance()));
 			});
-			if (visit.argNode.getParent().isPresent()) {
-				newVisits.add(new Visit<>(visit.argNode.getParent().get(), visit.distance + 1));
+			if (visit.getArgNode().getParent().isPresent()) {
+				newVisits.add(new Visit<>(visit.getArgNode().getParent().get(), visit.getDistance() + 1));
 			}
 			return newVisits;
 		});
@@ -377,18 +381,16 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 			assert !argNode.isExpanded();
 			assert argNode.getSuccNodes().findAny().isEmpty();
 			assert argNode.getCoveringNode().isEmpty();
-			close(astarNode, astarArg.reachedSet.get(argNode).stream().map(astarArg::get).toList());
+			close(astarNode, astarArg.getReachedSet().get(astarNode).stream().toList());
 			if (argNode.getCoveringNode().isEmpty()) {
 				//// We can get covered into already expanded node
 				//// Covering target may have been after astarNode in waitlist therefore it may not already be expanded
-				Collection<ArgNode<S, A>> newNodes = argBuilder.expand(argNode, astarArg.prec);
-				astarArg.reachedSet.addAll(newNodes);
+				argBuilder.expand(argNode, astarArg.getPrec());
 
 				// expand: create astar nodes
 				AstarNode<S, A> lambdaAstarNode = astarNode;
 				argNode.getSuccNodes().forEach(succArgNode -> {
-					AstarNode<S, A> succAstarNode = astarArg.get(succArgNode);
-					assert succAstarNode == null;
+					assert !astarArg.contains(succArgNode);
 					astarArg.createSuccAstarNode(succArgNode, lambdaAstarNode);
 					// We don't add it to waitlist therefore we don't need to find heuristic
 				});
@@ -414,7 +416,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 			AstarArg<S, A, P> astarArg, StopCriterion<S, A> stopCriterion, Collection<AstarNode<S, A>> startAstarNodes,
 			String visualizerState
 	) {
-		final ARG<S, A> arg = astarArg.arg;
+		final ARG<S, A> arg = astarArg.getArg();
 
 		logger.write(Level.INFO, "|  |  Starting ARG: %d nodes, %d incomplete, %d unsafe%n", arg.getNodes().count(),
 				arg.getIncompleteNodes().count(), arg.getUnsafeNodes().count());
@@ -434,13 +436,6 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		astarFileVisualizer.visualize(String.format("end%s", visualizerState), cegarHistoryStorage.indexOf(astarArg));
 	}
 
-	private void initAstarArg(final AstarArg<S, A, P> astarArg) {
-		astarArg.arg.getInitNodes().forEach(initArgNode -> {
-			assert !initArgNode.isCovered();
-			astarArg.createInitAstarNode(initArgNode);
-		});
-	}
-
 	// astarNode: should already have providerNode if not in the first arg
 	// astarArg: the one in which for a node we look for heuristic
 	public void findHeuristic(AstarNode<S, A> astarNode, AstarArg<S, A, P> astarArg, @Nullable AstarNode<S, A> parentAstarNode) {
@@ -452,7 +447,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		}
 
 		// No previous astar arg exists: we must return the lowest lower bound
-		if (astarArg.provider == null) {
+		if (astarArg.getProvider() == null) {
 			astarNode.setHeuristic(new Distance(Distance.Type.EXACT, 0));
 			return;
 		}
@@ -504,7 +499,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 
 		// get the heuristic with findDistance in parent arg
 		AstarNode<S, A> providerAstarNode = astarNode.getProviderAstarNode();
-		AstarArg<S, A, P> providerAstarArg = astarArg.provider;
+		AstarArg<S, A, P> providerAstarArg = astarArg.getProvider();
 
 		String visualizerStateProvider = " " + astarNode.getProviderAstarNode().getArgNode().toString();
 		findDistance(providerAstarArg, new AstarDistanceKnown<>(providerAstarNode), List.of(providerAstarNode), visualizerStateProvider);
@@ -530,7 +525,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		} else {
 			astarArg = cegarHistoryStorage.getLast();
 			// prec is not modified but copied after prune by the CegarChecker
-			astarArg.prec = prec;
+			astarArg.setPrec(prec);
 			// prune was only applied to arg by the CegarChecker
 			astarArg.pruneApply();
 		}
@@ -538,19 +533,21 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		// initialize: prune can keep initialized state
 		if (!arg.isInitialized()) {
 			logger.write(Level.SUBSTEP, "|  |  (Re)initializing ARG...");
-			Collection<ArgNode<S, A>> newNodes = argBuilder.init(arg, prec);
-			astarArg.reachedSet.addAll(newNodes);
-			initAstarArg(astarArg);
+			Collection<ArgNode<S, A>> newInitNodes = argBuilder.init(arg, prec);
+			newInitNodes.forEach(initArgNode -> {
+				assert !initArgNode.isCovered();
+				astarArg.createSuccAstarNode(initArgNode, null);
+			});
 			logger.write(Level.SUBSTEP, "done%n");
 		}
 		assert arg.isInitialized();
 
 		//// parents + (parents & covering edges) make this difficult: arg.getIncompleteNodes().map(astarArg::get).filter(n -> n.distance.getType() != DistanceType.INFINITE)
 		//// 		add to reachedSet if implemented
-		Collection<AstarNode<S, A>> incompleteAstarNodes = astarArg.getIncompleteNodes().toList();
+		Collection<AstarNode<S, A>> incompleteAstarNodes = astarArg.getArg().getIncompleteNodes().map(astarArg::get).toList();
 		// If we start from incomplete nodes then we have to know their shortest depth from an init node.
 		// Unexpanded child might have shorter distance from a covered node.
-		findDistance(astarArg, initialStopCriterion, astarArg.getAllInit(), "");
+		findDistance(astarArg, initialStopCriterion, astarArg.getAstarInitNodes().values(), "");
 
 		// AstarArg has to be copied as arg will be modified after refinement
 		AstarArg<S, A, P> astarArgCopy = AstarIterator.createIterationReplacement(astarArg, prec, partialOrd, projection, this);
@@ -579,7 +576,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 	}
 
 	private void debugInit(AstarArg<S, A, P> astarArg) {
-		debug(astarArg, astarArg.arg.getInitNodes().toList());
+		debug(astarArg, astarArg.getArg().getInitNodes().toList());
 	}
 
 	private void debugAll() {
@@ -591,11 +588,8 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 	// TODO should this be here?
 	private void close(final AstarNode<S, A> astarNode, final Collection<AstarNode<S, A>> candidates) {
 		ArgNode<S, A> argNode = astarNode.getArgNode();
-		assert argNode.getCoveringNode().isEmpty();
-		assert argNode.getSuccNodes().findAny().isEmpty();
-		if (!argNode.isLeaf()) {
-			return;
-		}
+		assert !argNode.isCovered();
+		assert !argNode.isExpanded();
 		for (final AstarNode<S, A> astarCandidate : candidates) {
 			ArgNode<S, A> candidate = astarCandidate.getArgNode();
 			if (!candidate.mayCover(argNode)) {

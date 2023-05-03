@@ -18,21 +18,12 @@ package hu.bme.mit.theta.analysis.algorithm;
 import hu.bme.mit.theta.analysis.Action;
 import hu.bme.mit.theta.analysis.PartialOrd;
 import hu.bme.mit.theta.analysis.State;
-import hu.bme.mit.theta.analysis.waitlist.FifoWaitlist;
-import hu.bme.mit.theta.analysis.waitlist.Waitlist;
 import hu.bme.mit.theta.common.container.Containers;
-import hu.bme.mit.theta.common.container.factory.HashContainerFactory;
 
 import java.util.Collection;
-import java.util.Set;
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Optional;
 import java.util.OptionalInt;
 
-import java.util.function.BiFunction;
-import java.util.function.Function;
 import java.util.stream.Stream;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -83,26 +74,19 @@ public final class ARG<S extends State, A extends Action> {
 		return getInitNodes().flatMap(ArgNode::unexcludedDescendants).filter(n -> !n.isExpanded());
 	}
 
-	// Get expanded (not covered) nodes with no outedge
-	public Stream<ArgNode<S, A>> getCompleteLeafNodes() {
-		// TODO how could it be both expanded and covered?
-		return getInitNodes().flatMap(ArgNode::unexcludedDescendants).filter(n -> n.isExpanded() && n.getSuccNodes().findAny().isEmpty() && !n.isCovered());
-	}
-
-	public Stream<ArgNode<S, A>> getAncestorCoveredNodes() {
-		return getCoveredNodes().filter(coveredNode -> {
-			assert coveredNode.coveringNode.isPresent();
-			ArgNode<S, A> coveringNode = coveredNode.coveringNode.get();
-			return coveredNode.properAncestors().anyMatch(properAncestor -> properAncestor == coveringNode);
-		});
+	/**
+	 * Get expanded nodes with no children
+	 */
+	public Stream<ArgNode<S, A>> getExpandedLeafNodes() {
+		return getInitNodes().flatMap(ArgNode::unexcludedDescendants).filter(n -> n.isExpanded() && n.getSuccNodes().findAny().isEmpty());
 	}
 
 	public Stream<ArgNode<S, A>> getCoveredNodes() {
 		return getInitNodes().flatMap(ArgNode::unexcludedDescendants).filter(ArgNode::isCovered);
 	}
 
-	public Optional<ArgNode<S, A>> getById(int id) {
-		return getNodes().filter(argNode -> argNode.getId() == id).findAny();
+	public Stream<ArgNode<S, A>> getTargetNodes() {
+		return getInitNodes().flatMap(ArgNode::unexcludedDescendants).filter(ArgNode::isTarget);
 	}
 
 	////
@@ -145,7 +129,7 @@ public final class ARG<S extends State, A extends Action> {
 		checkNotNull(action);
 		checkNotNull(succState);
 		checkArgument(node.arg == this, "Node does not belong to this ARG");
-		// We need to expand target // TODO better comment based on edge case 3
+		// We need to expand target in certain hierarchical A* types
 		//checkArgument(!node.isTarget(), "Node is target");
 		final ArgNode<S, A> succNode = createNode(succState, node.getDepth() + 1, target);
 		createEdge(node, action, succNode);
@@ -213,110 +197,6 @@ public final class ARG<S extends State, A extends Action> {
 	 */
 	public Stream<ArgTrace<S, A>> getCexs() {
 		return getUnsafeNodes().map(ArgTrace::to);
-	}
-
-	static public class Visit<S extends State, A extends Action> {
-		final public ArgNode<S, A> argNode;
-		final public int distance;
-
-		public Visit(ArgNode<S, A> argNode, int distance) {
-			this.argNode = argNode;
-			this.distance = distance;
-		}
-	}
-
-	/**
-	 * Calls skip on all nodes reachable from root even through covering edges.
-	 * If skip returns true then the children of the ArgNode is not added to waitlist.
-	 * ArgNode and it's distance from a root is given to skip().
-	 */
-	public void walk(Collection<ArgNode<S, A>> roots, BiFunction<ArgNode<S, A>, Integer, Boolean> skip, Function<Visit<S, A>, Collection<Visit<S, A>>> newVisitsFunc) {
-		for (ArgNode<S, A> root : roots) {
-			checkNotNull(root);
-		}
-		checkNotNull(skip);
-
-		Set<ArgNode<S, A>> doneSet = new HashContainerFactory().createSet();
-		ArrayDeque<Visit<S, A>> queue = new ArrayDeque<>();
-		for (ArgNode<S, A> root : roots) {
-			queue.add(new Visit<>(root, 0));
-		}
-
-		while (!queue.isEmpty()) {
-			Visit<S, A> visit = queue.removeFirst();
-			ArgNode<S, A> argNode = visit.argNode;
-			int distance = visit.distance;
-
-			// covering edges can point to already visited ArgNode
-			if (doneSet.contains(argNode)) {
-				continue;
-			}
-			doneSet.add(argNode);
-
-			// skip
-			if (skip.apply(argNode, distance)) {
-				continue;
-			}
-
-			// covered: add to front of queue
-			Collection<Visit<S, A>> newVisits = newVisitsFunc.apply(visit);
-			for (Visit<S, A> newVisit : newVisits) {
-				if (doneSet.contains(newVisit.argNode)) {
-					continue;
-				}
-
-				if (newVisit.distance == distance) {
-					// Covering edge has zero weight which would break BFS if we did not push it to its correct place in queue
-					//	e.g. to the front which is always a correct place
-					queue.addFirst(newVisit);
-				} else {
-					assert newVisit.distance == distance + 1;
-					queue.addLast(newVisit);
-				}
-			}
-		}
-	}
-
-	public Collection<Visit<S, A>> walkDefault(Visit<S, A> visit) {
-		ArgNode<S, A> argNode = visit.argNode;
-		int distance = visit.distance;
-
-		if (argNode.getCoveringNode().isPresent()) {
-			ArgNode<S, A> coveringNode = argNode.getCoveringNode().get();
-			return List.of(new Visit<>(coveringNode, distance));
-		}
-
-		Collection<Visit<S, A>> newVisits = new ArrayList<>((int) argNode.getSuccNodes().count());
-		argNode.getSuccNodes().forEach(succNode -> newVisits.add(new Visit<>(succNode, distance + 1)));
-		return newVisits;
-	}
-
-	public boolean walkSkipNever(ArgNode<S, A> argNode, Integer distance) {
-		return false;
-	}
-
-	// parents: node -> parent
-	public void walkUpParents(ArgNode<S, A> start, Function<ArgNode<S, A>, ArgNode<S, A>> getParent, BiFunction<ArgNode<S, A>, Integer, Boolean> skip) {
-		checkNotNull(start);
-		checkNotNull(skip);
-
-		ArgNode<S, A> current = start;
-		int distance = 0;
-		while (current != null) {
-			if (skip.apply(current, distance)) {
-				break;
-			}
-
-			ArgNode<S, A> parent = getParent.apply(current);
-			if (parent != null) { // TODO how did this not failed
-				if (current.inEdge.isPresent() && current.inEdge.get().getSource() == parent) {
-					distance++;
-				} else {
-					assert current.coveredNodes.contains(parent);
-				}
-			}
-			current = parent;
-		}
 	}
 
 	/**

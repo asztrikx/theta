@@ -225,6 +225,10 @@ public final class ArgNode<S extends State, A extends Action> {
 		return outEdges.isEmpty();
 	}
 
+	public boolean isExpandedLeaf() {
+		return isExpanded() && isLeaf();
+	}
+
 	/**
 	 * Checks if the node is safe, i.e., not target or excluded.
 	 */

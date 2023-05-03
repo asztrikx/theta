@@ -1,7 +1,6 @@
 package hu.bme.mit.theta.analysis.algorithm;
 
 import hu.bme.mit.theta.analysis.Action;
-import hu.bme.mit.theta.analysis.PartialOrd;
 import hu.bme.mit.theta.analysis.State;
 import hu.bme.mit.theta.analysis.waitlist.FifoWaitlist;
 import hu.bme.mit.theta.analysis.waitlist.Waitlist;
@@ -14,16 +13,12 @@ import java.util.function.BiConsumer;
  * copies ARG and their ArgNode shallowly (keeping action and state)
  */
 public class ArgCopier {
-    public static <S extends State, A extends Action> ARG<S, A> createCopy(ARG<S, A> arg) {
-        return createCopy(arg, (a,b) -> {}, (a,b) -> {});
-    }
-
-    // translationHook: for all new node and it's copy node it will call with paramters (node, copy node)
-    // translationInitHook: for all new init node and it's copy init node it will call with parameters (init node, copy init node)
+    /**
+     * @param translationHook for all new node and it's copy node it will call with paramters (node, copy node)
+     */
     public static <S extends State, A extends Action> ARG<S, A> createCopy(
             ARG<S, A> arg,
-            BiConsumer<ArgNode<S, A>, ArgNode<S, A>> translationHook,
-            BiConsumer<ArgNode<S, A>, ArgNode<S, A>> translationInitHook
+            BiConsumer<ArgNode<S, A>, ArgNode<S, A>> translationHook
     ) {
         ARG<S, A> argCopy = ARG.create(arg.partialOrd);
 
@@ -44,8 +39,6 @@ public class ArgCopier {
             handleCoveringEdges(initNode, initNodeCopy, shouldSetAsCoveringNode, currentToCopyMap);
 
             waitlist.add(new Visit<>(initNode, initNodeCopy));
-
-            translationInitHook.accept(initNode, initNodeCopy);
         });
 
         // walk through ARG and copy nodes

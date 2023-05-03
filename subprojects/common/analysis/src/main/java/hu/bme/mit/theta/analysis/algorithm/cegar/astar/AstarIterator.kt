@@ -27,20 +27,16 @@ object AstarIterator {
 		astarAbstractor: AstarAbstractor<S, A, P>
 	): AstarArg<S, A, P> {
 		val translation = mutableListOf<Pair<ArgNode<S, A>, ArgNode<S, A>>>()
-		val newInitNodes = hashSetOf<ArgNode<S, A>>()
-		val argCopy = ArgCopier.createCopy(astarArg.arg, { argNode, argNodeCopy ->
+		val argCopy = ArgCopier.createCopy(astarArg.arg) { argNode, argNodeCopy ->
 			translation += Pair(argNode, argNodeCopy)
-		}, { initArgNode, initArgNodeCopy ->
-			newInitNodes.add(initArgNodeCopy)
-		})
+		}
 		val astarArgCopy = AstarArg(argCopy, prec, partialOrd, projection, astarArg)
 		astarArgCopy.provider = astarArg.provider
 		astarArg.provider = astarArgCopy
 
 		// Covering edges are created after createCopy finished
-		//  TODO this is bad design
 		translation.forEach { (argNode, argNodeCopy) ->
-			val astarNode = astarArg.get(argNode)
+			val astarNode = astarArg[argNode]
 			val astarNodeCopy = AstarNode(argNodeCopy, astarNode.providerAstarNode)
 			// Heuristic has to be set first otherwise admissibility check fails
 			if (astarNode.heuristic.isKnown) {
@@ -56,17 +52,14 @@ object AstarIterator {
 			astarNode.providerAstarNode = astarNodeCopy
 			astarNode.reset()
 			astarArgCopy.put(astarNodeCopy)
-			if (argNodeCopy in newInitNodes) {
-				astarArgCopy.putInit(astarNodeCopy)
-			}
-			astarArgCopy.reachedSet.add(astarNodeCopy.argNode)
+			astarArgCopy.reachedSet.add(astarNodeCopy)
 
 			if (AstarAbstractor.heuristicSearchType == AstarAbstractor.HeuristicSearchType.DECREASING) {
 				handleAstarDecreasing(astarNode, astarArg, astarAbstractor)
 			}
 		}
-		check(astarArg.arg.nodes.count() == astarArgCopy.all.values.size.toLong())
-		check(astarArg.arg.initNodes.count() == astarArgCopy.allInit.size.toLong())
+		check(astarArg.arg.nodes.count() == astarArgCopy.astarNodes.values.size.toLong())
+		check(astarArg.arg.initNodes.count() == astarArgCopy.astarInitNodes.size.toLong())
 		return astarArgCopy
 	}
 
@@ -83,9 +76,14 @@ object AstarIterator {
 		// therefore the heuristic (which is based on the distance values) will be consistent.
 
 		val argNode = astarNode.argNode
-		val parentArgNode = astarNode.argNode.parent.getOrNull()
-		val parentAstarNode = astarArg.get(parentArgNode)
-		parentAstarNode ?: check(argNode.isInit)
+
+		val parentArgNode = argNode.parent.getOrNull()
+		val parentAstarNode = if (parentArgNode == null) {
+			check(argNode.isInit)
+			null
+		} else astarArg[parentArgNode]
+
+		// TODO why do we call this recursive function here ????
 		astarAbstractor.findHeuristic(astarNode, astarArg, parentAstarNode)
 
 		argNode.coveringNode.getOrNull()?.let {
@@ -97,20 +95,22 @@ object AstarIterator {
 		}
 	}
 
-	// There is no guarantee that cover edges will still be consistent TODO which tests will fail
+	// There is no guarantee that cover edges will still be consistent
+	// TODO which tests would fail?
 	private fun <S: State, A: Action, P: Prec> handleDecreasingCoverEdgeConsistency(
 		coveredNode: ArgNode<S, A>,
 		coveringNode: ArgNode<S, A>,
 		astarArg: AstarArg<S, A, P>,
 	) {
-		val astarCoveredNode = astarArg.get(coveredNode)
-		val astarCoveringNode = astarArg.get(coveringNode)
-
 		// Other astar node (covering or covered) may not exist when trying to handle consistency
 		// It will be checked from the other end of the edge later.
-		astarCoveredNode ?: return
-		astarCoveringNode ?: return
+		if (coveredNode !in astarArg || coveringNode !in astarArg) {
+			return
+		}
 
+		// TODO use .astarArg extension when this method is moved to util (and changed to extension method)
+		val astarCoveredNode = astarArg[coveredNode]
+		val astarCoveringNode = astarArg[coveringNode]
 		check(astarCoveredNode.heuristic.isKnown && astarCoveringNode.heuristic.isKnown)
 		if (astarCoveredNode.heuristic != astarCoveringNode.heuristic) {
 			coveredNode.unsetCoveringNode()
