@@ -255,7 +255,7 @@ public final class ArgNode<S extends State, A extends Action> {
 	}
 
 	public Stream<ArgNode<S, A>> children() {
-		return outEdges.stream().map(ArgEdge::getTarget);
+		return getSuccNodes();
 	}
 
 	public Stream<ArgNode<S, A>> properDescendants() {
