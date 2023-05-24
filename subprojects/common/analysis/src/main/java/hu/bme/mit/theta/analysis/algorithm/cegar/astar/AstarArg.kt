@@ -36,7 +36,7 @@ class AstarArg<S: State, A: Action, P: Prec>(
 		// Collect remained nodes
 		reachedSet.clear()
 		val astarNodesNew = hashMapOf<ArgNode<S, A>, AstarNode<S, A>>()
-		arg.nodes.toList().forEach { argNode ->
+		arg.nodes().forEach { argNode ->
 			val astarNode = this[argNode]
 
 			astarNodesNew[argNode] = astarNode
@@ -106,7 +106,7 @@ class AstarArg<S: State, A: Action, P: Prec>(
 
 			// If we reach a state more general later than a parent provider's child state then it won't get covered.
 			// Therefore, there can be a candidate anywhere in the astar arg, so we should return null.
-			return providerAstarArg.arg.nodes.toList()
+			return provider.arg.nodes()
 		}
 
 		// parentAstarNodeProvider can be covered.
@@ -136,7 +136,7 @@ class AstarArg<S: State, A: Action, P: Prec>(
 			check(parentAstarNodeProvider.argNode.isExpanded)
 		}
 
-		return parentAstarNodeProvider.argNode.succNodes.toList()
+		return parentAstarNodeProvider.argNode.succNodes()
 	}
 
 	/// ArgNode extension which depend on an AstarArg
@@ -171,7 +171,7 @@ class AstarArg<S: State, A: Action, P: Prec>(
 	 */
 	val ArgNode<S, A>.minKnownSuccDistance: Distance?
 		get() {
-			return succNodes.toList()
+			return succNodes()
 				.map { it.astarNode.distance }
 				.filter(Distance::isKnown)
 				.minOrNull()

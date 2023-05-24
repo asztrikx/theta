@@ -52,15 +52,15 @@ fun <S: State, A: Action, P: Prec> AstarArg<S, A, P>.propagateUpDistanceFromKnow
 
 		// Save covered nodes
 		val parentNode = parents[node]
-		val nonParentCoveredNodes = node.coveredNodes.toList()
+		val nonParentCoveredNodes = node.coveredNodes()
 			.filter { it !== parentNode }
 		conditionalNodes += nonParentCoveredNodes
 
 		// Parent is a covered node
-		if (!node.isInit && node.parent.get() !== parentNode) {
+		if (!node.isInit && node.parent()!! !== parentNode) {
 			// Graph parent's other children may have already reached a target with a covered node parent.
 			// But then graph parent's distance hasn't been set and won't be as there isn't any children left.
-			conditionalNodes += node.parent.get()
+			conditionalNodes += node.parent()!!
 		}
 		return@walkUpParents until.contains(node)
 	}
@@ -111,7 +111,7 @@ fun <S: State, A: Action, P: Prec> AstarArg<S, A, P>.propagateUpDistanceFromCond
 
 			if (node === startNode && node.isCovered) {
 				// Copy known distance
-				astarNode.distance = get(node.coveringNode.get()).distance
+				astarNode.distance = get(node.coveringNode()!!).distance
 			} else if (node === startNode && node.isLeaf) {
 				// This must be infinite distance propagation
 				astarNode.distance = Distance(Distance.Type.INFINITE)
@@ -135,7 +135,7 @@ fun <S: State, A: Action, P: Prec> AstarArg<S, A, P>.propagateUpDistanceFromCond
 			}
 			previousDistance = astarNode.distance
 
-			node.coveredNodes.toList().forEach {
+			node.coveredNodes().forEach {
 				check(get(it).distance.isUnknown)
 			}
 			queue += node.coveredNodes()
@@ -223,8 +223,8 @@ fun <S: State, A: Action, P: Prec> AstarArg<S, A, P>.propagateUpDistanceFromInfi
 	val excludeTarget = { node: ArgNode<S, A> -> !node.isTarget }
 
 	// 1)
-	val lateCoveredNodes = arg.coveredNodes.toList().filter { coveredNode ->
-		val covererNode = coveredNode.coveringNode.get()
+	val lateCoveredNodes = arg.coveredNodes().filter { coveredNode ->
+		val covererNode = coveredNode.coveringNode()!!
 		val astarCovererNode = get(covererNode)
 		astarCovererNode.distance.type === Distance.Type.INFINITE
 	}

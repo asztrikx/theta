@@ -79,7 +79,7 @@ fun <S: State, A: Action> Collection<ArgNode<S, A>>.walkSubtree(skip: Skip<S, A>
 			return@newVisits listOf(Visit(it, distance))
 		}
 
-		val succNodes = argNode.succNodes.toList()
+		val succNodes = argNode.succNodes()
 		// Capacity could be given here (currently it is **NOT** given)
 		val newVisits = MutableList<Visit<S, A>>(succNodes.size) { i ->
 			Visit(succNodes[i], distance + 1)

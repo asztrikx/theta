@@ -15,7 +15,7 @@ class AstarFileVisualizer<S: State, A: Action, P: Prec>(
 ) : FileVisualizer(enabled) {
 	override fun visualize(state: String, index: Int) {
 		val astarArg = cegarHistoryStorage[index]
-		val startNodes = astarArg.arg.initNodes.toList()
+		val startNodes = astarArg.arg.initNodes()
 		visualize(state, index, startNodes)
 	}
 

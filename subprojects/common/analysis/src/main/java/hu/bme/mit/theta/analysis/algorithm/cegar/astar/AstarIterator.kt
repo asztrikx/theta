@@ -90,7 +90,7 @@ object AstarIterator {
 			handleDecreasingCoverEdgeConsistency(argNode, it, astarArg)
 		}
 		// Avoid concurrent modification exception by copying stream to list
-		argNode.coveredNodes.toList().forEach { coveredNode ->
+		argNode.coveredNodes().forEach { coveredNode ->
 			handleDecreasingCoverEdgeConsistency(coveredNode, argNode, astarArg)
 		}
 	}
