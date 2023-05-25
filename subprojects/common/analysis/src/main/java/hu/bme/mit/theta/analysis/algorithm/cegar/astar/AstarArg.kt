@@ -45,7 +45,7 @@ class AstarArg<S: State, A: Action>(
 
 	fun createSuccAstarNode(argNode: ArgNode<S, A>): AstarNode<S, A> {
 		val providerAstarNode = getProviderAstarNode(argNode)
-		val astarNode = AstarNode(argNode, providerAstarNode)
+		val astarNode = AstarNode(argNode, providerAstarNode, this)
 		reachedSet.add(astarNode)
 		put(astarNode)
 		return astarNode

@@ -4,12 +4,14 @@ import hu.bme.mit.theta.analysis.Action
 import hu.bme.mit.theta.analysis.State
 import hu.bme.mit.theta.analysis.algorithm.ArgNode
 
+// TODO rename to provider?
 class AstarNode<S: State, A: Action>(
 	val argNode: ArgNode<S, A>,
 	// Can be null if it is the first arg
 	// Can change to its coverer as it may get covered later
 	// Its distance may change later
-	var providerAstarNode: AstarNode<S, A>?
+	var providerAstarNode: AstarNode<S, A>?,
+	val astarArg: AstarArg<S, A>,
 ) {
 	private var _distance = Distance(Distance.Type.UNKNOWN)
 	var distance: Distance

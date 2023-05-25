@@ -36,7 +36,7 @@ object AstarIterator {
 		// Covering edges are created after createCopy finished
 		translation.forEach { (argNode, argNodeCopy) ->
 			val astarNode = astarArg[argNode]
-			val astarNodeCopy = AstarNode(argNodeCopy, astarNode.providerAstarNode)
+			val astarNodeCopy = AstarNode(argNodeCopy, astarNode.providerAstarNode, astarArgCopy)
 			// Heuristic has to be set first otherwise admissibility check fails
 			if (astarNode.heuristic.isKnown) {
 				astarNodeCopy.heuristic = astarNode.heuristic
