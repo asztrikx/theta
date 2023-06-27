@@ -1,22 +1,17 @@
-package hu.bme.mit.theta.analysis.algorithm.cegar.astar.filevisualizer;
+package hu.bme.mit.theta.analysis.algorithm.cegar.astar.filevisualizer
 
-import hu.bme.mit.theta.analysis.Action;
-import hu.bme.mit.theta.analysis.State;
-import hu.bme.mit.theta.analysis.algorithm.ARG;
-import hu.bme.mit.theta.analysis.utils.ArgVisualizer;
-import hu.bme.mit.theta.common.logging.Logger;
+import hu.bme.mit.theta.analysis.Action
+import hu.bme.mit.theta.analysis.State
+import hu.bme.mit.theta.analysis.algorithm.ARG
+import hu.bme.mit.theta.analysis.utils.ArgVisualizer
+import hu.bme.mit.theta.common.visualization.Graph
 
-public class ArgFileVisualizer<S extends State, A extends Action> extends FileVisualizer {
-	private final ARG<S, A> arg;
-
-	public ArgFileVisualizer(boolean enabled, ARG<S, A> arg) {
-		super(enabled);
-		this.arg = arg;
+class ArgFileVisualizer<S: State, A: Action>(enabled: Boolean, private val arg: ARG<S, A>) : FileVisualizer(enabled) {
+	override fun visualize(state: String, index: Int) {
+		super.visualizeBase(getTitle(state, index), getGraph(index))
 	}
 
-	@Override
-	public void visualize(String state, int index) {
-		String titleText = String.format("%d %s", index, state);
-		visualizeBase(state, titleText, () -> ArgVisualizer.getDefault().visualize(arg));
-	}
+	fun getTitle(state: String, index: Int) = "$index $state"
+
+	fun getGraph(index: Int): Graph = ArgVisualizer.getDefault().visualize(arg)
 }
