@@ -1,87 +1,47 @@
-package hu.bme.mit.theta.analysis.algorithm.cegar.astar.filevisualizer;
+package hu.bme.mit.theta.analysis.algorithm.cegar.astar.filevisualizer
 
-import hu.bme.mit.theta.common.logging.Logger;
-import hu.bme.mit.theta.common.logging.NullLogger;
-import hu.bme.mit.theta.common.visualization.Graph;
-import hu.bme.mit.theta.common.visualization.writer.GraphvizWriter;
+import hu.bme.mit.theta.common.visualization.Graph
+import hu.bme.mit.theta.common.visualization.writer.GraphvizWriter
+import java.nio.file.Path
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
+import kotlin.io.path.*
 
-import java.io.File;
-import java.io.IOException;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.function.Supplier;
+abstract class FileVisualizer(var enabled: Boolean) {
+	private val testPath: Path by lazy {
+		// Run results are kept temporarily distinguished by the start datetime of the run
+		val testsPath = Path.of(System.getProperty("java.io.tmpdir"))
+			.resolve("theta")
+			.resolve(dateTimeOfStart)
+			.createDirectories()
 
-import static com.google.common.base.Preconditions.checkNotNull;
-
-public abstract class FileVisualizer {
-	private static final String nowText = getNowText();
-	private File file;
-
-	private boolean enabled;
-	private boolean initialized = false;
-
-	public FileVisualizer(boolean enabled) {
-		this.enabled = enabled;
-
-		if (enabled) {
-			initialize();
-		}
+		// Create separate directory for each test in the current run
+		val testsCount = testsPath.listDirectoryEntries().size
+		testsPath.resolve(testsCount.toString())
+			.createDirectory()
 	}
 
-	public void initialize() {
-		initialized = true;
-
-		File parentDir = new File(String.format("%s/theta/%s", System.getProperty("java.io.tmpdir"), nowText));
-		if (!parentDir.exists()) {
-			boolean successful = parentDir.mkdirs();
-			assert successful;
-		}
-		int testCount = parentDir.listFiles().length;
-		File directory = new File(String.format("%s/theta/%s/%d", System.getProperty("java.io.tmpdir"), nowText, testCount));
-		boolean successful = directory.mkdirs();
-		assert successful;
-		try {
-			file = new File(directory.getCanonicalPath());
-		} catch (IOException e) {
-			throw new RuntimeException(e);
-		}
-	}
-
-	public abstract void visualize(String state, int index);
-
-	protected void visualizeBase(String state, String title, Supplier<Graph> graphSupplier) {
-		checkNotNull(state);
-
+	protected fun visualizeBase(title: String, graph: Graph) {
 		if (!enabled) {
-			return;
+			return
 		}
 
-		try {
-			// '∣' != '|' (for Windows)
-			File[] subfiles = file.listFiles();
-			assert subfiles != null;
-			String filename = String.format("%s/%d∣ %s.svg", file.getCanonicalPath(), subfiles.length + 1, title);
-			GraphvizWriter.getInstance().writeFileAutoConvert(graphSupplier.get(), filename);
-		} catch (IOException | InterruptedException e) {
-			throw new RuntimeException(e);
-		}
+		val visualizationCount = testPath.listDirectoryEntries().size
+		val visualizationId = visualizationCount + 1
+		// '∣' != '|' (for Windows)
+		val filename = testPath.resolve("$visualizationId∣ $title.svg").toString()
+
+		GraphvizWriter.getInstance()
+			.writeFileAutoConvert(graph, filename)
 	}
 
-	public void setEnabled(boolean enabled) {
-		this.enabled = enabled;
+	// Must call visualizeBase
+	abstract fun visualize(state: String, index: Int)
 
-		if (enabled && !initialized) {
-			initialize();
-		}
-	}
-
-	public boolean getEnabled() {
-		return enabled;
-	}
-
-	private static String getNowText() {
-		LocalDateTime now = LocalDateTime.now();
-		DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy_MM_dd HH_mm_ss");
-		return dateTimeFormatter.format(now);
+	companion object {
+		// Date should be determined statically as getting to a point where we want to visualize
+		// could largely differ from the time of starting the tests
+		private val dateTimeOfStart = DateTimeFormatter.ofPattern("yyyy_MM_dd HH_mm_ss")
+			.format(LocalDateTime.now())
 	}
 }
