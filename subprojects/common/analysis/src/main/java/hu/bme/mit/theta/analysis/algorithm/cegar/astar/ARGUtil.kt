@@ -105,11 +105,11 @@ fun <S: State, A: Action> Collection<ArgNode<S, A>>.walkReverseSubtree(skip: Ski
 }
 
 /**
- * Visits parents defined by [walkUpParent] until it returns null or [skip] returns true.
+ * Visits parents defined by [parents] until it returns null or [skip] returns true.
  */
 fun <S: State, A: Action> ArgNode<S, A>.walkUpParents(
 	startDistance: Int,
-	walkUpParent: ArgNode<S, A>.() -> ArgNode<S, A>?,
+	parents: ArgNode<S, A>.() -> ArgNode<S, A>?,
 	skip: Skip<S, A>,
 ) {
 	var current: ArgNode<S, A>? = this
@@ -118,7 +118,7 @@ fun <S: State, A: Action> ArgNode<S, A>.walkUpParents(
 		if (skip(current, distance)) {
 			break
 		}
-		val parent = current.walkUpParent()
+		val parent = current.parents()
 		if (parent != null) {
 			if (current.parent.getOrNull() === parent) {
 				distance++
