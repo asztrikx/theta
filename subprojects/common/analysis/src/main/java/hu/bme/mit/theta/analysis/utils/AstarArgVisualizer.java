@@ -16,13 +16,11 @@
 package hu.bme.mit.theta.analysis.utils;
 
 import hu.bme.mit.theta.analysis.Action;
-import hu.bme.mit.theta.analysis.Prec;
 import hu.bme.mit.theta.analysis.State;
 import hu.bme.mit.theta.analysis.algorithm.ArgEdge;
 import hu.bme.mit.theta.analysis.algorithm.ArgNode;
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarArg;
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarNode;
-import hu.bme.mit.theta.analysis.algorithm.cegar.astar.Distance;
 import hu.bme.mit.theta.common.container.Containers;
 import hu.bme.mit.theta.common.visualization.EdgeAttributes;
 import hu.bme.mit.theta.common.visualization.Graph;
