@@ -8,6 +8,7 @@ import kotlin.jvm.optionals.getOrNull
 
 /**
  * Propagate exact distance up from a node ([from]) until any node in a set ([until]) is reached.
+ * **If all target in an ARG is known the [setDistanceFromAllTargets] should be used for setting all distances**
  *
  * As we are not always searching from the root it's important to only set distances for nodes involved in the search.
  * @param parents should map from a node to its parent.
@@ -177,7 +178,9 @@ fun <S: State, A: Action> AstarArg<S, A>.propagateDownDistanceFromInfiniteDistan
 }
 
 /**
- * Set (*some*) nodes which can't possibly reach target infinite. **This should only be called when search reached a target.**
+ * Set (*some*) nodes which can't possibly reach target infinite.
+ * **This should only be called when search reached a target.**
+ * **If all target in an ARG is known the [setDistanceFromAllTargets] should be used for setting all distances**
  *
  * When searching for a target we might explore nodes which provably can't reach target.
  * We need to mark them infinite otherwise we may revisit those nodes. **This function doesn't handle all scenarios.**
@@ -261,4 +264,48 @@ fun <S: State, A: Action> AstarArg<S, A>.propagateUpDistanceFromInfiniteDistance
 	check(conditionalNodes.size == conditionalNodes.toSet().size)
 
 	propagateUpDistanceFromConditionalNodes(conditionalNodes)
+}
+
+/**
+ * Set **all type of distances** from all targets. **It must only be used if all targets in an ARG is given in [targets].**
+ *
+ * Non-target nodes with known distances are not handled (no use case currently).
+ */
+fun <S: State, A: Action> AstarArg<S, A>.setDistanceFromAllTargets(targets: Collection<ArgNode<S, A>>) {
+	// Set exact distances
+	targets.walkReverseSubtree skip@ { argNode, distance ->
+		// An ancestor can be a target because targets are expanded
+		// TODO targets can't have a distance when function is called
+		if (argNode.astarNode.distance.isKnown) {
+			return@skip true // TODO check why old coded didn't failed
+		}
+
+		argNode.astarNode.distance = Distance(Distance.Type.EXACT, distance)
+		return@skip false
+	}
+
+	// Set infinite distances
+	astarNodes.values
+		.filter { !it.distance.isKnown }
+		.forEach { it.distance = Distance(Distance.Type.INFINITE) }
+
+	check(astarNodes.values.all { it.distance.isKnown })
+
+	// [checkShortestDistance] also would do this no need to call
+}
+
+fun <S: State, A: Action> AstarArg<S, A>.checkShortestDistance() {
+	arg.targetNodes().walkReverseSubtree skip@ { argNode, distance ->
+		val astarNode = argNode.astarNode
+
+		// An ancestor can be a target because targets are expanded
+		// TODO check why old coded didn't failed
+		if (distance != 0 && argNode.isTarget) {
+			return@skip true
+		}
+
+		check(astarNode.distance.type === Distance.Type.EXACT) // TODO this can fail
+		check(astarNode.distance.value == distance)
+		return@skip false
+	}
 }

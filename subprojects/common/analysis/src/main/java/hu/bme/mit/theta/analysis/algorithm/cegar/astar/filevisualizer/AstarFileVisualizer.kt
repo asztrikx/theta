@@ -11,7 +11,7 @@ import hu.bme.mit.theta.common.visualization.Graph
 
 class AstarFileVisualizer<S: State, A: Action, P: Prec>(
 	enabled: Boolean,
-	private val cegarHistoryStorage: CegarHistoryStorage<S, A, P>
+	internal val cegarHistoryStorage: CegarHistoryStorage<S, A, P>
 ) : FileVisualizer(enabled) {
 	override fun visualize(state: String, index: Int) {
 		val astarArg = cegarHistoryStorage[index].first

@@ -89,6 +89,22 @@ fun <S: State, A: Action> Collection<ArgNode<S, A>>.walkSubtree(skip: Skip<S, A>
 }
 
 /**
+ * Calls [walk] with a newVisitFunc that only visits parent and covered nodes.
+ */
+fun <S: State, A: Action> Collection<ArgNode<S, A>>.walkReverseSubtree(skip: Skip<S, A>) {
+	walk(skip) newVisits@ { (argNode, distance) ->
+		val newVisits = mutableListOf<Visit<S, A>>()
+		if (!argNode.isInit) {
+			newVisits += Visit(argNode.parent()!!, distance + 1)
+		}
+		// Currently capacity can't be given in kotlin: argNode.coveredNodes().size + 1
+		newVisits += argNode.coveredNodes().map { Visit(it, distance) }
+
+		return@newVisits newVisits
+	}
+}
+
+/**
  * Visits parents defined by [walkUpParent] until it returns null or [skip] returns true.
  */
 fun <S: State, A: Action> ArgNode<S, A>.walkUpParents(
