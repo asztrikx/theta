@@ -30,9 +30,9 @@ import hu.bme.mit.theta.analysis.algorithm.cegar.CegarChecker;
 import hu.bme.mit.theta.analysis.algorithm.cegar.Refiner;
 import hu.bme.mit.theta.analysis.algorithm.cegar.abstractor.StopCriterions;
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarAbstractor;
-import hu.bme.mit.theta.analysis.algorithm.cegar.astar.argstore.AstarArgStore;
-import hu.bme.mit.theta.analysis.algorithm.cegar.astar.argstore.AstarArgStorePrevious;
-import hu.bme.mit.theta.analysis.algorithm.cegar.astar.argstore.AstarArgStoreAll;
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.argstore.CegarHistoryStorage;
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.argstore.CegarHistoryStoragePrevious;
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.argstore.CegarHistoryStorageAll;
 import hu.bme.mit.theta.analysis.expl.ExplAnalysis;
 import hu.bme.mit.theta.analysis.expl.ExplPrec;
 import hu.bme.mit.theta.analysis.expl.ExplState;
@@ -288,16 +288,16 @@ public class XstsConfigBuilder {
 							heuristicSearchType = AstarAbstractor.HeuristicSearchType.DECREASING;
 						}
 					}
-					final AstarArgStore<XstsState<ExplState>, XstsAction, ExplPrec> astarArgStore = switch (heuristicSearchType) {
-						case FULL, DECREASING -> new AstarArgStorePrevious<>();
-						case SEMI_ONDEMAND -> new AstarArgStoreAll<>();
+					final CegarHistoryStorage<XstsState<ExplState>, XstsAction, ExplPrec> cegarHistoryStorage = switch (heuristicSearchType) {
+						case FULL, DECREASING -> new CegarHistoryStoragePrevious<>();
+						case SEMI_ONDEMAND -> new CegarHistoryStorageAll<>();
 					};
 					AstarAbstractor.heuristicSearchType = heuristicSearchType;
 					final AstarAbstractor<XstsState<ExplState>, XstsAction, ExplPrec> abstractor = AstarAbstractor
 							.builder(argBuilder)
 							.stopCriterion(isMultiSeq ? StopCriterions.fullExploration() : StopCriterions.firstCex())
 							.logger(logger)
-							.astarArgStore(astarArgStore)
+							.cegarHistoryStorage(cegarHistoryStorage)
 							.partialOrder(analysis.getPartialOrd())
 							.build();
 					checker = CegarChecker.create(abstractor, refiner, logger);
@@ -382,16 +382,16 @@ public class XstsConfigBuilder {
 							heuristicSearchType = AstarAbstractor.HeuristicSearchType.DECREASING;
 						}
 					}
-					final AstarArgStore<XstsState<PredState>, XstsAction, PredPrec> astarArgStore = switch (heuristicSearchType) {
-						case FULL, DECREASING -> new AstarArgStorePrevious<>();
-						case SEMI_ONDEMAND -> new AstarArgStoreAll<>();
+					final CegarHistoryStorage<XstsState<PredState>, XstsAction, PredPrec> cegarHistoryStorage = switch (heuristicSearchType) {
+						case FULL, DECREASING -> new CegarHistoryStoragePrevious<>();
+						case SEMI_ONDEMAND -> new CegarHistoryStorageAll<>();
 					};
 					AstarAbstractor.heuristicSearchType = heuristicSearchType;
 					final AstarAbstractor<XstsState<PredState>, XstsAction, PredPrec> abstractor = AstarAbstractor
 							.builder(argBuilder)
 							.stopCriterion(isMultiSeq ? StopCriterions.fullExploration() : StopCriterions.firstCex())
 							.logger(logger)
-							.astarArgStore(astarArgStore)
+							.cegarHistoryStorage(cegarHistoryStorage)
 							.partialOrder(analysis.getPartialOrd())
 							.build();
 					checker = CegarChecker.create(abstractor, refiner, logger);
@@ -492,16 +492,16 @@ public class XstsConfigBuilder {
 							heuristicSearchType = AstarAbstractor.HeuristicSearchType.DECREASING;
 						}
 					}
-					final AstarArgStore<XstsState<Prod2State<ExplState, PredState>>, XstsAction, Prod2Prec<ExplPrec, PredPrec>> astarArgStore = switch (heuristicSearchType) {
-						case FULL, DECREASING -> new AstarArgStorePrevious<>();
-						case SEMI_ONDEMAND -> new AstarArgStoreAll<>();
+					final CegarHistoryStorage<XstsState<Prod2State<ExplState, PredState>>, XstsAction, Prod2Prec<ExplPrec, PredPrec>> cegarHistoryStorage = switch (heuristicSearchType) {
+						case FULL, DECREASING -> new CegarHistoryStoragePrevious<>();
+						case SEMI_ONDEMAND -> new CegarHistoryStorageAll<>();
 					};
 					AstarAbstractor.heuristicSearchType = heuristicSearchType;
 					final AstarAbstractor<XstsState<Prod2State<ExplState, PredState>>, XstsAction, Prod2Prec<ExplPrec, PredPrec>> abstractor = AstarAbstractor
 							.builder(argBuilder)
 							.stopCriterion(isMultiSeq ? StopCriterions.fullExploration() : StopCriterions.firstCex())
 							.logger(logger)
-							.astarArgStore(astarArgStore)
+							.cegarHistoryStorage(cegarHistoryStorage)
 							.partialOrder(analysis.getPartialOrd())
 							.build();
 					checker = CegarChecker.create(abstractor, refiner, logger);

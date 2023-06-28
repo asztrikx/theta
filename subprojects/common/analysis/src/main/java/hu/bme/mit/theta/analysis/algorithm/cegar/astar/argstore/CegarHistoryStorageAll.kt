@@ -5,7 +5,7 @@ import hu.bme.mit.theta.analysis.Prec
 import hu.bme.mit.theta.analysis.State
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarArg
 
-class AstarArgStoreAll<S: State, A: Action, P: Prec> : AstarArgStore<S, A, P> {
+class CegarHistoryStorageAll<S: State, A: Action, P: Prec> : CegarHistoryStorage<S, A, P> {
 	private val astarArgs = mutableListOf<AstarArg<S, A, P>>()
 
 	override val size: Int

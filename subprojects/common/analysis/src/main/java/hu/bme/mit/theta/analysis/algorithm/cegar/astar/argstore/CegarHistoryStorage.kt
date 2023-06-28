@@ -5,7 +5,7 @@ import hu.bme.mit.theta.analysis.Prec
 import hu.bme.mit.theta.analysis.State
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarArg
 
-interface AstarArgStore<S: State, A: Action, P: Prec> {
+interface CegarHistoryStorage<S: State, A: Action, P: Prec> {
 	val size: Int
 
 	fun add(astarArg: AstarArg<S, A, P>): Boolean

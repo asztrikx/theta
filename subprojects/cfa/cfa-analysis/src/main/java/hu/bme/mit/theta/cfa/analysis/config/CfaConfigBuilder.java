@@ -29,9 +29,9 @@ import hu.bme.mit.theta.analysis.algorithm.cegar.CegarChecker;
 import hu.bme.mit.theta.analysis.algorithm.cegar.Refiner;
 import hu.bme.mit.theta.analysis.algorithm.cegar.abstractor.StopCriterions;
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarAbstractor;
-import hu.bme.mit.theta.analysis.algorithm.cegar.astar.argstore.AstarArgStore;
-import hu.bme.mit.theta.analysis.algorithm.cegar.astar.argstore.AstarArgStorePrevious;
-import hu.bme.mit.theta.analysis.algorithm.cegar.astar.argstore.AstarArgStoreAll;
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.argstore.CegarHistoryStorage;
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.argstore.CegarHistoryStoragePrevious;
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.argstore.CegarHistoryStorageAll;
 import hu.bme.mit.theta.analysis.expl.ExplPrec;
 import hu.bme.mit.theta.analysis.expl.ExplState;
 import hu.bme.mit.theta.analysis.expl.ExplStmtAnalysis;
@@ -400,9 +400,9 @@ public class CfaConfigBuilder {
 							heuristicSearchType = AstarAbstractor.HeuristicSearchType.DECREASING;
 						}
 					}
-					final AstarArgStore<CfaState<ExplState>, CfaAction, CfaPrec<ExplPrec>> astarArgStore = switch (heuristicSearchType) {
-						case FULL, DECREASING -> new AstarArgStorePrevious<>();
-						case SEMI_ONDEMAND -> new AstarArgStoreAll<>();
+					final CegarHistoryStorage<CfaState<ExplState>, CfaAction, CfaPrec<ExplPrec>> cegarHistoryStorage = switch (heuristicSearchType) {
+						case FULL, DECREASING -> new CegarHistoryStoragePrevious<>();
+						case SEMI_ONDEMAND -> new CegarHistoryStorageAll<>();
 					};
 					AstarAbstractor.heuristicSearchType = heuristicSearchType;
 					final AstarAbstractor<CfaState<ExplState>, CfaAction, CfaPrec<ExplPrec>> abstractor = AstarAbstractor
@@ -410,7 +410,7 @@ public class CfaConfigBuilder {
 							.projection(projection) //
 							.stopCriterion(isMultiSeq ? StopCriterions.fullExploration() : StopCriterions.firstCex())
 							.logger(logger)
-							.astarArgStore(astarArgStore)
+							.cegarHistoryStorage(cegarHistoryStorage)
 							.partialOrder(analysis.getPartialOrd())
 							.build();
 					checker = CegarChecker.create(abstractor, refiner, logger);
@@ -530,9 +530,9 @@ public class CfaConfigBuilder {
 							heuristicSearchType = AstarAbstractor.HeuristicSearchType.DECREASING;
 						}
 					}
-					final AstarArgStore<CfaState<PredState>, CfaAction, CfaPrec<PredPrec>> astarArgStore = switch (heuristicSearchType) {
-						case FULL, DECREASING -> new AstarArgStorePrevious<>();
-						case SEMI_ONDEMAND -> new AstarArgStoreAll<>();
+					final CegarHistoryStorage<CfaState<PredState>, CfaAction, CfaPrec<PredPrec>> cegarHistoryStorage = switch (heuristicSearchType) {
+						case FULL, DECREASING -> new CegarHistoryStoragePrevious<>();
+						case SEMI_ONDEMAND -> new CegarHistoryStorageAll<>();
 					};
 					AstarAbstractor.heuristicSearchType = heuristicSearchType;
 					final AstarAbstractor<CfaState<PredState>, CfaAction, CfaPrec<PredPrec>> abstractor = AstarAbstractor
@@ -540,7 +540,7 @@ public class CfaConfigBuilder {
 							.projection(projection) //
 							.stopCriterion(isMultiSeq ? StopCriterions.fullExploration() : StopCriterions.firstCex())
 							.logger(logger)
-							.astarArgStore(astarArgStore)
+							.cegarHistoryStorage(cegarHistoryStorage)
 							.partialOrder(analysis.getPartialOrd())
 							.build();
 					checker = CegarChecker.create(abstractor, refiner, logger);

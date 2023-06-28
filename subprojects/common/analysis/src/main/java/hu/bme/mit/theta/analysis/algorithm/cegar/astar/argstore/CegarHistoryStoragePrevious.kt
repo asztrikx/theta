@@ -5,7 +5,7 @@ import hu.bme.mit.theta.analysis.Prec
 import hu.bme.mit.theta.analysis.State
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarArg
 
-class AstarArgStorePrevious<S: State, A: Action, P: Prec> : AstarArgStore<S, A, P> {
+class CegarHistoryStoragePrevious<S: State, A: Action, P: Prec> : CegarHistoryStorage<S, A, P> {
 	private var previous: AstarArg<S, A, P>? = null
 	private var current: AstarArg<S, A, P>? = null
 	override var size = 0

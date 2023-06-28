@@ -28,8 +28,8 @@ import hu.bme.mit.theta.analysis.algorithm.cegar.AbstractorResult;
 import hu.bme.mit.theta.analysis.algorithm.cegar.abstractor.StopCriterion;
 import hu.bme.mit.theta.analysis.algorithm.cegar.abstractor.StopCriterions;
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarSearch.Edge;
-import hu.bme.mit.theta.analysis.algorithm.cegar.astar.argstore.AstarArgStore;
-import hu.bme.mit.theta.analysis.algorithm.cegar.astar.argstore.AstarArgStorePrevious;
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.argstore.CegarHistoryStorage;
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.argstore.CegarHistoryStoragePrevious;
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.filevisualizer.AstarFileVisualizer;
 import hu.bme.mit.theta.common.logging.Logger;
 import hu.bme.mit.theta.common.logging.Logger.Level;
@@ -54,7 +54,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 	private StopCriterion<S, A> initialStopCriterion;
 	// We can't stop when a target node is children of a node because there might be another
 	private final Logger logger;
-	private final AstarArgStore<S, A, P> astarArgStore;
+	private final CegarHistoryStorage<S, A, P> cegarHistoryStorage;
 	private final AstarFileVisualizer<S, A, P> astarFileVisualizer;
 	private PartialOrd<S> partialOrd; // Good for debugging
 
@@ -68,15 +68,15 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 							final Function<? super S, ?> projection,
 							final StopCriterion<S, A> initialStopCriterion,
 							final Logger logger,
-							final AstarArgStore<S, A, P> astarArgStore,
+							final CegarHistoryStorage<S, A, P> cegarHistoryStorage,
 							final PartialOrd<S> partialOrd
 	) {
 		this.argBuilder = checkNotNull(argBuilder);
 		this.projection = checkNotNull(projection);
 		this.initialStopCriterion = checkNotNull(initialStopCriterion);
 		this.logger = checkNotNull(logger);
-		this.astarArgStore = checkNotNull(astarArgStore);
-		this.astarFileVisualizer = new AstarFileVisualizer<>(false, astarArgStore);
+		this.cegarHistoryStorage = checkNotNull(cegarHistoryStorage);
+		this.astarFileVisualizer = new AstarFileVisualizer<>(false, cegarHistoryStorage);
 		this.partialOrd = partialOrd;
 
 		// TODO throw expception on n-cex
@@ -86,7 +86,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 			assert this.initialStopCriterion instanceof StopCriterions.FullExploration;
 		}
 		if (heuristicSearchType == HeuristicSearchType.FULL || heuristicSearchType == HeuristicSearchType.DECREASING) {
-			assert astarArgStore instanceof AstarArgStorePrevious<S,A,P>;
+			assert cegarHistoryStorage instanceof CegarHistoryStoragePrevious<S,A,P>;
 		}
 	}
 
@@ -417,9 +417,9 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 
 		logger.write(Level.INFO, "|  |  Starting ARG: %d nodes, %d incomplete, %d unsafe%n", arg.getNodes().count(),
 				arg.getIncompleteNodes().count(), arg.getUnsafeNodes().count());
-		logger.write(Level.SUBSTEP,"|  |  Starting AstarArg: %s%n", astarFileVisualizer.getTitle("", astarArgStore.indexOf(astarArg)));
+		logger.write(Level.SUBSTEP,"|  |  Starting AstarArg: %s%n", astarFileVisualizer.getTitle("", cegarHistoryStorage.indexOf(astarArg)));
 		logger.write(Level.SUBSTEP, "|  |  Building ARG...");
-		astarFileVisualizer.visualize(String.format("start%s", visualizerState), astarArgStore.indexOf(astarArg));
+		astarFileVisualizer.visualize(String.format("start%s", visualizerState), cegarHistoryStorage.indexOf(astarArg));
 
 		// TODO: is this only for init nodes? if so delete it (DRY for target distance update)
 		//if (!stopCriterion.canStop(arg)) {
@@ -429,8 +429,8 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		logger.write(Level.SUBSTEP, "done%n");
 		logger.write(Level.INFO, "|  |  Finished ARG: %d nodes, %d incomplete, %d unsafe%n", arg.getNodes().count(),
 				arg.getIncompleteNodes().count(), arg.getUnsafeNodes().count());
-		logger.write(Level.INFO, "|  |  Finished AstarArg: %s%n", astarFileVisualizer.getTitle("", astarArgStore.indexOf(astarArg)));
-		astarFileVisualizer.visualize(String.format("end%s", visualizerState), astarArgStore.indexOf(astarArg));
+		logger.write(Level.INFO, "|  |  Finished AstarArg: %s%n", astarFileVisualizer.getTitle("", cegarHistoryStorage.indexOf(astarArg)));
+		astarFileVisualizer.visualize(String.format("end%s", visualizerState), cegarHistoryStorage.indexOf(astarArg));
 	}
 
 	private void initAstarArg(final AstarArg<S, A, P> astarArg) {
@@ -499,8 +499,8 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 
 		// visualize current before going back to previous astarArg
 		String visualizerState = AstarFileVisualizer.getVisualizerState(astarNode);
-		astarFileVisualizer.visualize(String.format("paused %s", visualizerState), astarArgStore.indexOf(astarArg));
-		logger.write(Level.SUBSTEP, "|  |  Paused AstarArg: %s%n", astarFileVisualizer.getTitle("", astarArgStore.indexOf(astarArg)));
+		astarFileVisualizer.visualize(String.format("paused %s", visualizerState), cegarHistoryStorage.indexOf(astarArg));
+		logger.write(Level.SUBSTEP, "|  |  Paused AstarArg: %s%n", astarFileVisualizer.getTitle("", cegarHistoryStorage.indexOf(astarArg)));
 
 		// get the heuristic with findDistance in parent arg
 		AstarNode<S, A> providerAstarNode = astarNode.providerAstarNode;
@@ -511,24 +511,24 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		assert astarNode.getHeuristic().isKnown();
 
 		// visualize current after going back to previous astarArg
-		astarFileVisualizer.visualize(String.format("resumed %s", visualizerState), astarArgStore.indexOf(astarArg));
-		logger.write(Level.SUBSTEP, "|  |  Resumed AstarArg: %s%n", astarFileVisualizer.getTitle("", astarArgStore.indexOf(astarArg)));
+		astarFileVisualizer.visualize(String.format("resumed %s", visualizerState), cegarHistoryStorage.indexOf(astarArg));
+		logger.write(Level.SUBSTEP, "|  |  Resumed AstarArg: %s%n", astarFileVisualizer.getTitle("", cegarHistoryStorage.indexOf(astarArg)));
 	}
 
 	@Override
 	// uses previous AstarArg then calls checkFromNode with root=null
-	// it is assumed that last AstarArg in astarArgStore should be used if exists
+	// it is assumed that last AstarArg in cegarHistoryStorage should be used if exists
 	public AbstractorResult check(final ARG<S, A> arg, final P prec) {
 		checkNotNull(arg);
 		checkNotNull(prec);
 		logger.write(Level.DETAIL, "|  |  Precision: %s%n", prec);
 
 		AstarArg<S, A, P> astarArg;
-		if (astarArgStore.size() == 0) {
+		if (cegarHistoryStorage.getSize() == 0) {
 			astarArg = new AstarArg<>(arg, prec, partialOrd, projection, null);
-			astarArgStore.add(astarArg);
+			cegarHistoryStorage.add(astarArg);
 		} else {
-			astarArg = astarArgStore.getLast();
+			astarArg = cegarHistoryStorage.getLast();
 			// prec is not modified but copied after prune by the CegarChecker
 			astarArg.prec = prec;
 			// prune was only applied to arg by the CegarChecker
@@ -554,9 +554,9 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 
 		// AstarArg has to be copied as arg will be modified after refinement
 		AstarArg<S, A, P> astarArgCopy = AstarIterator.createIterationReplacement(astarArg, prec, partialOrd, projection, this);
-		astarArgStore.setLast(astarArgCopy);
+		cegarHistoryStorage.setLast(astarArgCopy);
 
-		astarArgStore.add(astarArg);
+		cegarHistoryStorage.add(astarArg);
 
 		// found and isSafe is different: e.g. full expand
 		if (arg.isSafe()) {
@@ -574,7 +574,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 	private void debug(AstarArg<S, A, P> astarArg, Collection<ArgNode<S,A>> startNodes) {
 		boolean enabled = astarFileVisualizer.getEnabled();
 		astarFileVisualizer.setEnabled(true);
-		astarFileVisualizer.visualize("debug", astarArgStore.indexOf(astarArg), startNodes);
+		astarFileVisualizer.visualize("debug", cegarHistoryStorage.indexOf(astarArg), startNodes);
 		astarFileVisualizer.setEnabled(enabled);
 	}
 
@@ -583,8 +583,8 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 	}
 
 	private void debugAll() {
-		for (int i = 0; i < astarArgStore.size(); i++) {
-			debugInit(astarArgStore.get(i));
+		for (int i = 0; i < cegarHistoryStorage.getSize(); i++) {
+			debugInit(cegarHistoryStorage.get(i));
 		}
 	}
 
@@ -624,7 +624,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		private Function<? super S, ?> projection;
 		private StopCriterion<S, A> stopCriterion;
 		private Logger logger;
-		private AstarArgStore<S, A, P> astarArgStore;
+		private CegarHistoryStorage<S, A, P> cegarHistoryStorage;
 		private PartialOrd<S> partialOrd;
 
 		private Builder(final ArgBuilder<S, A, P> argBuilder) {
@@ -649,8 +649,8 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 			return this;
 		}
 
-		public Builder<S, A, P> astarArgStore(final AstarArgStore<S, A, P> astarArgStore) {
-			this.astarArgStore = astarArgStore;
+		public Builder<S, A, P> cegarHistoryStorage(final CegarHistoryStorage<S, A, P> cegarHistoryStorage) {
+			this.cegarHistoryStorage = cegarHistoryStorage;
 			return this;
 		}
 
@@ -660,8 +660,8 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		}
 
 		public AstarAbstractor<S, A, P> build() {
-			assert astarArgStore != null;
-			return new AstarAbstractor<>(argBuilder, projection, stopCriterion, logger, astarArgStore, partialOrd);
+			assert cegarHistoryStorage != null;
+			return new AstarAbstractor<>(argBuilder, projection, stopCriterion, logger, cegarHistoryStorage, partialOrd);
 		}
 	}
 

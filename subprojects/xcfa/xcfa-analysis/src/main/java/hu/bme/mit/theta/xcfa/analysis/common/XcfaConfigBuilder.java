@@ -33,9 +33,9 @@ import hu.bme.mit.theta.analysis.algorithm.cegar.CegarChecker;
 import hu.bme.mit.theta.analysis.algorithm.cegar.Refiner;
 import hu.bme.mit.theta.analysis.algorithm.cegar.abstractor.StopCriterions;
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarAbstractor;
-import hu.bme.mit.theta.analysis.algorithm.cegar.astar.argstore.AstarArgStore;
-import hu.bme.mit.theta.analysis.algorithm.cegar.astar.argstore.AstarArgStorePrevious;
-import hu.bme.mit.theta.analysis.algorithm.cegar.astar.argstore.AstarArgStoreAll;
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.argstore.CegarHistoryStorage;
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.argstore.CegarHistoryStoragePrevious;
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.argstore.CegarHistoryStorageAll;
 import hu.bme.mit.theta.analysis.expl.ExplPrec;
 import hu.bme.mit.theta.analysis.expl.ExplStmtAnalysis;
 import hu.bme.mit.theta.analysis.expl.ItpRefToExplPrec;
@@ -265,7 +265,7 @@ public class XcfaConfigBuilder {
 	private AutoExpl autoExpl = AutoExpl.NEWOPERANDS;
 	private final Function projection = state -> ((XcfaState) state).getCurrentLoc();
 	private Analysis analysis = null;
-	private AstarArgStore astarArgStore = null;
+	private CegarHistoryStorage cegarHistoryStorage = null;
 
 	public XcfaConfigBuilder(final Domain domain, final Refinement refinement, final SolverFactory refinementSolverFactory, final SolverFactory abstractionSolverFactory, final Algorithm algorithm) {
 		this.domain = domain;
@@ -496,9 +496,9 @@ public class XcfaConfigBuilder {
 						heuristicSearchType = AstarAbstractor.HeuristicSearchType.DECREASING;
 					}
 				}
-				astarArgStore = switch (heuristicSearchType) {
-					case FULL, DECREASING -> new AstarArgStorePrevious<>();
-					case SEMI_ONDEMAND -> new AstarArgStoreAll<>();
+				cegarHistoryStorage = switch (heuristicSearchType) {
+					case FULL, DECREASING -> new CegarHistoryStoragePrevious();
+					case SEMI_ONDEMAND -> new CegarHistoryStorageAll();
 				};
 				AstarAbstractor.heuristicSearchType = heuristicSearchType;
 				return AstarAbstractor
@@ -506,7 +506,7 @@ public class XcfaConfigBuilder {
 						.projection(projection) //
 						.stopCriterion(isMultiSeq ? StopCriterions.fullExploration() : StopCriterions.firstCex())
 						.logger(logger)
-						.astarArgStore(astarArgStore)
+						.cegarHistoryStorage(cegarHistoryStorage)
 						.partialOrder(algorithm.getPartialOrder(domainAnalysis.getPartialOrd()))
 						.build();
 			}
