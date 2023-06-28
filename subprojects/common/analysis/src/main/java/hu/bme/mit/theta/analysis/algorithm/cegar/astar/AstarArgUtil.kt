@@ -78,7 +78,7 @@ fun <S: State, A: Action> AstarArg<S, A>.propagateUpDistanceFromKnownDistance(
  *
  * @param nodes nodes with distance will be filtered out
  */
-fun <S: State, A: Action> AstarArg<S, A>.propagateUpDistanceFromConditionalNodes(nodes: Collection<ArgNode<S, A>>) {
+private fun <S: State, A: Action> AstarArg<S, A>.propagateUpDistanceFromConditionalNodes(nodes: Collection<ArgNode<S, A>>) {
 	// Filtering out is just a probably useless optimization
 	// (Filtering out in the caller can cause the following edge case of distance changing if filtering too early:)
 	// If we had checked for unknown distances in the walkup process
