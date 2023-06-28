@@ -12,7 +12,7 @@ import kotlin.jvm.optionals.getOrNull
  * As we are not always searching from the root it's important to only set distances for nodes involved in the search.
  * @param parents should map from a node to its parent.
  */
-fun <S: State, A: Action, P: Prec> AstarArg<S, A, P>.propagateUpDistanceFromKnownDistance(
+fun <S: State, A: Action> AstarArg<S, A>.propagateUpDistanceFromKnownDistance(
 	from: AstarNode<S, A>,
 	until: Set<ArgNode<S, A>>,
 	parents: Map<ArgNode<S, A>, ArgNode<S, A>?>,
@@ -77,7 +77,7 @@ fun <S: State, A: Action, P: Prec> AstarArg<S, A, P>.propagateUpDistanceFromKnow
  *
  * @param nodes nodes with distance will be filtered out
  */
-fun <S: State, A: Action, P: Prec> AstarArg<S, A, P>.propagateUpDistanceFromConditionalNodes(nodes: Collection<ArgNode<S, A>>) {
+fun <S: State, A: Action> AstarArg<S, A>.propagateUpDistanceFromConditionalNodes(nodes: Collection<ArgNode<S, A>>) {
 	// Filtering out is just a probably useless optimization
 	// (Filtering out in the caller can cause the following edge case of distance changing if filtering too early:)
 	// If we had checked for unknown distances in the walkup process
@@ -151,7 +151,7 @@ fun <S: State, A: Action, P: Prec> AstarArg<S, A, P>.propagateUpDistanceFromCond
  *
  * @param nodes nodes with distance will be filtered out
  */
-fun <S: State, A: Action, P: Prec> AstarArg<S, A, P>.propagateDownDistanceFromInfiniteDistance(nodes: Collection<ArgNode<S, A>>) {
+fun <S: State, A: Action> AstarArg<S, A>.propagateDownDistanceFromInfiniteDistance(nodes: Collection<ArgNode<S, A>>) {
 	val conditionalNodes = mutableListOf<ArgNode<S, A>>()
 
 	val queue = ArrayDeque(nodes)
@@ -182,7 +182,7 @@ fun <S: State, A: Action, P: Prec> AstarArg<S, A, P>.propagateDownDistanceFromIn
  * When searching for a target we might explore nodes which provably can't reach target.
  * We need to mark them infinite otherwise we may revisit those nodes. **This function doesn't handle all scenarios.**
  */
-fun <S: State, A: Action, P: Prec> AstarArg<S, A, P>.propagateUpDistanceFromInfiniteDistance() {
+fun <S: State, A: Action> AstarArg<S, A>.propagateUpDistanceFromInfiniteDistance() {
 	/*
 	e.g. with BFS
 		T := target

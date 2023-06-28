@@ -39,7 +39,7 @@ import java.util.stream.Collectors;
 import static hu.bme.mit.theta.common.visualization.Alignment.LEFT;
 import static hu.bme.mit.theta.common.visualization.Shape.RECTANGLE;
 
-public final class AstarArgVisualizer<S extends State, A extends Action, P extends Prec> {
+public final class AstarArgVisualizer<S extends State, A extends Action> {
 
 	private static final LineStyle COVER_EDGE_STYLE = LineStyle.DASHED;
 	private static final LineStyle SUCC_EDGE_STYLE = LineStyle.NORMAL;
@@ -57,11 +57,11 @@ public final class AstarArgVisualizer<S extends State, A extends Action, P exten
 	private final Function<? super ArgNode<? extends S, ? extends A>, String> argNodeToString;
 
 	private static class LazyHolderDefault {
-		static final AstarArgVisualizer<State, Action, Prec> INSTANCE = new AstarArgVisualizer<>(s -> s.toString(), a -> a.toString(), astarNode -> astarNode.toString(), n -> n.toString());
+		static final AstarArgVisualizer<State, Action> INSTANCE = new AstarArgVisualizer<>(s -> s.toString(), a -> a.toString(), astarNode -> astarNode.toString(), n -> n.toString());
 	}
 
 	private static class LazyHolderStructureOnly {
-		static final AstarArgVisualizer<State, Action, Prec> INSTANCE = new AstarArgVisualizer<>(s -> "", a -> "", astarNode -> "", n -> "");
+		static final AstarArgVisualizer<State, Action> INSTANCE = new AstarArgVisualizer<>(s -> "", a -> "", astarNode -> "", n -> "");
 	}
 
 	private AstarArgVisualizer(
@@ -76,7 +76,7 @@ public final class AstarArgVisualizer<S extends State, A extends Action, P exten
 		this.argNodeToString = argNodeToString;
 	}
 
-	public static <S extends State, A extends Action, P extends Prec> AstarArgVisualizer<S, A, P> create(
+	public static <S extends State, A extends Action> AstarArgVisualizer<S, A> create(
 			final Function<S, String> stateToString,
 			final Function<A, String> actionToString,
 			final Function<? super AstarNode<? extends S, ? extends A>, String> astarNodeToString,
@@ -85,15 +85,15 @@ public final class AstarArgVisualizer<S extends State, A extends Action, P exten
 		return new AstarArgVisualizer<>(stateToString, actionToString, astarNodeToString, argNodeToString);
 	}
 
-	public static AstarArgVisualizer<State, Action, Prec> getDefault() {
+	public static AstarArgVisualizer<State, Action> getDefault() {
 		return LazyHolderDefault.INSTANCE;
 	}
 
-	public static AstarArgVisualizer<State, Action, Prec> getStructureOnly() {
+	public static AstarArgVisualizer<State, Action> getStructureOnly() {
 		return LazyHolderStructureOnly.INSTANCE;
 	}
 
-	public <S1 extends S, A1 extends A, P1 extends P>  Graph visualize(final AstarArg<S1, A1, P1> astarArg, Collection<ArgNode<S1, A1>> startNodes) {
+	public <S1 extends S, A1 extends A>  Graph visualize(final AstarArg<S1, A1> astarArg, Collection<ArgNode<S1, A1>> startNodes) {
 		final Graph graph = new Graph(ARG_ID, ARG_LABEL);
 
 		final Set<ArgNode<S1, A1>> traversed = Containers.createSet();
@@ -116,7 +116,7 @@ public final class AstarArgVisualizer<S extends State, A extends Action, P exten
 		return graph;
 	}
 
-	private <S1 extends S, A1 extends A, P1 extends P> LineStyle getLineStyle(AstarNode<S1, A1> astarNode) {
+	private <S1 extends S, A1 extends A> LineStyle getLineStyle(AstarNode<S1, A1> astarNode) {
 		if (astarNode.getArgNode().isExpanded() && astarNode.getArgNode().getSuccNodes().findAny().isEmpty()) {
 			return LineStyle.DASHED;
 		} else {
@@ -124,11 +124,11 @@ public final class AstarArgVisualizer<S extends State, A extends Action, P exten
 		}
 	}
 
-	private <S1 extends S, A1 extends A, P1 extends P> void traverse(
+	private <S1 extends S, A1 extends A> void traverse(
 			final Graph graph,
 			final AstarNode<S1, A1> astarNode,
 			final Set<ArgNode<S1, A1>> traversed,
-			AstarArg<S1, A1, P1> astarArg
+			AstarArg<S1, A1> astarArg
 	) {
 		final ArgNode<S1, A1> node = astarNode.getArgNode();
 		if (traversed.contains(node)) {
@@ -171,14 +171,14 @@ public final class AstarArgVisualizer<S extends State, A extends Action, P exten
 		}
 	}
 
-	private <S1 extends S, A1 extends A, P1 extends P> String getAstarNodeDetailsText(@Nullable AstarNode<S1, A1> astarNode) {
+	private <S1 extends S, A1 extends A> String getAstarNodeDetailsText(@Nullable AstarNode<S1, A1> astarNode) {
 		if (astarNode == null) {
 			return "-";
 		}
 		return astarNodeToString.apply(astarNode);
 	}
 
-	private <S1 extends S, A1 extends A, P1 extends P> void createEdge(
+	private <S1 extends S, A1 extends A> void createEdge(
 			Graph graph, ArgNode<S1, A1> parent, AstarNode<S1, A1> child, LineStyle lineStyle, String actionText
 	) {
 		final String sourceId = NODE_ID_PREFIX + parent.getId();

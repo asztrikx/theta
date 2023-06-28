@@ -14,7 +14,7 @@ class AstarFileVisualizer<S: State, A: Action, P: Prec>(
 	private val cegarHistoryStorage: CegarHistoryStorage<S, A, P>
 ) : FileVisualizer(enabled) {
 	override fun visualize(state: String, index: Int) {
-		val astarArg = cegarHistoryStorage[index]
+		val astarArg = cegarHistoryStorage[index].first
 		val startNodes = astarArg.arg.initNodes()
 		visualize(state, index, startNodes)
 	}
@@ -32,6 +32,6 @@ class AstarFileVisualizer<S: State, A: Action, P: Prec>(
 	}
 
 	fun getGraph(index: Int, startNodes: Collection<ArgNode<S, A>>): Graph {
-		return AstarArgVisualizer.getDefault().visualize(cegarHistoryStorage[index], startNodes)
+		return AstarArgVisualizer.getDefault().visualize(cegarHistoryStorage[index].first, startNodes)
 	}
 }

@@ -20,17 +20,16 @@ object AstarIterator {
 	 */
 	@JvmStatic
 	fun <S: State, A: Action, P: Prec> createIterationReplacement(
-		astarArg: AstarArg<S, A, P>,
-		prec: P,
+		astarArg: AstarArg<S, A>,
 		partialOrd: PartialOrd<S>,
 		projection: Function<in S, *>, // TODO replace this with lambda type
 		astarAbstractor: AstarAbstractor<S, A, P>
-	): AstarArg<S, A, P> {
+	): AstarArg<S, A> {
 		val translation = mutableListOf<Pair<ArgNode<S, A>, ArgNode<S, A>>>()
 		val argCopy = ArgCopier.createCopy(astarArg.arg) { argNode, argNodeCopy ->
 			translation += Pair(argNode, argNodeCopy)
 		}
-		val astarArgCopy = AstarArg(argCopy, prec, partialOrd, projection, astarArg)
+		val astarArgCopy = AstarArg(argCopy, partialOrd, projection, astarArg)
 		astarArgCopy.provider = astarArg.provider
 		astarArg.provider = astarArgCopy
 
@@ -65,7 +64,7 @@ object AstarIterator {
 
 	private fun <S: State, A: Action, P: Prec> handleAstarDecreasing(
 		astarNode: AstarNode<S, A>,
-		astarArg: AstarArg<S, A, P>,
+		astarArg: AstarArg<S, A>,
 		astarAbstractor: AstarAbstractor<S, A, P>,
 	) {
 		// Nodes in the next iteration already have covering edges which can break the consistency requirement
@@ -97,10 +96,10 @@ object AstarIterator {
 
 	// There is no guarantee that cover edges will still be consistent
 	// TODO which tests would fail?
-	private fun <S: State, A: Action, P: Prec> handleDecreasingCoverEdgeConsistency(
+	private fun <S: State, A: Action> handleDecreasingCoverEdgeConsistency(
 		coveredNode: ArgNode<S, A>,
 		coveringNode: ArgNode<S, A>,
-		astarArg: AstarArg<S, A, P>,
+		astarArg: AstarArg<S, A>,
 	) {
 		// Other astar node (covering or covered) may not exist when trying to handle consistency
 		// It will be checked from the other end of the edge later.

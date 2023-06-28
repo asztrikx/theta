@@ -2,7 +2,6 @@ package hu.bme.mit.theta.analysis.algorithm.cegar.astar
 
 import hu.bme.mit.theta.analysis.Action
 import hu.bme.mit.theta.analysis.PartialOrd
-import hu.bme.mit.theta.analysis.Prec
 import hu.bme.mit.theta.analysis.State
 import hu.bme.mit.theta.analysis.algorithm.ARG
 import hu.bme.mit.theta.analysis.algorithm.ArgNode
@@ -10,12 +9,11 @@ import hu.bme.mit.theta.analysis.reachedset.Partition
 import java.util.function.Function
 import kotlin.jvm.optionals.getOrNull
 
-class AstarArg<S: State, A: Action, P: Prec>(
+class AstarArg<S: State, A: Action>(
 	val arg: ARG<S, A>,
-	var prec: P, // TODO remove? (AstarVisualizer possible be merged with ArgVisualizer, and ARG also doesn't contain a prec)
 	private val partialOrd: PartialOrd<S>,
 	projection: Function<in S, *>,
-	var provider: AstarArg<S, A, P>?
+	var provider: AstarArg<S, A>?
 ) {
 	// Contains init nodes as well
 	var astarNodes = hashMapOf<ArgNode<S, A>, AstarNode<S, A>>()
