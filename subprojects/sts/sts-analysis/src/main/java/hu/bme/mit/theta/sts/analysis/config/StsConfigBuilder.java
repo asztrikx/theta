@@ -232,7 +232,7 @@ public final class StsConfigBuilder {
 						case SEMI_ONDEMAND -> new CegarHistoryStorageAll<>();
 					};
 					AstarAbstractor.heuristicSearchType = heuristicSearchType;
-					final AstarAbstractor<ExplState, StsAction, ExplPrec> abstractor = AstarAbstractor
+					final AstarAbstractor<ExplState, StsAction, ExplPrec> abstractor = AstarAbstractor.Companion
 							.builder(argBuilder)
 							.stopCriterion(isMultiSeq ? StopCriterions.fullExploration() : StopCriterions.firstCex())
 							.logger(logger)
@@ -319,7 +319,7 @@ public final class StsConfigBuilder {
 						case SEMI_ONDEMAND -> new CegarHistoryStorageAll<>();
 					};
 					AstarAbstractor.heuristicSearchType = heuristicSearchType;
-					final AstarAbstractor<PredState, StsAction, PredPrec> abstractor = AstarAbstractor
+					final AstarAbstractor<PredState, StsAction, PredPrec> abstractor = AstarAbstractor.Companion
 							.builder(argBuilder)
 							.stopCriterion(isMultiSeq ? StopCriterions.fullExploration() : StopCriterions.firstCex())
 							.logger(logger)

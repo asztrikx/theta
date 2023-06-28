@@ -293,7 +293,7 @@ public class XstsConfigBuilder {
 						case SEMI_ONDEMAND -> new CegarHistoryStorageAll<>();
 					};
 					AstarAbstractor.heuristicSearchType = heuristicSearchType;
-					final AstarAbstractor<XstsState<ExplState>, XstsAction, ExplPrec> abstractor = AstarAbstractor
+					final AstarAbstractor<XstsState<ExplState>, XstsAction, ExplPrec> abstractor = AstarAbstractor.Companion
 							.builder(argBuilder)
 							.stopCriterion(isMultiSeq ? StopCriterions.fullExploration() : StopCriterions.firstCex())
 							.logger(logger)
@@ -387,7 +387,7 @@ public class XstsConfigBuilder {
 						case SEMI_ONDEMAND -> new CegarHistoryStorageAll<>();
 					};
 					AstarAbstractor.heuristicSearchType = heuristicSearchType;
-					final AstarAbstractor<XstsState<PredState>, XstsAction, PredPrec> abstractor = AstarAbstractor
+					final AstarAbstractor<XstsState<PredState>, XstsAction, PredPrec> abstractor = AstarAbstractor.Companion
 							.builder(argBuilder)
 							.stopCriterion(isMultiSeq ? StopCriterions.fullExploration() : StopCriterions.firstCex())
 							.logger(logger)
@@ -497,7 +497,7 @@ public class XstsConfigBuilder {
 						case SEMI_ONDEMAND -> new CegarHistoryStorageAll<>();
 					};
 					AstarAbstractor.heuristicSearchType = heuristicSearchType;
-					final AstarAbstractor<XstsState<Prod2State<ExplState, PredState>>, XstsAction, Prod2Prec<ExplPrec, PredPrec>> abstractor = AstarAbstractor
+					final AstarAbstractor<XstsState<Prod2State<ExplState, PredState>>, XstsAction, Prod2Prec<ExplPrec, PredPrec>> abstractor = AstarAbstractor.Companion
 							.builder(argBuilder)
 							.stopCriterion(isMultiSeq ? StopCriterions.fullExploration() : StopCriterions.firstCex())
 							.logger(logger)

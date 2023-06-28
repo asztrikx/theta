@@ -405,7 +405,7 @@ public class CfaConfigBuilder {
 						case SEMI_ONDEMAND -> new CegarHistoryStorageAll<>();
 					};
 					AstarAbstractor.heuristicSearchType = heuristicSearchType;
-					final AstarAbstractor<CfaState<ExplState>, CfaAction, CfaPrec<ExplPrec>> abstractor = AstarAbstractor
+					final AstarAbstractor<CfaState<ExplState>, CfaAction, CfaPrec<ExplPrec>> abstractor = AstarAbstractor.Companion
 							.builder(argBuilder)
 							.projection(projection) //
 							.stopCriterion(isMultiSeq ? StopCriterions.fullExploration() : StopCriterions.firstCex())
@@ -535,7 +535,7 @@ public class CfaConfigBuilder {
 						case SEMI_ONDEMAND -> new CegarHistoryStorageAll<>();
 					};
 					AstarAbstractor.heuristicSearchType = heuristicSearchType;
-					final AstarAbstractor<CfaState<PredState>, CfaAction, CfaPrec<PredPrec>> abstractor = AstarAbstractor
+					final AstarAbstractor<CfaState<PredState>, CfaAction, CfaPrec<PredPrec>> abstractor = AstarAbstractor.Companion
 							.builder(argBuilder)
 							.projection(projection) //
 							.stopCriterion(isMultiSeq ? StopCriterions.fullExploration() : StopCriterions.firstCex())
