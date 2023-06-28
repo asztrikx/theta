@@ -54,7 +54,7 @@ object AstarIterator {
 			astarArgCopy.reachedSet.add(astarNodeCopy)
 
 			if (AstarAbstractor.heuristicSearchType == AstarAbstractor.HeuristicSearchType.DECREASING) {
-				handleAstarDecreasing(astarNode, astarArg, astarAbstractor)
+				handleAstarDecreasing(astarNode, astarAbstractor)
 			}
 		}
 		check(astarArg.arg.nodes.count() == astarArgCopy.astarNodes.values.size.toLong())
@@ -64,7 +64,6 @@ object AstarIterator {
 
 	private fun <S: State, A: Action, P: Prec> handleAstarDecreasing(
 		astarNode: AstarNode<S, A>,
-		astarArg: AstarArg<S, A>,
 		astarAbstractor: AstarAbstractor<S, A, P>,
 	) {
 		// Nodes in the next iteration already have covering edges which can break the consistency requirement
@@ -74,6 +73,7 @@ object AstarIterator {
 		// Full and Semiondemand will always give the same heuristic for covering- and covered node as they are based on distance
 		// therefore the heuristic (which is based on the distance values) will be consistent.
 
+		val astarArg = astarNode.astarArg
 		val argNode = astarNode.argNode
 
 		val parentArgNode = argNode.parent.getOrNull()
