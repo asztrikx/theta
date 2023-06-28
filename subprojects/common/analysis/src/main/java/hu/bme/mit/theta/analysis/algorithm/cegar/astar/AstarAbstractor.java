@@ -79,6 +79,8 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		this.astarFileVisualizer = new AstarFileVisualizer<>(false, astarArgStore);
 		this.partialOrd = partialOrd;
 
+		// TODO throw expception on n-cex
+
 		if (heuristicSearchType == HeuristicSearchType.FULL) {
 			this.initialStopCriterion = StopCriterions.fullExploration();
 			assert this.initialStopCriterion instanceof StopCriterions.FullExploration;
@@ -564,6 +566,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		}
 	}
 
+	// TODO should this be here?
 	private void close(final AstarNode<S, A> astarNode, final Collection<AstarNode<S, A>> candidates) {
 		ArgNode<S, A> argNode = astarNode.argNode;
 		assert argNode.getCoveringNode().isEmpty();
@@ -593,6 +596,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		return Utils.lispStringBuilder(getClass().getSimpleName()).add(waitlist).toString();
 	}*/
 
+	// TOOD builder in kotlin?
 	public static final class Builder<S extends State, A extends Action, P extends Prec> {
 		private final ArgBuilder<S, A, P> argBuilder;
 		private Function<? super S, ?> projection;

@@ -20,6 +20,7 @@ import hu.bme.mit.theta.analysis.Prec;
 import hu.bme.mit.theta.analysis.State;
 import hu.bme.mit.theta.analysis.Trace;
 import hu.bme.mit.theta.analysis.algorithm.SafetyResult;
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarAbstractor.HeuristicSearchType;
 import hu.bme.mit.theta.analysis.expl.ExplState;
 import hu.bme.mit.theta.cfa.CFA;
 import hu.bme.mit.theta.cfa.analysis.config.CfaConfig;
@@ -41,6 +42,7 @@ import java.io.FileInputStream;
 import java.util.Arrays;
 import java.util.Collection;
 
+import static hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarAbstractor.HeuristicSearchType.*;
 import static hu.bme.mit.theta.cfa.analysis.config.CfaConfigBuilder.Domain.EXPL;
 import static hu.bme.mit.theta.cfa.analysis.config.CfaConfigBuilder.Domain.PRED_BOOL;
 import static hu.bme.mit.theta.cfa.analysis.config.CfaConfigBuilder.Domain.PRED_CART;
@@ -69,83 +71,86 @@ public class CfaTest {
 	@Parameterized.Parameter(value = 5)
 	public String solver;
 
-	@Parameterized.Parameters(name = "{index}: {0}, {1}, {2}, {3}, {4}, {5}")
+	@Parameterized.Parameter(value = 6)
+	public HeuristicSearchType[] excludedAstarHeuristics;
+
+	@Parameterized.Parameters(name = "{index}: {0}, {1}, {2}, {3}, {4}, {5}, {6}")
 	public static Collection<Object[]> data() {
 		return Arrays.asList(new Object[][] {
 
-				{ "src/test/resources/arithmetic-bool00.cfa", PRED_CART, SEQ_ITP, false, 15, "Z3" },
+				{ "src/test/resources/arithmetic-bool00.cfa", PRED_CART, SEQ_ITP, false, 15, "Z3", null },
 
-				{ "src/test/resources/arithmetic-bool00.cfa", PRED_BOOL, BW_BIN_ITP, false, 15, "Z3" },
+				{ "src/test/resources/arithmetic-bool00.cfa", PRED_BOOL, BW_BIN_ITP, false, 15, "Z3", null },
 
-				{ "src/test/resources/arithmetic-bool00.cfa", EXPL, SEQ_ITP, false, 15, "Z3" },
+				{ "src/test/resources/arithmetic-bool00.cfa", EXPL, SEQ_ITP, false, 15, "Z3", null },
 
-				{ "src/test/resources/arithmetic-bool01.cfa", PRED_CART, SEQ_ITP, false, 15, "Z3" },
+				{ "src/test/resources/arithmetic-bool01.cfa", PRED_CART, SEQ_ITP, false, 15, "Z3", null },
 
-				{ "src/test/resources/arithmetic-bool01.cfa", PRED_BOOL, BW_BIN_ITP, false, 15, "Z3" },
+				{ "src/test/resources/arithmetic-bool01.cfa", PRED_BOOL, BW_BIN_ITP, false, 15, "Z3", null },
 
-				{ "src/test/resources/arithmetic-bool01.cfa", EXPL, SEQ_ITP, false, 15, "Z3" },
+				{ "src/test/resources/arithmetic-bool01.cfa", EXPL, SEQ_ITP, false, 15, "Z3", null },
 
-				{ "src/test/resources/arithmetic-bool10.cfa", PRED_BOOL, SEQ_ITP, false, 15, "Z3" },
+				{ "src/test/resources/arithmetic-bool10.cfa", PRED_BOOL, SEQ_ITP, false, 15, "Z3", null },
 
-				{ "src/test/resources/arithmetic-bool10.cfa", PRED_CART, BW_BIN_ITP, false, 15, "Z3" },
+				{ "src/test/resources/arithmetic-bool10.cfa", PRED_CART, BW_BIN_ITP, false, 15, "Z3", null },
 
-				{ "src/test/resources/arithmetic-bool10.cfa", EXPL, SEQ_ITP, false, 15, "Z3" },
+				{ "src/test/resources/arithmetic-bool10.cfa", EXPL, SEQ_ITP, false, 15, "Z3", null },
 
-				{ "src/test/resources/arithmetic-bool11.cfa", PRED_CART, SEQ_ITP, false, 15, "Z3" },
+				{ "src/test/resources/arithmetic-bool11.cfa", PRED_CART, SEQ_ITP, false, 15, "Z3", null },
 
-				{ "src/test/resources/arithmetic-bool11.cfa", PRED_BOOL, BW_BIN_ITP, false, 15, "Z3" },
+				{ "src/test/resources/arithmetic-bool11.cfa", PRED_BOOL, BW_BIN_ITP, false, 15, "Z3", null },
 
-				{ "src/test/resources/arithmetic-bool11.cfa",  EXPL, SEQ_ITP, false, 15, "Z3" },
+				{ "src/test/resources/arithmetic-bool11.cfa",  EXPL, SEQ_ITP, false, 15, "Z3", null },
 
-				{ "src/test/resources/arithmetic-int.cfa", PRED_CART, SEQ_ITP, false, 13, "Z3" },
+				{ "src/test/resources/arithmetic-int.cfa", PRED_CART, SEQ_ITP, false, 13, "Z3", null },
 
-				{ "src/test/resources/arithmetic-int.cfa", PRED_BOOL, BW_BIN_ITP, false, 13, "Z3" },
+				{ "src/test/resources/arithmetic-int.cfa", PRED_BOOL, BW_BIN_ITP, false, 13, "Z3", null },
 
-				{ "src/test/resources/arithmetic-int.cfa",  EXPL, SEQ_ITP, false, 13, "Z3" },
+				{ "src/test/resources/arithmetic-int.cfa",  EXPL, SEQ_ITP, false, 13, "Z3", null },
 
-				{ "src/test/resources/arithmetic-mod.cfa",  PRED_CART, SEQ_ITP, true, 0, "Z3" },
+				{ "src/test/resources/arithmetic-mod.cfa",  PRED_CART, SEQ_ITP, true, 0, "Z3", null },
 
-				{ "src/test/resources/arithmetic-mod.cfa",  EXPL, BW_BIN_ITP, true, 0, "Z3" },
+				{ "src/test/resources/arithmetic-mod.cfa",  EXPL, BW_BIN_ITP, true, 0, "Z3", null },
 
-				{ "src/test/resources/arrays.cfa", PRED_CART, SEQ_ITP, false, 8, "Z3" },
+				{ "src/test/resources/arrays.cfa", PRED_CART, SEQ_ITP, false, 8, "Z3", null },
 
-				{ "src/test/resources/arrays.cfa", PRED_BOOL, BW_BIN_ITP, false, 8, "Z3" },
+				{ "src/test/resources/arrays.cfa", PRED_BOOL, BW_BIN_ITP, false, 8, "Z3", null },
 
-				{ "src/test/resources/arrayinit.cfa", PRED_CART, BW_BIN_ITP, false, 3, "Z3" },
+				{ "src/test/resources/arrayinit.cfa", PRED_CART, BW_BIN_ITP, false, 3, "Z3", null },
 
-				{ "src/test/resources/arrays.cfa", EXPL, SEQ_ITP, false, 8, "Z3" },
+				{ "src/test/resources/arrays.cfa", EXPL, SEQ_ITP, false, 8, "Z3", null },
 
-				{ "src/test/resources/counter5_true.cfa", PRED_BOOL, SEQ_ITP, true, 0, "Z3" },
+				{ "src/test/resources/counter5_true.cfa", PRED_BOOL, SEQ_ITP, true, 0, "Z3", null },
 
-				{ "src/test/resources/counter5_true.cfa", PRED_CART, BW_BIN_ITP, true, 0, "Z3" },
+				{ "src/test/resources/counter5_true.cfa", PRED_CART, BW_BIN_ITP, true, 0, "Z3", null },
 
-				{ "src/test/resources/counter5_true.cfa", EXPL, SEQ_ITP, true, 0, "Z3" },
+				{ "src/test/resources/counter5_true.cfa", EXPL, SEQ_ITP, true, 0, "Z3", null },
 
-				{ "src/test/resources/counter_bv_true.cfa", EXPL, NWT_IT_WP, true, 0, "Z3" },
+				{ "src/test/resources/counter_bv_true.cfa", EXPL, NWT_IT_WP, true, 0, "Z3", null },
 
-				{ "src/test/resources/counter_bv_false.cfa", EXPL, NWT_IT_WP, false, 13, "Z3" },
+				{ "src/test/resources/counter_bv_false.cfa", EXPL, NWT_IT_WP, false, 13, "Z3", null },
 
-				{ "src/test/resources/counter_bv_true.cfa", PRED_CART, NWT_IT_WP, true, 0, "Z3" },
+				{ "src/test/resources/counter_bv_true.cfa", PRED_CART, NWT_IT_WP, true, 0, "Z3", null },
 
-				{ "src/test/resources/counter_bv_false.cfa", PRED_CART, UCB, false, 13, "Z3" },
+				{ "src/test/resources/counter_bv_false.cfa", PRED_CART, UCB, false, 13, "Z3", null },
 
-				{ "src/test/resources/counter_bv_true.cfa", EXPL, SEQ_ITP, true, 0, "mathsat:latest" },
+				{ "src/test/resources/counter_bv_true.cfa", EXPL, SEQ_ITP, true, 0, "mathsat:latest", null },
 
-				{ "src/test/resources/counter_bv_false.cfa", EXPL, SEQ_ITP, false, 13, "mathsat:latest" },
+				{ "src/test/resources/counter_bv_false.cfa", EXPL, SEQ_ITP, false, 13, "mathsat:latest", null },
 
-				{ "src/test/resources/fp1.cfa", PRED_CART, NWT_IT_WP, true, 0, "Z3" },
+				{ "src/test/resources/fp1.cfa", PRED_CART, NWT_IT_WP, true, 0, "Z3", null },
 
-				{ "src/test/resources/fp2.cfa", PRED_CART, NWT_IT_WP, false, 5, "Z3" },
+				{ "src/test/resources/fp2.cfa", PRED_CART, NWT_IT_WP, false, 5, "Z3", null },
 
-				{ "src/test/resources/counter_fp_true.cfa", EXPL, NWT_IT_WP, true, 0, "Z3" },
+				{ "src/test/resources/counter_fp_true.cfa", EXPL, NWT_IT_WP, true, 0, "Z3", null },
 
-				{ "src/test/resources/ifelse.cfa", PRED_CART, SEQ_ITP, false, 3, "Z3" },
+				{ "src/test/resources/ifelse.cfa", PRED_CART, SEQ_ITP, false, 3, "Z3", null },
 
-				{ "src/test/resources/ifelse.cfa", PRED_BOOL, BW_BIN_ITP, false, 3, "Z3" },
+				{ "src/test/resources/ifelse.cfa", PRED_BOOL, BW_BIN_ITP, false, 3, "Z3", null },
 
-				{ "src/test/resources/ifelse.cfa", EXPL, SEQ_ITP, false, 3, "Z3" },
+				{ "src/test/resources/ifelse.cfa", EXPL, SEQ_ITP, false, 3, "Z3", null },
 
-				{ "src/test/resources/locking.cfa", PRED_CART, SEQ_ITP, true, 0, "Z3" },
+				{ "src/test/resources/locking.cfa", PRED_CART, SEQ_ITP, true, 0, "Z3", null },
 
 		});
 	}
@@ -167,19 +172,31 @@ public class CfaTest {
 		}
 
 		try {
-			CFA cfa = CfaDslManager.createCfa(new FileInputStream(filePath));
-			CfaConfig<? extends State, ? extends Action, ? extends Prec> config
-				= new CfaConfigBuilder(domain, refinement, solverFactory)
-				//.logger(new ConsoleLogger(Logger.Level.VERBOSE))
-				.search(CfaConfigBuilder.Search.ASTAR)
-				.build(cfa, cfa.getErrorLoc().get());
-			SafetyResult<? extends State, ? extends Action> result = config.check();
-			Assert.assertEquals(isSafe, result.isSafe());
-			if (result.isUnsafe()) {
-				Trace<CfaState<ExplState>, CfaAction> trace = CfaTraceConcretizer.concretize(
-					(Trace<CfaState<?>, CfaAction>) result.asUnsafe().getTrace(),
-					solverFactory);
-				Assert.assertEquals(cexLength, trace.length());
+			var allHeuristics = new HeuristicSearchType[]{
+				DECREASING,
+				SEMI_ONDEMAND,
+				FULL
+			};
+			for (var astarHeuristic : allHeuristics) {
+				if (excludedAstarHeuristics != null && Arrays.asList(excludedAstarHeuristics).contains(astarHeuristic)) {
+					continue;
+				}
+
+				CFA cfa = CfaDslManager.createCfa(new FileInputStream(filePath));
+				CfaConfig<? extends State, ? extends Action, ? extends Prec> config
+						= new CfaConfigBuilder(domain, refinement, solverFactory)
+						//.logger(new ConsoleLogger(Logger.Level.VERBOSE))
+						.search(CfaConfigBuilder.Search.ASTAR)
+						.heuristicSearchType(astarHeuristic)
+						.build(cfa, cfa.getErrorLoc().get());
+				SafetyResult<? extends State, ? extends Action> result = config.check();
+				Assert.assertEquals(isSafe, result.isSafe());
+				if (result.isUnsafe()) {
+					Trace<CfaState<ExplState>, CfaAction> trace = CfaTraceConcretizer.concretize(
+							(Trace<CfaState<?>, CfaAction>) result.asUnsafe().getTrace(),
+							solverFactory);
+					Assert.assertEquals(cexLength, trace.length());
+				}
 			}
 		}
 		finally {
