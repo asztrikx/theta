@@ -24,7 +24,6 @@ class AstarSearch<S: State, A: Action> {
 	// Possible cases:
 	//   - target in a different subgraph reached by covering edge
 	//   - target in the same subgraph which was reached earlier from a different subgraph (by a covering edge)
-	// TODO rename to unhandledWeightUpperLimit...?
 	var upperLimitValue = -1
 	var upperLimitAstarNode: AstarNode<S, A>? = null
 
