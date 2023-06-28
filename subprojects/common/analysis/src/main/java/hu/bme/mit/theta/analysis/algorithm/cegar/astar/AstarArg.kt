@@ -14,7 +14,7 @@ class AstarArg<S: State, A: Action, P: Prec>(
 	val arg: ARG<S, A>,
 	var prec: P, // TODO remove? (AstarVisualizer possible be merged with ArgVisualizer, and ARG also doesn't contain a prec)
 	private val partialOrd: PartialOrd<S>,
-	projection: Function<in S, *>, // TODO remove
+	projection: Function<in S, *>,
 	var provider: AstarArg<S, A, P>?
 ) {
 	// Contains init nodes as well
@@ -45,8 +45,8 @@ class AstarArg<S: State, A: Action, P: Prec>(
 		astarNodes = astarNodesNew
 	}
 
-	fun createSuccAstarNode(argNode: ArgNode<S, A>, parentAstarNode: AstarNode<S, A>?): AstarNode<S, A> {
-		val providerAstarNode = getProviderAstarNode(argNode, parentAstarNode, provider)
+	fun createSuccAstarNode(argNode: ArgNode<S, A>): AstarNode<S, A> {
+		val providerAstarNode = getProviderAstarNode(argNode)
 		val astarNode = AstarNode(argNode, providerAstarNode)
 		reachedSet.add(astarNode)
 		put(astarNode)
@@ -56,25 +56,22 @@ class AstarArg<S: State, A: Action, P: Prec>(
 	/**
 	 * @param parentAstarNode can be null when [argNode] is an init node
 	 */
-	private fun getProviderAstarNode(
-		argNode: ArgNode<S, A>,
-		parentAstarNode: AstarNode<S, A>?,
-		providerAstarArg: AstarArg<S, A, P>?,
-	): AstarNode<S, A>? {
-		providerAstarArg ?: return null
-		require(!providerAstarArg.contains(argNode))
+	private fun getProviderAstarNode(argNode: ArgNode<S, A>): AstarNode<S, A>? {
+		val provider = provider
+		provider ?: return null
+		require(!provider.contains(argNode))
 
-		var providerCandidates = getProviderCandidates(argNode, parentAstarNode, providerAstarArg)
+		var providerCandidates = getProviderCandidates(argNode)
 		providerCandidates ?: return null
 
 		// filter based on partialOrd.isLeq == "<=" == subset of
 		providerCandidates = providerCandidates.filter { partialOrd.isLeq(argNode.state, it.state) }
 
 		// If we knew all nodes heuristics then we would choose the largest one as it is the most precise lower bound
-		if (providerCandidates.any { providerAstarArg[it].distance.isKnown }) {
+		if (providerCandidates.any { provider[it].distance.isKnown }) {
 			providerCandidates = providerCandidates
-				.filter { providerAstarArg[it].distance.isKnown }
-				.sortedBy { providerAstarArg[it].distance }
+				.filter { provider[it].distance.isKnown }
+				.sortedBy { provider[it].distance }
 		}
 
 		val providerNode = providerCandidates.firstOrNull()
@@ -87,17 +84,15 @@ class AstarArg<S: State, A: Action, P: Prec>(
 		} else {
 			check(providerNode != null)
 		}
-		return providerAstarArg[providerNode]
+		return provider[providerNode]
 	}
 
-	private fun getProviderCandidates(
-		argNode: ArgNode<S, A>,
-		parentAstarNode: AstarNode<S, A>?,
-		providerAstarArg: AstarArg<S, A, P>,
-	): List<ArgNode<S, A>>? {
+	private fun getProviderCandidates(argNode: ArgNode<S, A>): List<ArgNode<S, A>>? {
+		val provider = provider!!
+		val parentAstarNode = argNode.parent()?.astarNode
 		if (parentAstarNode == null) {
 			require(argNode.isInit)
-			return providerAstarArg.astarInitNodes.keys.toList()
+			return provider.astarInitNodes.keys.toList()
 		}
 
 		var parentAstarNodeProvider = parentAstarNode.providerAstarNode ?: run {
@@ -122,7 +117,7 @@ class AstarArg<S: State, A: Action, P: Prec>(
 			//	 That case is handled by expanded target when found.
 
 			// Visualization optimization: set parent's provider to the covering node
-			parentAstarNode.providerAstarNode = providerAstarArg[parentNodeCoveringNodeProvider]
+			parentAstarNode.providerAstarNode = provider[parentNodeCoveringNodeProvider]
 
 			parentAstarNodeProvider = parentAstarNode.providerAstarNode!!
 		}

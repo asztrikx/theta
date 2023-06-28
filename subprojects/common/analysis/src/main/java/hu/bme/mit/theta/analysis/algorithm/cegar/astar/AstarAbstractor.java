@@ -232,7 +232,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 				if (!argNode.isExpanded()) {
 					var newArgNodes = argBuilder.expand(argNode, astarArg.getPrec());
 					for (ArgNode<S, A> newArgNode : newArgNodes) {
-						astarArg.createSuccAstarNode(newArgNode, astarNode); // TODO why wasnt it here?
+						astarArg.createSuccAstarNode(newArgNode); // TODO why wasnt it here?
 					}
 				}
 
@@ -391,7 +391,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 				AstarNode<S, A> lambdaAstarNode = astarNode;
 				argNode.getSuccNodes().forEach(succArgNode -> {
 					assert !astarArg.contains(succArgNode);
-					astarArg.createSuccAstarNode(succArgNode, lambdaAstarNode);
+					astarArg.createSuccAstarNode(succArgNode);
 					// We don't add it to waitlist therefore we don't need to find heuristic
 				});
 
@@ -536,7 +536,7 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 			Collection<ArgNode<S, A>> newInitNodes = argBuilder.init(arg, prec);
 			newInitNodes.forEach(initArgNode -> {
 				assert !initArgNode.isCovered();
-				astarArg.createSuccAstarNode(initArgNode, null);
+				astarArg.createSuccAstarNode(initArgNode);
 			});
 			logger.write(Level.SUBSTEP, "done%n");
 		}
