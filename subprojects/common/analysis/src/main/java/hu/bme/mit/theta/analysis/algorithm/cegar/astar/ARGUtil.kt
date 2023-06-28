@@ -7,7 +7,7 @@ import kotlin.jvm.optionals.getOrNull
 
 // Kotlin doesn't allow bounds here
 typealias Skip<S, A> = (ArgNode<S, A>, Int) -> Boolean
-typealias NewVisit<S, A> = (Visit<S, A>) -> Collection<Visit<S, A>>
+typealias NewVisits<S, A> = (Visit<S, A>) -> Collection<Visit<S, A>>
 
 // Pair would create .first and .second properties which would be hard to read
 class Visit<S: State, A: Action>(
@@ -26,7 +26,7 @@ class Visit<S: State, A: Action>(
  */
 fun <S: State, A: Action> Collection<ArgNode<S, A>>.walk(
 	skip: Skip<S, A>,
-	newVisitsFunc: NewVisit<S, A>
+	newVisitsFunc: NewVisits<S, A>
 ) {
 	val doneSet = hashSetOf<ArgNode<S, A>>()
 	val queue = ArrayDeque(this.map {
@@ -63,7 +63,7 @@ fun <S: State, A: Action> Collection<ArgNode<S, A>>.walk(
 }
 
 fun <S: State, A: Action> Collection<ArgNode<S, A>>.walk(
-	newVisitsFunc: NewVisit<S, A>
+	newVisitsFunc: NewVisits<S, A>
 ) {
 	walk({_, _ -> false}, newVisitsFunc)
 }
