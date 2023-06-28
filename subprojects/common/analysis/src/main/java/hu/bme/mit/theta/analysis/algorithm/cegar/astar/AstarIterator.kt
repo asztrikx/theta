@@ -83,7 +83,7 @@ object AstarIterator {
 		} else astarArg[parentArgNode]
 
 		// TODO why do we call this recursive function here ????
-		astarAbstractor.findHeuristic(astarNode, astarArg, parentAstarNode)
+		astarAbstractor.findHeuristic(astarNode)
 
 		argNode.coveringNode.getOrNull()?.let {
 			handleDecreasingCoverEdgeConsistency(argNode, it, astarArg)
