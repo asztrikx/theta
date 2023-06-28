@@ -618,51 +618,23 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 		return Utils.lispStringBuilder(getClass().getSimpleName()).add(waitlist).toString();
 	}*/
 
-	// TOOD builder in kotlin?
-	public static final class Builder<S extends State, A extends Action, P extends Prec> {
-		private final ArgBuilder<S, A, P> argBuilder;
-		private Function<? super S, ?> projection;
-		private StopCriterion<S, A> stopCriterion;
-		private Logger logger;
-		private CegarHistoryStorage<S, A, P> cegarHistoryStorage;
-		private PartialOrd<S> partialOrd;
+	class Builder<S: State, A: Action, P: Prec>(private val argBuilder: ArgBuilder<S, A, P>) {
+		private var projection: Function<in S, *> = Function { 0 }
+		private var stopCriterion = StopCriterions.firstCex<S, A>()
+		private var logger: Logger = NullLogger.getInstance()
+		private lateinit var cegarHistory: CegarHistoryStorage<S, A, P>
+		private lateinit var partialOrd: PartialOrd<S>
 
-		private Builder(final ArgBuilder<S, A, P> argBuilder) {
-			this.argBuilder = argBuilder;
-			this.projection = s -> 0;
-			this.stopCriterion = StopCriterions.firstCex();
-			this.logger = NullLogger.getInstance();
-		}
+		fun projection(projection: Function<in S, Any>) = apply { this.projection = projection }
 
-		public Builder<S, A, P> projection(final Function<? super S, ?> projection) {
-			this.projection = projection;
-			return this;
-		}
+		fun stopCriterion(stopCriterion: StopCriterion<S, A>) = apply { this.stopCriterion = stopCriterion }
 
-		public Builder<S, A, P> stopCriterion(final StopCriterion<S, A> stopCriterion) {
-			this.stopCriterion = stopCriterion;
-			return this;
-		}
+		fun logger(logger: Logger) = apply { this.logger = logger }
 
-		public Builder<S, A, P> logger(final Logger logger) {
-			this.logger = logger;
-			return this;
-		}
+		fun cegarHistoryStorage(cegarHistoryStorage: CegarHistoryStorage<S, A, P>) = apply { this.cegarHistory = cegarHistoryStorage }
 
-		public Builder<S, A, P> cegarHistoryStorage(final CegarHistoryStorage<S, A, P> cegarHistoryStorage) {
-			this.cegarHistoryStorage = cegarHistoryStorage;
-			return this;
-		}
+		fun partialOrder(partialOrd: PartialOrd<S>) = apply { this.partialOrd = partialOrd }
 
-		public Builder<S, A, P> partialOrder(final PartialOrd<S> partialOrd) {
-			this.partialOrd = partialOrd;
-			return this;
-		}
-
-		public AstarAbstractor<S, A, P> build() {
-			assert cegarHistoryStorage != null;
-			return new AstarAbstractor<>(argBuilder, projection, stopCriterion, logger, cegarHistoryStorage, partialOrd);
-		}
+		fun build() = AstarAbstractor(argBuilder, projection, stopCriterion, logger, cegarHistory, partialOrd)
 	}
-
 }
