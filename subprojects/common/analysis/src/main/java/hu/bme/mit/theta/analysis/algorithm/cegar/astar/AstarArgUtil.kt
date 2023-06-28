@@ -272,6 +272,8 @@ fun <S: State, A: Action> AstarArg<S, A>.propagateUpDistanceFromInfiniteDistance
  * Non-target nodes with known distances are not handled (no use case currently).
  */
 fun <S: State, A: Action> AstarArg<S, A>.setDistanceFromAllTargets(targets: Collection<ArgNode<S, A>>) {
+	check(targets.all { it.isTarget })
+
 	// Set exact distances
 	targets.walkReverseSubtree skip@ { argNode, distance ->
 		// An ancestor can be a target because targets are expanded
