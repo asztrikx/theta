@@ -76,16 +76,10 @@ object AstarIterator {
 		val astarArg = astarNode.astarArg
 		val argNode = astarNode.argNode
 
-		val parentArgNode = argNode.parent.getOrNull()
-		val parentAstarNode = if (parentArgNode == null) {
-			check(argNode.isInit)
-			null
-		} else astarArg[parentArgNode]
-
 		// TODO why do we call this recursive function here ????
 		astarAbstractor.findHeuristic(astarNode)
 
-		argNode.coveringNode.getOrNull()?.let {
+		argNode.coveringNode()?.let {
 			handleDecreasingCoverEdgeConsistency(argNode, it, astarArg)
 		}
 		// Avoid concurrent modification exception by copying stream to list
