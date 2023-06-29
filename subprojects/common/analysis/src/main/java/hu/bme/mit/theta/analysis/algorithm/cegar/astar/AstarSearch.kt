@@ -35,10 +35,11 @@ class AstarSearch<S: State, A: Action> {
 
 	fun addToWaitlist(astarNode: AstarNode<S, A>, parentAstarNode: AstarNode<S, A>?, depth: Int) {
 		check(astarNode.heuristic.isKnown)
-		if (astarNode.heuristic.type === Distance.Type.INFINITE) {
+		if (astarNode.heuristic.isInfinite) {
 			return
 		}
-		if (astarNode.distance.type === Distance.Type.INFINITE) {
+		// TODO document when/why can this happen?
+		if (astarNode.distance.isInfinite) {
 			return
 		}
 
@@ -70,7 +71,7 @@ class AstarSearch<S: State, A: Action> {
 			}
 			doneSet += astarNode
 
-			if (astarNode.distance.type !== Distance.Type.EXACT) {
+			if (!astarNode.distance.isExact) {
 				return edge
 			}
 
