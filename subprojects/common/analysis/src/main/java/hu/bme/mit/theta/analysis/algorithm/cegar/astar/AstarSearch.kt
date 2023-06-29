@@ -24,8 +24,8 @@ class AstarSearch<S: State, A: Action> {
 	// Possible cases:
 	//   - target in a different subgraph reached by covering edge
 	//   - target in the same subgraph which was reached earlier from a different subgraph (by a covering edge)
-	var upperLimitValue = -1
-	var upperLimitAstarNode: AstarNode<S, A>? = null
+	var weightSupremumValue: Int? = null
+	var weightSupremumAstarNode: AstarNode<S, A>? = null
 
 	// Only used in check-s
 	// TODO check naming (depthFromAStartNode?)
@@ -77,12 +77,12 @@ class AstarSearch<S: State, A: Action> {
 
 			// A node with better upper limit will be processed before current upperlimit is reached.
 			// [upperLimitValue] > depth + distance > depth + heuristic
-			if (upperLimitValue > depth + astarNode.distance.value || upperLimitValue == -1) {
+			if ((weightSupremumValue ?: Int.MAX_VALUE) > depth + astarNode.distance.value) {
 				// TODO Note for future: if target gets distance immediately then this won't be true <== is not target
 				check(AstarAbstractor.heuristicSearchType != AstarAbstractor.HeuristicSearchType.FULL)
 
-				upperLimitValue = depth + astarNode.distance.value
-				upperLimitAstarNode = astarNode
+				weightSupremumValue = depth + astarNode.distance.value
+				weightSupremumAstarNode = astarNode
 			}
 		}
 		return null
