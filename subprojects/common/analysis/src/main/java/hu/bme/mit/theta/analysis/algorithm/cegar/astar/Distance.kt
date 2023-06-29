@@ -15,8 +15,14 @@ class Distance(var type: Type, value: Int) : Comparable<Distance> {
 		require(type != Type.EXACT)
 	}
 
+	val isExact: Boolean
+		get() = type == Type.EXACT
+
+	val isInfinite: Boolean
+		get() = type == Type.INFINITE
+
 	val isKnown: Boolean
-		get() = type == Type.EXACT || type == Type.INFINITE
+		get() = isExact || isInfinite
 
 	val isUnknown: Boolean
 		get() = !isKnown
