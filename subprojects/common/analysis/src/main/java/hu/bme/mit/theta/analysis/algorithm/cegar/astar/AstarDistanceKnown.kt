@@ -7,11 +7,14 @@ import hu.bme.mit.theta.analysis.algorithm.ArgNode
 import hu.bme.mit.theta.analysis.algorithm.cegar.abstractor.StopCriterion
 
 class AstarDistanceKnown<S: State, A: Action>(private val astarNode: AstarNode<S, A>) : StopCriterion<S, A> {
-	override fun canStop(arg: ARG<S, A>): Boolean {
-		return true
-	}
+	/**
+	 * Currently distance is always set after canStop is called so it always returns true.
+	 * **Only use when closest target is known.**
+	 */
+	override fun canStop(arg: ARG<S, A>) = true
 
-	override fun canStop(arg: ARG<S, A>, newNodes: Collection<ArgNode<S, A>>): Boolean {
-		return canStop(arg)
-	}
+	/**
+	 * See [canStop]
+	 */
+	override fun canStop(arg: ARG<S, A>, newNodes: Collection<ArgNode<S, A>>) = canStop(arg)
 }
