@@ -13,7 +13,7 @@ class AstarNode<S: State, A: Action>(
 	var providerAstarNode: AstarNode<S, A>?,
 	val astarArg: AstarArg<S, A>,
 ) {
-	private var _distance = Distance(Distance.Type.UNKNOWN)
+	private var _distance = Distance.UNKNOWN
 	var distance: Distance
 		get() {
 			if (argNode.isTarget) {
@@ -30,7 +30,7 @@ class AstarNode<S: State, A: Action>(
 			_distance = value
 		}
 
-	private var _heuristic = Distance(Distance.Type.UNKNOWN)
+	private var _heuristic = Distance.UNKNOWN
 	var heuristic: Distance
 		// It is guaranteed that once it returns a known value it won't change unless reset is called (e.g. AstarIterator).
 		get() {
@@ -67,7 +67,8 @@ class AstarNode<S: State, A: Action>(
 	fun getWeight(depth: Int) = if (heuristic.isInfinite) {
 		heuristic
 	} else {
-		Distance(heuristic.type, heuristic.value + depth)
+		require(heuristic.isBounded)
+		heuristic + depth
 	}
 
 	// Checks property: Heuristic <= Distance
@@ -82,8 +83,8 @@ class AstarNode<S: State, A: Action>(
 	}
 
 	fun reset() {
-		_heuristic = Distance(Distance.Type.UNKNOWN)
-		_distance = Distance(Distance.Type.UNKNOWN)
+		_heuristic = Distance.UNKNOWN
+		_distance = Distance.UNKNOWN
 	}
 
 	override fun toString() = "$argNode D$distance H$heuristic"
