@@ -6,7 +6,7 @@ class Distance(
 ) : Comparable<Distance> {
 	var value = value
 		get(): Int {
-			check(type == Type.EXACT)
+			check(type == Type.BOUNDED)
 			return field
 		}
 
@@ -15,17 +15,17 @@ class Distance(
 	 * Exact types should explicitly state the value even if its zero, which could be default, for clarity
 	 */
 	constructor(type: Type) : this(type, 0) {
-		require(type != Type.EXACT)
+		require(type != Type.BOUNDED)
 	}
 
-	val isExact: Boolean
-		get() = type == Type.EXACT
+	val isBounded: Boolean
+		get() = type == Type.BOUNDED
 
 	val isInfinite: Boolean
 		get() = type == Type.INFINITE
 
 	val isKnown: Boolean
-		get() = isExact || isInfinite
+		get() = isBounded || isInfinite
 
 	val isUnknown: Boolean
 		get() = !isKnown
@@ -47,14 +47,14 @@ class Distance(
 	override fun hashCode(): Int = 31 * type.hashCode() + value
 
 	override fun toString() = when (type) {
-		Type.EXACT -> "(E$value)"
+		Type.BOUNDED -> "(B$value)"
 		Type.UNKNOWN -> "(U)"
 		Type.INFINITE -> "(I)"
 	}
 
 	enum class Type {
 		INFINITE,
-		EXACT,
+		BOUNDED,
 		UNKNOWN,
 	}
 }
