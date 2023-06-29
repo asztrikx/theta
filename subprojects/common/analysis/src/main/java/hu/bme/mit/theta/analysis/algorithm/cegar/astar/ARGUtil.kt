@@ -71,7 +71,9 @@ fun <S: State, A: Action> Collection<ArgNode<S, A>>.walk(
 /**
  * Calls [walk] with a newVisitFunc that only visits children or the coveringNode.
  *
- * The difference between this and [ArgNode::getNodes] is that this gives the distances for each node from the [startNodes]
+ * The difference between this and [ArgNode::getNodes] is that this gives the distances for each node from the startNodes
+ *
+ * @receiver startNodes
  */
 fun <S: State, A: Action> Collection<ArgNode<S, A>>.walkSubtree(skip: Skip<S, A>) {
 	walk(skip) newVisits@ { (argNode, distance) ->
