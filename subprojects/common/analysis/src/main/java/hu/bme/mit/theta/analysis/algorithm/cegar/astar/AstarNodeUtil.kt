@@ -5,8 +5,8 @@ import hu.bme.mit.theta.analysis.State
 
 fun <S: State, A: Action> AstarNode<S, A>.checkConsistency(child: AstarNode<S, A>) {
     val parent = this
-    require(parent.heuristic.type !== Distance.Type.INFINITE)
-    if (child.heuristic.type === Distance.Type.INFINITE) {
+    require(!parent.heuristic.isInfinite)
+    if (child.heuristic.isInfinite) {
         check(parent.heuristic.isKnown) // why? only exact
         return
     }
