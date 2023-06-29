@@ -619,13 +619,15 @@ public final class AstarAbstractor<S extends State, A extends Action, P extends 
 	}*/
 
 	class Builder<S: State, A: Action, P: Prec>(private val argBuilder: ArgBuilder<S, A, P>) {
-		private var projection: Function<in S, *> = Function { 0 }
+		private var projection: (S) -> Any = { 0 }
 		private var stopCriterion = StopCriterions.firstCex<S, A>()
 		private var logger: Logger = NullLogger.getInstance()
 		private lateinit var cegarHistory: CegarHistoryStorage<S, A, P>
 		private lateinit var partialOrd: PartialOrd<S>
 
-		fun projection(projection: Function<in S, Any>) = apply { this.projection = projection }
+		fun projection(projection: Function<in S, *>) = apply { this.projection = { s -> projection.apply(s) } }
+
+		//fun projection(projection: (S) -> Any) = apply { this.projection = projection }
 
 		fun stopCriterion(stopCriterion: StopCriterion<S, A>) = apply { this.stopCriterion = stopCriterion }
 
