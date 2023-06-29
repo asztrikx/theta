@@ -95,7 +95,7 @@ public final class StopCriterions {
 		}
 	}
 
-	private static final class AtLeastNCexs<S extends State, A extends Action> implements StopCriterion<S, A> {
+	public static final class AtLeastNCexs<S extends State, A extends Action> implements StopCriterion<S, A> {
 		private final int n;
 
 		private AtLeastNCexs(final int n) {
