@@ -9,7 +9,7 @@ import kotlin.jvm.optionals.getOrNull
  * Propagate exact distance up from a node ([from]) until any node in a set ([until]) is reached.
  * **If all target in an ARG is known the [setDistanceFromAllTargets] should be used for setting all distances**
  *
- * As we are not always searching from the root it's important to only set distances for nodes involved in the search.
+ * @param until As we are not always searching from the root it's important to only set distances for nodes involved in the search.
  * @param parents should map from a node to its parent.
  */
 fun <S: State, A: Action> AstarArg<S, A>.propagateUpDistanceFromKnownDistance(
