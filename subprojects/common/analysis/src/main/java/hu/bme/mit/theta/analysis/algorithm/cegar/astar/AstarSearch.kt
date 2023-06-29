@@ -4,7 +4,6 @@ import hu.bme.mit.theta.analysis.Action
 import hu.bme.mit.theta.analysis.State
 import hu.bme.mit.theta.analysis.algorithm.ArgNode
 import hu.bme.mit.theta.analysis.waitlist.PriorityWaitlist
-import kotlin.collections.ArrayDeque
 
 class AstarSearch<S: State, A: Action> {
 	// We could already have started to explore a subgraph therefore do not use global doneSet variable
@@ -76,7 +75,7 @@ class AstarSearch<S: State, A: Action> {
 			}
 
 			// A node with better upper limit will be processed before current upperlimit is reached.
-			// [upperLimitValue] > depth + distance > depth + heuristic
+			// [weightSupremumValue] > depth + distance > depth + heuristic
 			if ((weightSupremumValue ?: Int.MAX_VALUE) > depth + astarNode.distance.value) {
 				// TODO Note for future: if target gets distance immediately then this won't be true <== is not target
 				check(AstarAbstractor.heuristicSearchType != AstarAbstractor.HeuristicSearchType.FULL)
