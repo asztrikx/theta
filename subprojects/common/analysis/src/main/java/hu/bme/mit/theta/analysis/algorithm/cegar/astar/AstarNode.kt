@@ -64,7 +64,7 @@ class AstarNode<S: State, A: Action>(
 
 	// Get g(n) = h(n) + depth
 	// Depth is dependent on the search (can start from any node) therefore it is not stored here
-	fun getWeight(depth: Int) = if (heuristic.type == Distance.Type.INFINITE) {
+	fun getWeight(depth: Int) = if (heuristic.isInfinite) {
 		heuristic
 	} else {
 		Distance(heuristic.type, heuristic.value + depth)
@@ -73,10 +73,10 @@ class AstarNode<S: State, A: Action>(
 	// Checks property: Heuristic <= Distance
 	// Should be called with known distance.
 	private fun checkAdmissibility(distance: Distance) {
-		check(!(heuristic.type === Distance.Type.INFINITE && distance.type !== Distance.Type.INFINITE))
+		check(!(heuristic.isInfinite && !distance.isInfinite))
 		check(distance.isKnown)
 		check(heuristic.isKnown)
-		if (heuristic.type !== Distance.Type.INFINITE && distance.type !== Distance.Type.INFINITE) {
+		if (!heuristic.isInfinite && !distance.isInfinite) {
 			check(heuristic.value <= distance.value)
 		}
 	}
