@@ -30,7 +30,7 @@ fun <S: State, A: Action> AstarArg<S, A>.propagateUpDistanceFromKnownDistance(
 			check(astarNode.distance.isKnown)
 		}
 
-		if (astarNode.distance.isExact) {
+		if (astarNode.distance.isBounded) {
 			return@walkUpParents if (from.argNode === node) {
 				// We start from a known distance
 				false
@@ -43,7 +43,7 @@ fun <S: State, A: Action> AstarArg<S, A>.propagateUpDistanceFromKnownDistance(
 
 		check(astarNode.distance.isUnknown)
 
-		astarNode.distance = Distance(Distance.Type.EXACT, distance)
+		astarNode.distance = Distance(Distance.Type.BOUNDED, distance)
 
 		// if true it may be a target without known succ distance or a non-target covering node with distance
 		if (node !== from.argNode && parents[node] === node.coveringNode.getOrNull()) {
@@ -98,12 +98,12 @@ private fun <S: State, A: Action> AstarArg<S, A>.propagateUpDistanceFromConditio
 				check(astarNode.distance.isKnown) // TODO comment to not remove
 				return@walkUpParents true
 			} else if (astarNode.distance.isKnown) {
-				check(astarNode.distance.isExact)
+				check(astarNode.distance.isBounded)
 				if (node !== startNode) {
 					if (previousDistance!!.isInfinite) {
 						check(astarNode.distance <= previousDistance!!)
 					} else {
-						check(astarNode.distance <= Distance(Distance.Type.EXACT, previousDistance!!.value + 1))
+						check(astarNode.distance <= Distance(Distance.Type.BOUNDED, previousDistance!!.value + 1))
 					}
 				}
 				return@walkUpParents true
@@ -130,7 +130,7 @@ private fun <S: State, A: Action> AstarArg<S, A>.propagateUpDistanceFromConditio
 				astarNode.distance = if (minSuccDistance.isInfinite) {
 					Distance(Distance.Type.INFINITE)
 				} else {
-					Distance(Distance.Type.EXACT, minSuccDistance.value + 1)
+					Distance(Distance.Type.BOUNDED, minSuccDistance.value + 1)
 				}
 			}
 			previousDistance = astarNode.distance
@@ -160,7 +160,7 @@ fun <S: State, A: Action> AstarArg<S, A>.propagateDownDistanceFromInfiniteDistan
 		listOf(node).walkSubtree { argNode, _ ->
 			val astarNode = get(argNode)
 
-			check(!astarNode.distance.isExact)
+			check(!astarNode.distance.isBounded)
 			// Unexpanded regions shouldn't exist unless its known it can't reach any target
 			if (!argNode.isExpanded && !argNode.isCovered) {
 				check(astarNode.heuristic.isInfinite)
@@ -281,7 +281,7 @@ fun <S: State, A: Action> AstarArg<S, A>.setDistanceFromAllTargets(targets: Coll
 			return@skip true // TODO check why old coded didn't failed
 		}
 
-		argNode.astarNode.distance = Distance(Distance.Type.EXACT, distance)
+		argNode.astarNode.distance = Distance(Distance.Type.BOUNDED, distance)
 		return@skip false
 	}
 
@@ -305,7 +305,7 @@ fun <S: State, A: Action> AstarArg<S, A>.checkShortestDistance() {
 			return@skip true
 		}
 
-		check(astarNode.distance.isExact) // TODO this can fail
+		check(astarNode.distance.isBounded) // TODO this can fail
 		check(astarNode.distance.value == distance)
 		return@skip false
 	}
