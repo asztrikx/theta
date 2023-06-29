@@ -6,13 +6,12 @@ import hu.bme.mit.theta.analysis.State
 import hu.bme.mit.theta.analysis.algorithm.ARG
 import hu.bme.mit.theta.analysis.algorithm.ArgNode
 import hu.bme.mit.theta.analysis.reachedset.Partition
-import java.util.function.Function
 import kotlin.jvm.optionals.getOrNull
 
 class AstarArg<S: State, A: Action>(
 	val arg: ARG<S, A>,
 	private val partialOrd: PartialOrd<S>,
-	projection: Function<in S, *>,
+	projection: (S) -> Any,
 	var provider: AstarArg<S, A>?
 ) {
 	// Contains init nodes as well
@@ -22,7 +21,7 @@ class AstarArg<S: State, A: Action>(
 		get() = astarNodes.filter { it.key.isInit }
 
 	// Covering ArgNode is searched from here
-	val reachedSet: Partition<AstarNode<S, A>, Any> = Partition.of { projection.apply(it.argNode.state) }
+	val reachedSet: Partition<AstarNode<S, A>, *> = Partition.of { projection(it.argNode.state) }
 
 	/**
 	 * After underlying ARG is pruned we must remove AstarNodes corresponding to pruned ArgNodes.

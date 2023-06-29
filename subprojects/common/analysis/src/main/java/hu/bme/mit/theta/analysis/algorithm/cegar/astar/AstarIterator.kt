@@ -6,8 +6,6 @@ import hu.bme.mit.theta.analysis.Prec
 import hu.bme.mit.theta.analysis.State
 import hu.bme.mit.theta.analysis.algorithm.ArgCopier
 import hu.bme.mit.theta.analysis.algorithm.ArgNode
-import java.util.function.Function
-import kotlin.jvm.optionals.getOrNull
 
 object AstarIterator {
 	/**
@@ -22,7 +20,7 @@ object AstarIterator {
 	fun <S: State, A: Action, P: Prec> createIterationReplacement(
 		astarArg: AstarArg<S, A>,
 		partialOrd: PartialOrd<S>,
-		projection: Function<in S, *>, // TODO replace this with lambda type
+		projection: (S) -> Any,
 		astarAbstractor: AstarAbstractor<S, A, P>
 	): AstarArg<S, A> {
 		val translation = mutableListOf<Pair<ArgNode<S, A>, ArgNode<S, A>>>()
