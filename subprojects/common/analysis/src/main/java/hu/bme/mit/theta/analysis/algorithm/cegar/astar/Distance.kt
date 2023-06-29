@@ -1,6 +1,6 @@
 package hu.bme.mit.theta.analysis.algorithm.cegar.astar
 
-class Distance(
+class Distance private constructor(
 	var type: Type,
 	value: Int,
 ) : Comparable<Distance> {
@@ -9,14 +9,6 @@ class Distance(
 			check(type == Type.BOUNDED)
 			return field
 		}
-
-	/**
-	 * This constructor is only for types which don't have a value.
-	 * Exact types should explicitly state the value even if its zero, which could be default, for clarity
-	 */
-	constructor(type: Type) : this(type, 0) {
-		require(type != Type.BOUNDED)
-	}
 
 	val isBounded: Boolean
 		get() = type == Type.BOUNDED
@@ -42,6 +34,10 @@ class Distance(
 		}
 	}
 
+	// TODO use this for astarNode getWeight
+	// TODO also handle infinity??: ".value + 1" lines in other files
+	operator fun plus(otherValue: Int) = boundedOf(value + otherValue)
+
 	override fun equals(other: Any?) = other is Distance && compareTo(other) == 0
 
 	override fun hashCode(): Int = 31 * type.hashCode() + value
@@ -56,5 +52,15 @@ class Distance(
 		INFINITE,
 		BOUNDED,
 		UNKNOWN,
+	}
+
+	companion object {
+		// static factory with caching: Distance object with same immutable content are often created
+		private val cache = HashMap<Int, Distance>(100)
+		fun boundedOf(value: Int) = cache.computeIfAbsent(value) { Distance(Type.BOUNDED, it) }
+
+		val ZERO = boundedOf(0)
+		val INFINITE = Distance(Type.INFINITE, 0)
+		val UNKNOWN = Distance(Type.UNKNOWN, 0)
 	}
 }
