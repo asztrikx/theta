@@ -4,9 +4,14 @@ import hu.bme.mit.theta.analysis.Action
 import hu.bme.mit.theta.analysis.State
 import hu.bme.mit.theta.analysis.algorithm.ARG
 import hu.bme.mit.theta.analysis.utils.ArgVisualizer
+import hu.bme.mit.theta.common.logging.Logger
 import hu.bme.mit.theta.common.visualization.Graph
 
-class ArgFileVisualizer<S: State, A: Action>(enabled: Boolean, private val arg: ARG<S, A>) : FileVisualizer(enabled) {
+class ArgFileVisualizer<S: State, A: Action>(
+	enabled: Boolean,
+	private val arg: ARG<S, A>,
+	logger: Logger,
+) : FileVisualizer(enabled, logger) {
 	override fun visualize(state: String, index: Int) {
 		super.visualizeBase(getTitle(state, index), getGraph(index))
 	}
