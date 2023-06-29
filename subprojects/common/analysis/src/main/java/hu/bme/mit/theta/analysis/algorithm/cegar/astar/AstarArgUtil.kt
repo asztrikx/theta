@@ -30,7 +30,7 @@ fun <S: State, A: Action> AstarArg<S, A>.propagateUpDistanceFromKnownDistance(
 			check(astarNode.distance.isKnown)
 		}
 
-		if (astarNode.distance.type == Distance.Type.EXACT) {
+		if (astarNode.distance.isExact) {
 			return@walkUpParents if (from.argNode === node) {
 				// We start from a known distance
 				false
@@ -98,9 +98,9 @@ private fun <S: State, A: Action> AstarArg<S, A>.propagateUpDistanceFromConditio
 				check(astarNode.distance.isKnown) // TODO comment to not remove
 				return@walkUpParents true
 			} else if (astarNode.distance.isKnown) {
-				check(astarNode.distance.type === Distance.Type.EXACT)
+				check(astarNode.distance.isExact)
 				if (node !== startNode) {
-					if (previousDistance!!.type == Distance.Type.INFINITE) {
+					if (previousDistance!!.isInfinite) {
 						check(astarNode.distance <= previousDistance!!)
 					} else {
 						check(astarNode.distance <= Distance(Distance.Type.EXACT, previousDistance!!.value + 1))
@@ -127,7 +127,7 @@ private fun <S: State, A: Action> AstarArg<S, A>.propagateUpDistanceFromConditio
 				// for the node and must not stop propagating up the distance.
 				// This can be the case even if propagating up infinite distance.
 				val minSuccDistance = node.minSuccDistance!!
-				astarNode.distance = if (minSuccDistance.type == Distance.Type.INFINITE) {
+				astarNode.distance = if (minSuccDistance.isInfinite) {
 					Distance(Distance.Type.INFINITE)
 				} else {
 					Distance(Distance.Type.EXACT, minSuccDistance.value + 1)
@@ -160,10 +160,10 @@ fun <S: State, A: Action> AstarArg<S, A>.propagateDownDistanceFromInfiniteDistan
 		listOf(node).walkSubtree { argNode, _ ->
 			val astarNode = get(argNode)
 
-			check(astarNode.distance.type !== Distance.Type.EXACT)
+			check(!astarNode.distance.isExact)
 			// Unexpanded regions shouldn't exist unless its known it can't reach any target
 			if (!argNode.isExpanded && !argNode.isCovered) {
-				check(astarNode.heuristic.type === Distance.Type.INFINITE)
+				check(astarNode.heuristic.isInfinite)
 			}
 
 			conditionalNodes += argNode.coveredNodes()
@@ -228,7 +228,7 @@ fun <S: State, A: Action> AstarArg<S, A>.propagateUpDistanceFromInfiniteDistance
 	val lateCoveredNodes = arg.coveredNodes().filter { coveredNode ->
 		val covererNode = coveredNode.coveringNode()!!
 		val astarCovererNode = get(covererNode)
-		astarCovererNode.distance.type === Distance.Type.INFINITE
+		astarCovererNode.distance.isInfinite
 	}
 	conditionalNodes += lateCoveredNodes.filter(excludeKnownDistance) // TODO can this be a target?
 
@@ -237,7 +237,7 @@ fun <S: State, A: Action> AstarArg<S, A>.propagateUpDistanceFromInfiniteDistance
 
 	// 6)
 	val infiniteHeuristicNodes = astarNodes.values
-		.filter { it.heuristic.type === Distance.Type.INFINITE }
+		.filter { it.heuristic.isInfinite }
 		.filter { astarNode ->
 			val argNode = astarNode.argNode
 
@@ -305,7 +305,7 @@ fun <S: State, A: Action> AstarArg<S, A>.checkShortestDistance() {
 			return@skip true
 		}
 
-		check(astarNode.distance.type === Distance.Type.EXACT) // TODO this can fail
+		check(astarNode.distance.isExact) // TODO this can fail
 		check(astarNode.distance.value == distance)
 		return@skip false
 	}
