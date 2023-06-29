@@ -71,7 +71,7 @@ class AstarSearch<S: State, A: Action> {
 			}
 			doneSet += astarNode
 
-			if (!astarNode.distance.isExact) {
+			if (!astarNode.distance.isBounded) {
 				return edge
 			}
 
