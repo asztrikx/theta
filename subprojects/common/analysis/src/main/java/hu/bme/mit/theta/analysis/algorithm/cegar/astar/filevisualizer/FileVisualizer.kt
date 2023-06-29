@@ -1,5 +1,7 @@
 package hu.bme.mit.theta.analysis.algorithm.cegar.astar.filevisualizer
 
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.infoLine
+import hu.bme.mit.theta.common.logging.Logger
 import hu.bme.mit.theta.common.visualization.Graph
 import hu.bme.mit.theta.common.visualization.writer.GraphvizWriter
 import java.nio.file.Path
@@ -7,7 +9,7 @@ import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import kotlin.io.path.*
 
-abstract class FileVisualizer(var enabled: Boolean) {
+abstract class FileVisualizer(var enabled: Boolean, var logger: Logger) {
 	private val testPath: Path by lazy {
 		// Run results are kept temporarily distinguished by the start datetime of the run
 		val testsPath = Path.of(System.getProperty("java.io.tmpdir"))
@@ -31,8 +33,9 @@ abstract class FileVisualizer(var enabled: Boolean) {
 		// '∣' != '|' (for Windows)
 		val filename = testPath.resolve("$visualizationId∣ $title.svg").toString()
 
-		GraphvizWriter.getInstance()
-			.writeFileAutoConvert(graph, filename)
+		logger.infoLine("|  |  Starting file visualization")
+		GraphvizWriter.getInstance().writeFileAutoConvert(graph, filename)
+		logger.infoLine("|  |  Finished file visualization")
 	}
 
 	// Must call visualizeBase
