@@ -43,7 +43,7 @@ fun <S: State, A: Action> AstarArg<S, A>.propagateUpDistanceFromKnownDistance(
 
 		check(astarNode.distance.isUnknown)
 
-		astarNode.distance = Distance(Distance.Type.BOUNDED, distance)
+		astarNode.distance = Distance.boundedOf(distance)
 
 		// if true it may be a target without known succ distance or a non-target covering node with distance
 		if (node !== from.argNode && parents[node] === node.coveringNode.getOrNull()) {
@@ -114,7 +114,7 @@ private fun <S: State, A: Action> AstarArg<S, A>.propagateUpDistanceFromConditio
 				astarNode.distance = get(node.coveringNode()!!).distance
 			} else if (node === startNode && node.isLeaf) {
 				// This must be infinite distance propagation
-				astarNode.distance = Distance(Distance.Type.INFINITE)
+				astarNode.distance = Distance.INFINITE
 			} else {
 				// node === startNode can hold if propagateUpDistanceFromKnownDistance's parents gone through a covering edge
 
@@ -128,9 +128,9 @@ private fun <S: State, A: Action> AstarArg<S, A>.propagateUpDistanceFromConditio
 				// This can be the case even if propagating up infinite distance.
 				val minSuccDistance = node.minSuccDistance!!
 				astarNode.distance = if (minSuccDistance.isInfinite) {
-					Distance(Distance.Type.INFINITE)
+					Distance.INFINITE
 				} else {
-					Distance(Distance.Type.BOUNDED, minSuccDistance.value + 1)
+					minSuccDistance + 1
 				}
 			}
 			previousDistance = astarNode.distance
@@ -168,7 +168,7 @@ fun <S: State, A: Action> AstarArg<S, A>.propagateDownDistanceFromInfiniteDistan
 
 			conditionalNodes += argNode.coveredNodes()
 
-			astarNode.distance = Distance(Distance.Type.INFINITE)
+			astarNode.distance = Distance.INFINITE
 			return@walkSubtree false
 		}
 	}
@@ -281,14 +281,14 @@ fun <S: State, A: Action> AstarArg<S, A>.setDistanceFromAllTargets(targets: Coll
 			return@skip true // TODO check why old coded didn't failed
 		}
 
-		argNode.astarNode.distance = Distance(Distance.Type.BOUNDED, distance)
+		argNode.astarNode.distance = Distance.boundedOf(distance)
 		return@skip false
 	}
 
 	// Set infinite distances
 	astarNodes.values
 		.filter { !it.distance.isKnown }
-		.forEach { it.distance = Distance(Distance.Type.INFINITE) }
+		.forEach { it.distance = Distance.INFINITE }
 
 	check(astarNodes.values.all { it.distance.isKnown })
 
