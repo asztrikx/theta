@@ -42,6 +42,7 @@ class AstarArg<S: State, A: Action>(
 		astarNodes = astarNodesNew
 	}
 
+	// TODO extension method?
 	fun createSuccAstarNode(argNode: ArgNode<S, A>): AstarNode<S, A> {
 		val providerAstarNode = getProviderAstarNode(argNode)
 		val astarNode = AstarNode(argNode, providerAstarNode, this)
@@ -50,9 +51,7 @@ class AstarArg<S: State, A: Action>(
 		return astarNode
 	}
 
-	/**
-	 * @param parentAstarNode can be null when [argNode] is an init node
-	 */
+	// TODO extension method?
 	private fun getProviderAstarNode(argNode: ArgNode<S, A>): AstarNode<S, A>? {
 		val provider = provider
 		provider ?: return null
@@ -84,6 +83,7 @@ class AstarArg<S: State, A: Action>(
 		return provider[providerNode]
 	}
 
+	// TODO extension method?
 	private fun getProviderCandidates(argNode: ArgNode<S, A>): List<ArgNode<S, A>>? {
 		val provider = provider!!
 		val parentAstarNode = argNode.parent()?.astarNode

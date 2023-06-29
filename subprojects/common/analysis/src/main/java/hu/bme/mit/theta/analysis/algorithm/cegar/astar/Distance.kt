@@ -1,6 +1,9 @@
 package hu.bme.mit.theta.analysis.algorithm.cegar.astar
 
-class Distance(var type: Type, value: Int) : Comparable<Distance> {
+class Distance(
+	var type: Type,
+	value: Int,
+) : Comparable<Distance> {
 	var value = value
 		get(): Int {
 			check(type == Type.EXACT)
