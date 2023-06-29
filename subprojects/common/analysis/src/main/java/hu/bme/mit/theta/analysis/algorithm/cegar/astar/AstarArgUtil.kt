@@ -228,7 +228,7 @@ fun <S: State, A: Action> AstarArg<S, A>.propagateUpDistanceFromInfiniteDistance
 	val lateCoveredNodes = arg.coveredNodes().filter { coveredNode ->
 		val covererNode = coveredNode.coveringNode()!!
 		val astarCovererNode = get(covererNode)
-		astarCovererNode.distance.isInfinite
+		return@filter astarCovererNode.distance.isInfinite
 	}
 	conditionalNodes += lateCoveredNodes.filter(excludeKnownDistance) // TODO can this be a target?
 
