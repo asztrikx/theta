@@ -10,7 +10,7 @@ class AstarSearch<S: State, A: Action> {
 	private val doneSet = hashSetOf<AstarNode<S, A>>()
 
 	// Useful to know whether the current item is smaller than the one in the waitlist (if not in doneSet)
-	private val minDepths = mutableMapOf<AstarNode<S, A>, Int>()
+	val minDepths = mutableMapOf<AstarNode<S, A>, Int>()
 
 	// After we reach target we know the distance for all nodes between root and target which is visitable by parent entries
 	// This is needed because with covering edges there can be multiple in-edges

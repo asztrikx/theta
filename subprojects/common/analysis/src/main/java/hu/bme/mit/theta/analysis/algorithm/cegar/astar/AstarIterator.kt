@@ -16,7 +16,6 @@ object AstarIterator {
 	 * The provider's of [astarArg]'s nodes will be matching copied node.
 	 * The distance and heuristic fields will also be set.
 	 */
-	@JvmStatic
 	fun <S: State, A: Action, P: Prec> createIterationReplacement(
 		astarArg: AstarArg<S, A>,
 		partialOrd: PartialOrd<S>,

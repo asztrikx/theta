@@ -501,7 +501,7 @@ public class XcfaConfigBuilder {
 					case SEMI_ONDEMAND -> new CegarHistoryStorageAll();
 				};
 				AstarAbstractor.heuristicSearchType = heuristicSearchType;
-				return AstarAbstractor
+				return AstarAbstractor.Companion
 						.builder(argBuilder)
 						.projection(projection) //
 						.stopCriterion(isMultiSeq ? StopCriterions.fullExploration() : StopCriterions.firstCex())

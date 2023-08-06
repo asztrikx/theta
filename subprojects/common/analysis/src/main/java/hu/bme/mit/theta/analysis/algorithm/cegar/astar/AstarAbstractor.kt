@@ -13,610 +13,452 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package hu.bme.mit.theta.analysis.algorithm.cegar.astar;
+package hu.bme.mit.theta.analysis.algorithm.cegar.astar
 
-import hu.bme.mit.theta.analysis.Action;
-import hu.bme.mit.theta.analysis.PartialOrd;
-import hu.bme.mit.theta.analysis.Prec;
-import hu.bme.mit.theta.analysis.State;
-import hu.bme.mit.theta.analysis.algorithm.ARG;
-import hu.bme.mit.theta.analysis.algorithm.ArgBuilder;
-import hu.bme.mit.theta.analysis.algorithm.ArgNode;
-import hu.bme.mit.theta.analysis.algorithm.cegar.Abstractor;
-import hu.bme.mit.theta.analysis.algorithm.cegar.AbstractorResult;
-import hu.bme.mit.theta.analysis.algorithm.cegar.abstractor.StopCriterion;
-import hu.bme.mit.theta.analysis.algorithm.cegar.abstractor.StopCriterions;
-import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarSearch.Edge;
-import hu.bme.mit.theta.analysis.algorithm.cegar.astar.argstore.CegarHistoryStorage;
-import hu.bme.mit.theta.analysis.algorithm.cegar.astar.argstore.CegarHistoryStoragePrevious;
-import hu.bme.mit.theta.analysis.algorithm.cegar.astar.filevisualizer.AstarFileVisualizer;
-import hu.bme.mit.theta.common.logging.Logger;
-import hu.bme.mit.theta.common.logging.Logger.Level;
-import hu.bme.mit.theta.common.logging.NullLogger;
-
-import javax.annotation.Nullable;
-import java.util.*;
-import java.util.function.Function;
-import java.util.stream.Collectors;
-import kotlin.collections.ArrayDeque;
-
-import static com.google.common.base.Preconditions.checkNotNull;
+import hu.bme.mit.theta.analysis.Action
+import hu.bme.mit.theta.analysis.PartialOrd
+import hu.bme.mit.theta.analysis.Prec
+import hu.bme.mit.theta.analysis.State
+import hu.bme.mit.theta.analysis.algorithm.ARG
+import hu.bme.mit.theta.analysis.algorithm.ArgBuilder
+import hu.bme.mit.theta.analysis.algorithm.cegar.Abstractor
+import hu.bme.mit.theta.analysis.algorithm.cegar.AbstractorResult
+import hu.bme.mit.theta.analysis.algorithm.cegar.abstractor.StopCriterion
+import hu.bme.mit.theta.analysis.algorithm.cegar.abstractor.StopCriterions
+import hu.bme.mit.theta.analysis.algorithm.cegar.abstractor.StopCriterions.AtLeastNCexs
+import hu.bme.mit.theta.analysis.algorithm.cegar.abstractor.StopCriterions.FullExploration
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarIterator.createIterationReplacement
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.argstore.CegarHistoryStorage
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.argstore.CegarHistoryStoragePrevious
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.filevisualizer.AstarFileVisualizer
+import hu.bme.mit.theta.common.logging.Logger
+import hu.bme.mit.theta.common.logging.NullLogger
+import java.util.function.Function
+import kotlin.math.max
 
 /**
- * Astar implementation for the abstractor, relying on an ArgBuilder.
+ * Astar implementation for [Abstractor], relying on an [ArgBuilder].
+ *
+ * @param initialStopCriterion When we are exploring an arg first time we use the StopCriterion provided in constructor
  */
-public final class AstarAbstractor<S extends State, A extends Action, P extends Prec> implements Abstractor<S, A, P> {
-	private final ArgBuilder<S, A, P> argBuilder;
-	private final Function<? super S, ?> projection;
-	// can't have waitlist common in AstarAbstractor instance as checkFromNode is recursively called
+class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
+	private val argBuilder: ArgBuilder<S, A, P>,
+	private val projection: (S) -> Any,
+	private val initialStopCriterion: StopCriterion<S, A>,
+	private val logger: Logger,
+	private val cegarHistoryStorage: CegarHistoryStorage<S, A, P>,
+	// Used for debugging here
+	private val partialOrd: PartialOrd<S>,
+) : Abstractor<S, A, P> {
+	private val astarFileVisualizer = AstarFileVisualizer(true, cegarHistoryStorage, logger)
 
-	// When we are exploring an arg first time we use the StopCriterion provided in constructor
-	private StopCriterion<S, A> initialStopCriterion;
-	// We can't stop when a target node is children of a node because there might be another
-	private final Logger logger;
-	private final CegarHistoryStorage<S, A, P> cegarHistoryStorage;
-	private final AstarFileVisualizer<S, A, P> astarFileVisualizer;
-	private PartialOrd<S> partialOrd; // Good for debugging
-
-	public enum HeuristicSearchType {
-		FULL, SEMI_ONDEMAND, DECREASING
-	}
-
-	public static HeuristicSearchType heuristicSearchType;
-
-	private AstarAbstractor(final ArgBuilder<S, A, P> argBuilder,
-							final Function<? super S, ?> projection,
-							final StopCriterion<S, A> initialStopCriterion,
-							final Logger logger,
-							final CegarHistoryStorage<S, A, P> cegarHistoryStorage,
-							final PartialOrd<S> partialOrd
-	) {
-		this.argBuilder = checkNotNull(argBuilder);
-		this.projection = checkNotNull(projection);
-		this.initialStopCriterion = checkNotNull(initialStopCriterion);
-		this.logger = checkNotNull(logger);
-		this.cegarHistoryStorage = checkNotNull(cegarHistoryStorage);
-		this.astarFileVisualizer = new AstarFileVisualizer<>(false, cegarHistoryStorage);
-		this.partialOrd = partialOrd;
-
-		// TODO throw expception on n-cex
-
+	init {
 		if (heuristicSearchType == HeuristicSearchType.FULL) {
-			this.initialStopCriterion = StopCriterions.fullExploration();
-			assert this.initialStopCriterion instanceof StopCriterions.FullExploration;
+			require(initialStopCriterion is FullExploration<S, A>)
+		}
+		if (heuristicSearchType != HeuristicSearchType.FULL) {
+			// "multitarget"
+			// If we are looking for n targets then it is possible that we reached [1,n) target
+			require(initialStopCriterion !is AtLeastNCexs<S, A>)
 		}
 		if (heuristicSearchType == HeuristicSearchType.FULL || heuristicSearchType == HeuristicSearchType.DECREASING) {
-			assert cegarHistoryStorage instanceof CegarHistoryStoragePrevious<S,A,P>;
+			require(cegarHistoryStorage is CegarHistoryStoragePrevious<S, A, P>)
 		}
 	}
 
-	public static <S extends State, A extends Action, P extends Prec> Builder<S, A, P> builder(
-			final ArgBuilder<S, A, P> argBuilder) {
-		return new Builder<>(argBuilder);
-	}
-
-	@Override
-	public ARG<S, A> createArg() {
-		return argBuilder.createArg();
-	}
-
-	// return: whether stopCriterion stopped it
-	private void findDistanceInner(
-			AstarArg<S, A> astarArg,
-			StopCriterion<S, A> stopCriterion,
-			Collection<AstarNode<S, A>> startAstarNodes,
-			P prec
+	private fun Collection<AstarNode<S, A>>.findDistanceForAny(
+		stopCriterion: StopCriterion<S, A>,
+		visualizerState: String,
+		prec: P,
 	) {
-		// create search
-		AstarSearch<S, A> search = new AstarSearch<>();
-		Map<ArgNode<S, A>, ArgNode<S, A>> parents = search.getParents();
+		var startAstarNodes = this
+		//if (stopCriterion.canStop(arg))
+		if (startAstarNodes.any { it.distance.isBounded }) {
+			logger.infoLine("|  |  Skipping AstarArg: startAstarNodes already have a distance")
+			return
+		}
 
-		// Waitlist requires heuristic for nodes
-		// 	  node for which distance we are going back may not have heuristic
-		startAstarNodes.forEach(startNode -> findHeuristic(startNode, astarArg, null));
-		startAstarNodes = startAstarNodes.stream()
-				.filter(startNode -> startNode.getHeuristic().getType() != Distance.Type.INFINITE)
-				.toList();
-		startAstarNodes.forEach(startAstarNode -> search.addToWaitlist(startAstarNode, null, 0));
-		assert startAstarNodes.stream().allMatch(startAstarNode -> startAstarNode.getDistance().getType() != Distance.Type.EXACT);
+		val astarArg = startAstarNodes.first().astarArg
+		val arg = astarArg.arg
+		logger.detailLine("|  |  Precision: $prec")
+		logger.infoLine("|  |  Starting ARG: ${arg.nodes.count()} nodes, ${arg.incompleteNodes.count()} incomplete, ${arg.unsafeNodes.count()} unsafe")
+		logger.substepLine("|  |  Starting AstarArg: ${astarFileVisualizer.getTitle("", cegarHistoryStorage.indexOf(astarArg))}")
+		logger.substepLine("|  |  Building ARG...")
 
-		// Implementation assumes that lower distance is set first therefore we can store reached targets in the order we reach them.
-		// We save targets and nodes with exact value. In the latter the exact values must be from a previous findDistance as we set exact distances at the end of iteration.
-		ArrayDeque<AstarNode<S, A>> reachedExacts = search.getReachedExacts();
+		astarFileVisualizer.visualize("start $visualizerState", cegarHistoryStorage.indexOf(astarArg))
 
-		// TODO: ArgCexCheckHandler.instance.setCurrentArg(new AbstractArg<S, A, P>(arg, prec)); , ...
+		val search = AstarSearch<S, A>()
 
-		while (!search.isWaitlistEmpty()) {
-			@Nullable Edge<S, A> edge = search.removeFromWaitlist();
-			if (edge == null) {
-				break;
-			}
-			AstarNode<S, A> astarNode = edge.getEnd();
-			assert astarNode.getHeuristic().getType() != Distance.Type.INFINITE;
-			assert astarNode.getDistance().getType() != Distance.Type.INFINITE;
-			@Nullable ArgNode<S, A> parentArgNode = parents.get(astarNode.getArgNode());
-			@Nullable AstarNode<S, A> parentAstarNode = null;
-			if (parentArgNode != null) parentAstarNode = astarArg.get(parentArgNode);
-			int depth = edge.getDepthFromAStartNode();
-			ArgNode<S, A> argNode = astarNode.getArgNode();
-			int weightValue = astarNode.getWeight(depth).getValue();
+		// expanded targets' children may not have heuristic
+		startAstarNodes.forEach {
+			findHeuristic(it)
+			search.addToWaitlist(it, null, 0)
+		}
+		startAstarNodes = startAstarNodes.filter { !it.heuristic.isInfinite }
 
-			// TODO n-cexs, SEMI_ONDEMAND causes problem hereq
-			// Current implementation doesn't support multiple upperLimitValue
-			if (heuristicSearchType == HeuristicSearchType.FULL) {
-				assert search.getUpperLimitValue() == -1;
-			}
+		// Non-target nodes the exact values must be from a previous findDistanceForAny call as we set exact distances at the end of iteration.
+		// May contain same node multiple times: normal node covers into target already visited
+		val reachedExacts = ArrayDeque<AstarNode<S, A>>()
 
-			// TODO comment that it is not a case when first expanding an arg
-			// reached upper limit: depth + heuristic distance (only depth is also correct but reached later)
-			if (weightValue >= search.getUpperLimitValue() && search.getUpperLimitValue() != -1) {
-				// Otherwise we might miss shorter upperlimits overwritten before first upperlimit process
-				assert reachedExacts.size() == 0;
-				reachedExacts.add(search.getUpperLimitAstarNode());
-				search.setUpperLimitValue(-1);
-				if (stopCriterion.canStop(astarArg.getArg(), List.of(astarNode.getArgNode()))) {
-					break;
-				}
+		while (!search.isWaitlistEmpty) {
+			val (astarNode, depth) = search.removeFromWaitlist() ?: break
+
+			// TODO move to search class?
+			// Currently, this only happens when in an older iteration.
+			if (astarNode.getWeight(depth).value >= (search.weightSupremumValue ?: Int.MAX_VALUE)) {
+				// Otherwise we might miss shorter weightSupremumValue overwritten before first weightSupremumValue process
+				check(reachedExacts.size == 0)
+				reachedExacts += search.weightSupremumAstarNode!!
+				search.weightSupremumValue = null
+				require(stopCriterion.canStop(astarArg.arg, listOf(astarNode.argNode)))
+				break
 			}
 
-			// reached target
-			if (argNode.isTarget()) {
-				reachedExacts.add(astarNode);
-				if (stopCriterion.canStop(astarArg.getArg(), List.of(astarNode.getArgNode()))) {
-					break;
-				}
-
-				// We don't want to expand target fully just until we have children.
-				if (heuristicSearchType != HeuristicSearchType.FULL) {
-					continue;
-				}
-			}
-
-			// After prune node may have children but not fully expanded (isExpanded false).
-			// If node has no children it still can already be expanded, therefore expanded is already set (should not be covered).
-			// If node already has covering node, close cloud still choose another one, therefore avoid.
-			if (!argNode.isExpanded() && argNode.getSuccNodes().findAny().isEmpty() && argNode.getCoveringNode().isEmpty()) {
-				close(astarNode, astarArg.getReachedSet().get(astarNode).stream().toList());
-			}
-			if (argNode.getCoveringNode().isPresent()) {
-				ArgNode<S, A> coveringNode = argNode.getCoveringNode().get();
-				AstarNode<S, A> coveringAstarNode = astarArg.get(coveringNode);
-
-				// We are either covered into
-				// - completed node (was in waitlist => has heuristic)
-				// - completed node's child (in waitlist => has heuristic)
-				// - leftover from prune (after copy we apply decreasing for all nodes => has heuristic)
-				if (heuristicSearchType == HeuristicSearchType.DECREASING) {
-					assert coveringAstarNode.getHeuristic().isKnown();
-				}
-
-				// If astarNode's parent is also covered then covering edges have been redirected. (see ArgNode::cover)
-				// We have to update parents map according to that.
-				//  1) a - - -> b (argNode,coveredAstarNode)
-				//  2) a - - -> b - - -> c (coveringNode)
-				//  3) a        b - - -> c
-				//	   |                 ^
-				//     | - - - - - - - - |
-
-				AstarNode<S, A> coveredAstarNode;
-				if (parentArgNode != null && parentArgNode.getCoveringNode().isPresent() && parentArgNode.getCoveringNode().get() == argNode) {
-					// Because argNode is covered it can only reach coveringNode with the same distance as it's new parent
-					// therefore we can safely remove it
-					parents.remove(argNode);
-
-					// Update to new parent if we this node is the current parent
-					// as coveringAstarNode may already have a better parent or already in doneSet
-					coveredAstarNode = parentAstarNode;
-				} else {
-					coveredAstarNode = astarNode;
-				}
-
-				// New cover edge's consistency (b -> c).
-				// If rewiring happened we don't need to check the rewired edge (a -> c) for consistency
-				// as it is distributive property for this case.
-				findHeuristic(coveringAstarNode, astarArg, astarNode);
-				assertConsistency(astarNode, coveringAstarNode, true);
-				// Covering edge has 0 weight therefore depth doesn't increase
-				search.addToWaitlist(coveringAstarNode, coveredAstarNode, depth);
-				// Covering node is not a new node therefore it's already in reachedSet
-
-				continue;
-			}
-
-			if (argNode.isFeasible()) {
-				if (heuristicSearchType != HeuristicSearchType.FULL) {
-					assert !argNode.isTarget();
-				}
-				assert !argNode.isCovered();
-
-				// expand: create nodes
-				if (!argNode.isExpanded()) {
-					var newArgNodes = argBuilder.expand(argNode, prec);
-					for (ArgNode<S, A> newArgNode : newArgNodes) {
-						astarArg.createSuccAstarNode(newArgNode); // TODO why wasnt it here?
+			if (astarNode.argNode.isTarget) {
+				if (astarNode.distance.isUnknown) {
+					reachedExacts += astarNode
+					if (stopCriterion.canStop(astarArg.arg, listOf(astarNode.argNode))) {
+						break
 					}
 				}
 
-				// go over recreated and remained nodes
-				for (ArgNode<S, A> succArgNode : argNode.getSuccNodes().toList()) {
-					AstarNode<S, A> succAstarNode = astarArg.get(succArgNode);
-
-					// already existing succAstarNode, e.g:
-					// 		although we only add leaves to startAstarNodes and findHeuristic is called upon them
-					//		they may get covered with a non leaf which has succAstarNode (because of how copy works)
-					//		but it's provider doesn't have distance, therefore there is no heuristic
-					findHeuristic(succAstarNode, astarArg, astarNode);
-					assertConsistency(astarNode, succAstarNode, false);
-					search.addToWaitlist(succAstarNode, astarNode, depth + 1);
+				if (heuristicSearchType != HeuristicSearchType.FULL) {
+					expandTarget(astarNode, prec)
+					astarNode.distance = Distance.ZERO
+					continue
 				}
 			}
-		}
-		// If we are looking for n targets then it is possible that we reached [1,n) target when reaching this line
 
-		if (heuristicSearchType == HeuristicSearchType.FULL) {
-			Collection<ArgNode<S, A>> targetsArgNodes = reachedExacts.stream().map(astarNode -> astarNode.getArgNode()).toList();
-			assert targetsArgNodes.stream().allMatch(ArgNode::isTarget);
-			updateDistancesAllTarget(astarArg, targetsArgNodes);
-			return;
+			visitNode(search, astarNode, depth, astarArg, prec)
 		}
 
-		// Upper limit was not handled as no more nodes left to reach limit.
-		// If we reach target and there is no more node left in queue then we can also process the upperlimit
-		// as there are no more ways to reach a target sooner then upperLimitValue.
-		if (search.isWaitlistEmpty() && search.getUpperLimitValue() != -1) {
-			reachedExacts.add(search.getUpperLimitAstarNode());
+		// If we can't reach a depth greater than [weightSupremumValue] then other target is not reachable.
+		if (search.isWaitlistEmpty && search.weightSupremumValue != null) {
+			check(heuristicSearchType !== HeuristicSearchType.FULL)
+			check(reachedExacts.size == 0)
+			reachedExacts += search.weightSupremumAstarNode!!
 		}
 
-		// We need to have heuristic for startAstarNodes therefore we need to set distance.
-		// updateDistancesFromNodes depends on infinite distances being already set therefore set infinite distances first.
-		AstarArgUtilKt.propagateUpDistanceFromInfiniteDistance(astarArg);
-		Set<ArgNode<S, A>> startNodes = startAstarNodes.stream().map(astarNode -> astarNode.getArgNode()).collect(Collectors.toSet());
-		while(!reachedExacts.isEmpty()) { // TODO we stop search based on the closest reachExacts element why do we process all?
-			AstarNode<S, A> nodeWithKnownDistance = reachedExacts.removeFirst();
+		// [reachedExacts] are expected to be ordered by depth
+		check(reachedExacts.asSequence().zipWithNext { a, b -> search.minDepths[a]!! <= search.minDepths[b]!! }.all { it })
 
-			// TODO move this to earlier place?
-			if (nodeWithKnownDistance.getArgNode().isTarget()) {
-				nodeWithKnownDistance.setDistance(new Distance(Distance.Type.EXACT, 0));
-			}
-
-			// If we cover into a node whose distance is known then it must have been set in a previous search.
-			// Therefore, its parent will be the covered node.
-			// [Multitarget] if we cover into a subgraph explored in this iteration we should have two parents (we can update distances up to the roots)
-			AstarArgUtilKt.propagateUpDistanceFromKnownDistance(astarArg, nodeWithKnownDistance, startNodes, parents);
-
-			// All provider nodes are expected to be expanded, targets as well
-			expandTarget(nodeWithKnownDistance, astarArg, prec); // TODO this should only be for targets
-		}
-
-		// Updating distance doesn't handle loops as they are hard to implement and probably don't have the same problem
-		// of visiting nodes multiple times as other cases.
-		// However, we need to guarantee that startAstarNodes have a distance which is not yet true if a startNode is
-		// in a loop and doesn't reach target.
-		if (startAstarNodes.stream().noneMatch(a -> a.getDistance().isKnown())) {
-			AstarArgUtilKt.propagateDownDistanceFromInfiniteDistance(astarArg, startAstarNodes.stream().map(AstarNode::getArgNode).toList());
-		}
-
-		assertShortestDistance(astarArg);
-	}
-
-	private void updateDistancesAllTarget(AstarArg<S, A> astarArg, Collection<ArgNode<S, A>> targets) {
-		ARGUtilKt.walk(targets, (a, d) -> false, visits -> {
-			ArgNode<S, A> argNode = visits.getArgNode();
-			int distance = visits.getDistance();
-
-			// Covered to ancestor case won't be a problem
-			AstarNode<S, A> astarNode = astarArg.get(argNode);
-			astarNode.setDistance(new Distance(Distance.Type.EXACT, distance));
-
-			Collection<Visit<S, A>> newVisits = new ArrayList<>();
-			if (argNode.getParent().isPresent()) {
-				newVisits.add(new Visit<>(argNode.getParent().get(), distance + 1));
-			}
-			newVisits.addAll(argNode.getCoveredNodes().map(coveredNode -> new Visit<>(coveredNode, distance)).toList());
-			return newVisits;
-		});
-
-		// Don't use updateDistanceInfinite() as it is for when we are not sure that all nodes without distance is infinite.
-		astarArg.getAstarNodes().values().stream()
-				.filter(astarNode -> !astarNode.getDistance().isKnown())
-				.forEach(astarNode -> astarNode.setDistance(new Distance(Distance.Type.INFINITE)));
-
-		assert astarArg.getAstarNodes().values().stream().allMatch(astarNode -> astarNode.getDistance().isKnown());
-		assertShortestDistance(astarArg);
-	}
-
-	private void assertShortestDistance(AstarArg<S, A> astarArg) {
-		ARG<S, A> arg = astarArg.getArg();
-		Collection<ArgNode<S, A>> targets = arg.getNodes().filter(ArgNode::isTarget).toList();
-		ARGUtilKt.walk(targets, (a, d) -> false, visit -> {
-			AstarNode<S, A> astarNode = astarArg.get(visit.getArgNode());
-			if (astarNode.getDistance().getType() == Distance.Type.EXACT) {
-				assert astarNode.getDistance().getValue() == visit.getDistance();
-			}
-
-			Collection<Visit<S, A>> newVisits = new ArrayList<>((int) visit.getArgNode().getCoveredNodes().count() + 1);
-			visit.getArgNode().getCoveredNodes().forEach(coveredNode -> {
-				newVisits.add(new Visit<>(coveredNode, visit.getDistance()));
-			});
-			if (visit.getArgNode().getParent().isPresent()) {
-				newVisits.add(new Visit<>(visit.getArgNode().getParent().get(), visit.getDistance() + 1));
-			}
-			return newVisits;
-		});
-
-		// After processing a node and expanding it a covering node can appear, also if we could cover the node still
-		// another covering node can appear with lower distance. However shortest distance search isn't broken because ??
-		// a* can only find shortest distance if all possible neighbours are already available when processing a node and
-		// is it enough proof? maybe abstraction comes into play?
-	}
-
-	private void assertConsistency(AstarNode<S, A> parent, AstarNode<S, A> child, boolean coverEdge) {
-		assert parent.getHeuristic().getType() != Distance.Type.INFINITE;
-		if (child.getHeuristic().getType() == Distance.Type.INFINITE) {
-			assert parent.getHeuristic().isKnown();
-			return;
-		}
-
-		int heuristicDistanceValue = parent.getHeuristic().getValue() - child.getHeuristic().getValue();
-		int edgeWeight;
-		if (coverEdge) {
-			edgeWeight = 0;
+		if (heuristicSearchType === HeuristicSearchType.FULL) {
+			astarArg.setDistanceFromAllTargets(reachedExacts.map { it.argNode })
 		} else {
-			edgeWeight = 1;
+			val startNodes = startAstarNodes.map { it.argNode }
+			reachedExacts.apply {
+				forEach { astarArg.propagateUpDistanceFromKnownDistance(it, startNodes.toSet(), search.parents) }
+				clear()
+			}
+
+			if (startAstarNodes.none { it.distance.isBounded }) {
+				astarArg.propagateDownDistanceFromInfiniteDistance(startNodes)
+			} else {
+				astarArg.propagateUpDistanceFromInfiniteDistance()
+			}
+			astarArg.checkShortestDistance()
 		}
-		assert heuristicDistanceValue <= edgeWeight;
+		check(startAstarNodes.any { it.distance.isBounded } || startAstarNodes.all { it.distance.isInfinite })
+
+		astarFileVisualizer.visualize("end $visualizerState", cegarHistoryStorage.indexOf(astarArg))
+
+		logger.substepLine("done")
+		logger.infoLine("|  |  Finished ARG: ${arg.nodes.count()} nodes, ${arg.incompleteNodes.count()} incomplete, ${arg.unsafeNodes.count()} unsafe")
+		logger.infoLine("|  |  Finished AstarArg: ${astarFileVisualizer.getTitle("", cegarHistoryStorage.indexOf(astarArg))}")
+	}
+
+	private fun visitNode(
+		search: AstarSearch<S, A>,
+		astarNode: AstarNode<S, A>,
+		depth: Int,
+		astarArg: AstarArg<S, A>,
+		prec: P,
+	) {
+		val argNode = astarNode.argNode
+
+		// After prune node may have children but not fully expanded (isExpanded false).
+		// If node has no children it still can already be expanded, therefore expanded is already set (should not be covered).
+		// If node already has covering node, close cloud still choose another one, therefore avoid.
+		if (!argNode.isExpanded && argNode.isLeaf && !argNode.isCovered) {
+			astarNode.close(astarArg.reachedSet[astarNode])
+		}
+		if (argNode.isCovered) {
+			val coveringNode = argNode.coveringNode()!!
+			val coveringAstarNode = astarArg[coveringNode]
+
+			// We are either covered into
+			// - completed node (was in waitlist => has heuristic)
+			// - completed node's child (in waitlist => has heuristic)
+			// - leftover from prune (after copy we apply decreasing for all nodes => has heuristic)
+			if (heuristicSearchType == HeuristicSearchType.DECREASING) {
+				check(coveringAstarNode.heuristic.isKnown)
+			}
+
+			// If astarNode's parent is also covered then covering edges have been redirected. (see ArgNode::cover)
+			// We have to update parents map according to that.
+			//  1) a - - -> b (argNode,coveredAstarNode)
+			//  2) a - - -> b - - -> c (coveringNode)
+			//  3) a        b - - -> c
+			//	   |                 ^
+			//     | - - - - - - - - |
+			val parentArgNode = search.parents[astarNode.argNode]
+			val parentAstarNode = parentArgNode?.let { astarArg[it] }
+			val coveredAstarNode = if (parentArgNode != null && parentArgNode.isCovered && parentArgNode.coveringNode()!! === argNode) {
+				// Because argNode is covered it can only reach coveringNode with the same distance as it's new parent
+				// therefore we can safely remove it
+				search.parents.remove(argNode)
+
+				// Update to new parent if we this node is the current parent
+				// as coveringAstarNode may already have a better parent or already in doneSet
+				parentAstarNode
+			} else {
+				astarNode
+			}
+
+			// New cover edge's consistency (b -> c).
+			// If rewiring happened we don't need to check the rewired edge (a -> c) for consistency
+			// as it is distributive property for this case.
+			findHeuristic(coveringAstarNode)
+			astarNode.checkConsistency(coveringAstarNode)
+			// Covering edge has 0 weight therefore depth doesn't increase
+			search.addToWaitlist(coveringAstarNode, coveredAstarNode, depth)
+			// Covering node is not a new node therefore it's already in reachedSet
+			return
+		}
+
+		if (!argNode.isFeasible) {
+			return
+		}
+
+		if (heuristicSearchType != HeuristicSearchType.FULL) {
+			check(!argNode.isTarget)
+		}
+		check(!argNode.isCovered)
+
+		// expand: create nodes
+		if (!argNode.isExpanded) {
+			val newArgNodes = argBuilder.expand(argNode, prec)
+			for (newArgNode in newArgNodes) {
+				astarArg.createSuccAstarNode(newArgNode) // TODO why wasn't it here?
+			}
+		}
+
+		// go over recreated and remained nodes
+		for (succArgNode in argNode.succNodes()) {
+			val succAstarNode = astarArg[succArgNode]
+
+			// already existing succAstarNode, e.g:
+			// 		although we only add leaves to startAstarNodes and findHeuristic is called upon them
+			//		they may get covered with a non leaf which has succAstarNode (because of how copy works)
+			//		but its provider doesn't have distance, therefore there is no heuristic
+			findHeuristic(succAstarNode) // maybe don't do this if one of child is target?
+			astarNode.checkConsistency(succAstarNode)
+			search.addToWaitlist(succAstarNode, astarNode, depth + 1)
+		}
 	}
 
 	// Expands the target (future provider node) so that the children of the provided node can also have provider nodes to choose from.
 	// Target should not already be expanded.
 	// This could be merged into normal loop, but it may make it harder to read
-	private void expandTarget(AstarNode<S, A> astarNode, AstarArg<S, A> astarArg, P prec) {
-		ArgNode<S, A> argNode = astarNode.getArgNode();
+	// TODO say that findHeuristic isn't called
+	// TODO say this avoids adding to waitlist
+	private fun expandTarget(astarNode: AstarNode<S, A>, prec: P) {
+		check(astarNode.argNode.isTarget)
+		var astarNode = astarNode
+		val astarArg = astarNode.astarArg
+		var argNode = astarNode.argNode
 		// astarNode can be a coverer node for another target, therefore it can already be expanded (directly or indirectly)
-		if (argNode.isExpanded() || argNode.getCoveringNode().isPresent()) {
-			return;
+		if (argNode.isExpanded || argNode.isCovered) {
+			return
 		}
-		assert argNode.getSuccNodes().findAny().isEmpty(); // TODO ask this
-
+		// TODO ask this
+		assert(argNode.isLeaf)
 		do {
-			assert !argNode.isExpanded();
-			assert argNode.getSuccNodes().findAny().isEmpty();
-			assert argNode.getCoveringNode().isEmpty();
-			close(astarNode, astarArg.getReachedSet().get(astarNode).stream().toList());
-			if (argNode.getCoveringNode().isEmpty()) {
+			// Can be already expanded
+			//assert(!argNode.isExpanded)
+			//assert(argNode.isLeaf)
+			assert(argNode.isCovered)
+			astarNode.close(astarArg.reachedSet[astarNode])
+			if (argNode.coveringNode() == null) {
 				//// We can get covered into already expanded node
 				//// Covering target may have been after astarNode in waitlist therefore it may not already be expanded
-				argBuilder.expand(argNode, prec);
+				argBuilder.expand(argNode, prec)
 
 				// expand: create astar nodes
-				AstarNode<S, A> lambdaAstarNode = astarNode;
-				argNode.getSuccNodes().forEach(succArgNode -> {
-					assert !astarArg.contains(succArgNode);
-					astarArg.createSuccAstarNode(succArgNode);
-					// We don't add it to waitlist therefore we don't need to find heuristic
-				});
+				argNode.succNodes.forEach {
+					assert(!astarArg.contains(it))
+					astarArg.createSuccAstarNode(it)
+				}
 
 				// Children can be either target or not.
 				// Do not set distance for target as they will be filtered out when adding them to waitlist
 				// therefore they won't be expanded.
-
-				break;
+				break
 			}
 
 			// Covered node's children are the covering node's children, therefore we have to expand the covering node
-			argNode = argNode.getCoveringNode().get();
-			astarNode = astarArg.get(argNode);
-			// Target node's covering node must be a target.
-			assert argNode.isTarget();
+			argNode = argNode.coveringNode()!!
+			astarNode = astarArg[argNode]
+			assert(argNode.isTarget)
 			// optimization: we know the distance for a target node
-			astarNode.setDistance(new Distance(Distance.Type.EXACT, 0));
-		} while(!argNode.isExpanded()); // We can cover into an already expanded target (it can't be covered, see close())
+			astarNode.distance = Distance.ZERO
+		} while (!argNode.isExpanded) // We can cover into an already expanded target (it can't be covered, see close())
 	}
 
-	private void findDistance(
-			AstarArg<S, A> astarArg, StopCriterion<S, A> stopCriterion, Collection<AstarNode<S, A>> startAstarNodes,
-			String visualizerState, P prec
-	) {
-		final ARG<S, A> arg = astarArg.getArg();
+	/**
+	 * Calculates the heuristic for @receiver. Depending on HeuristicSearchType this may be recursive.
+	 *
+	 * @param astarNode should already have providerNode if not in the first arg
+	 */
+	fun findHeuristic(astarNode: AstarNode<S, A>) {
+		// TODO strategy pattern maybe here?
 
-		logger.write(Level.INFO, "|  |  Starting ARG: %d nodes, %d incomplete, %d unsafe%n", arg.getNodes().count(),
-				arg.getIncompleteNodes().count(), arg.getUnsafeNodes().count());
-		logger.write(Level.SUBSTEP,"|  |  Starting AstarArg: %s%n", astarFileVisualizer.getTitle("", cegarHistoryStorage.indexOf(astarArg)));
-		logger.write(Level.SUBSTEP, "|  |  Building ARG...");
-		astarFileVisualizer.visualize(String.format("start%s", visualizerState), cegarHistoryStorage.indexOf(astarArg));
+		val astarArg = astarNode.astarArg
+		val parentAstarNode = astarNode.argNode.parent()?.let { astarArg[it] }
 
-		// TODO: is this only for init nodes? if so delete it (DRY for target distance update)
-		//if (!stopCriterion.canStop(arg)) {
-			findDistanceInner(astarArg, stopCriterion, startAstarNodes, prec);
-		//}
+		// Do not return (?set distance to?) EXACT(0) when node is target as that would not create the side effect of expanding the node
 
-		logger.write(Level.SUBSTEP, "done%n");
-		logger.write(Level.INFO, "|  |  Finished ARG: %d nodes, %d incomplete, %d unsafe%n", arg.getNodes().count(),
-				arg.getIncompleteNodes().count(), arg.getUnsafeNodes().count());
-		logger.write(Level.INFO, "|  |  Finished AstarArg: %s%n", astarFileVisualizer.getTitle("", cegarHistoryStorage.indexOf(astarArg)));
-		astarFileVisualizer.visualize(String.format("end%s", visualizerState), cegarHistoryStorage.indexOf(astarArg));
-	}
-
-	// astarNode: should already have providerNode if not in the first arg
-	// astarArg: the one in which for a node we look for heuristic
-	public void findHeuristic(AstarNode<S, A> astarNode, AstarArg<S, A> astarArg, @Nullable AstarNode<S, A> parentAstarNode) {
-		// Do not return EXACT(0) when node is target as that would not create the side effect of expanding the node
-
-		// Already know provider node's distance
-		if (astarNode.getHeuristic().isKnown()) {
-			return;
+		if (astarNode.heuristic.isKnown) {
+			return
 		}
 
-		// No previous astar arg exists: we must return the lowest lower bound
-		if (astarArg.getProvider() == null) {
-			astarNode.setHeuristic(new Distance(Distance.Type.EXACT, 0));
-			return;
+		if (astarArg.provider == null) {
+			// Only lower bound we can say to satisfy a*
+			astarNode.heuristic = Distance.ZERO
+			return
 		}
-		assert heuristicSearchType != HeuristicSearchType.FULL;
+		val providerAstarArg = astarArg.provider!!
+
+		check(heuristicSearchType != HeuristicSearchType.FULL)
 
 		// We don't have heuristic from provider therefore we decrease parent's
 		// astarArg.provider == null case could also be handled by this
 		if (heuristicSearchType == HeuristicSearchType.DECREASING) {
 			// init node as we are always starting from startNodes
 			if (parentAstarNode == null) {
-				astarNode.setHeuristic(new Distance(Distance.Type.EXACT, 0));
-				return;
+				astarNode.heuristic = Distance.ZERO
+				return
 			}
-
-			// We made already have a heuristic in covering node see comment in handle after close().
-			assert parentAstarNode.getArgNode().getCoveringNode().isEmpty();
-
-			// We could decrease from any covered nodes but that could lead to inconsistency betweeen the covering node and its parent later.
-			// This requires that all existing covering nodes to already have a heuristic, otherwise
-			// when visiting the node from the covering edge parent may not have a heuristic to decrease from.
-			// This becomes a problem when we copy AstarArgs where by default heuristics are not determined and also
-			// non-consistent covering edges are not removed.
-
-			// We can't have a consistency problem in a normal edge as it would mean there is a shorter distance to the node we are decreasing from.
-			//   c (decreasing from, c is the distance)
-			//   |
-			//  ...
-			//  c-e (decreased heuristic for provided node)
-			//   |
-			//   h (end of current edge)
-			// if h < c-e-1 => h+e+1 < c which is contradiction as c is shortest distance
-			assert parentAstarNode.getHeuristic().isKnown();
-			int parentHeuristicValue = parentAstarNode.getHeuristic().getValue();
-			parentHeuristicValue = Math.max(parentHeuristicValue - 1, 0);
-			astarNode.setHeuristic(new Distance(Distance.Type.EXACT, parentHeuristicValue));
-			return;
+			check(parentAstarNode.argNode.coveringNode() == null)
+			check(parentAstarNode.heuristic.isKnown)
+			var parentHeuristicValue = parentAstarNode.heuristic.value
+			parentHeuristicValue = max(parentHeuristicValue - 1, 0)
+			astarNode.heuristic = Distance.boundedOf(parentHeuristicValue)
+			return
 		}
 
 		// Provider AstarNode can be null
-		checkNotNull(astarNode.getProviderAstarNode());
-
-		if (astarNode.getProviderAstarNode().getHeuristic().getType() == Distance.Type.INFINITE) {
-			assert astarNode.getProviderAstarNode().getDistance().getType() == Distance.Type.INFINITE;
+		check(astarNode.providerAstarNode != null)
+		val providerAstarNode = astarNode.providerAstarNode!!
+		if (providerAstarNode.heuristic.isInfinite) {
+			check(providerAstarNode.distance.isInfinite)
 		}
 
-		var pair = astarArgStore.find(astarArg.getProvider());
-		var prec = pair.getSecond();
+		val (_, prec) = cegarHistoryStorage.find(providerAstarArg)
 
-		// visualize current before going back to previous astarArg
-		astarFileVisualizer.visualize(String.format("paused %s", astarNode.getArgNode().toString()), cegarHistoryStorage.indexOf(astarArg));
-		logger.write(Level.SUBSTEP, "|  |  Paused AstarArg: %s%n", astarFileVisualizer.getTitle("", cegarHistoryStorage.indexOf(astarArg)));
+		// Visualize current
+		astarFileVisualizer.visualize("paused ${astarNode.argNode}", cegarHistoryStorage.indexOf(astarArg))
+		logger.substepLine("|  |  Paused AstarArg: ${astarFileVisualizer.getTitle("", cegarHistoryStorage.indexOf(astarArg))}")
 
 		// get the heuristic with findDistance in parent arg
-		AstarNode<S, A> providerAstarNode = astarNode.getProviderAstarNode();
-		AstarArg<S, A> providerAstarArg = astarArg.getProvider();
+		listOf(providerAstarNode).findDistanceForAny(AstarDistanceKnown(providerAstarNode), "${providerAstarNode.argNode}", prec)
+		check(astarNode.heuristic.isKnown)
 
-		String visualizerStateProvider = " " + astarNode.getProviderAstarNode().getArgNode().toString();
-		findDistance(providerAstarArg, new AstarDistanceKnown<>(providerAstarNode), List.of(providerAstarNode), visualizerStateProvider, prec);
-		assert astarNode.getHeuristic().isKnown();
-
-		// visualize current after going back to previous astarArg
-		astarFileVisualizer.visualize(String.format("resumed %s", astarNode.getArgNode().toString()), cegarHistoryStorage.indexOf(astarArg));
-		logger.write(Level.SUBSTEP, "|  |  Resumed AstarArg: %s%n", astarFileVisualizer.getTitle("", cegarHistoryStorage.indexOf(astarArg)));
+		// Visualize current (redundant)
+		astarFileVisualizer.visualize("resumed ${astarNode.argNode}", cegarHistoryStorage.indexOf(astarArg))
+		logger.substepLine("|  |  Resumed AstarArg: ${astarFileVisualizer.getTitle("", cegarHistoryStorage.indexOf(astarArg))}")
 	}
 
-	@Override
-	// uses previous AstarArg then calls checkFromNode with root=null
-	// it is assumed that last AstarArg in cegarHistoryStorage should be used if exists
-	public AbstractorResult check(final ARG<S, A> arg, final P prec) {
-		checkNotNull(arg);
-		checkNotNull(prec);
-		logger.write(Level.DETAIL, "|  |  Precision: %s%n", prec);
+	private fun AstarNode<S, A>.close(candidates: Collection<AstarNode<S, A>>) {
+		require(!argNode.isCovered)
+		require(!argNode.isExpanded)
+		for (astarCandidate in candidates) {
+			val candidate = astarCandidate.argNode
+			if (!candidate.mayCover(argNode)) {
+				continue
+			}
 
-		AstarArg<S, A> astarArg;
-		if (cegarHistoryStorage.getSize() == 0) {
-			astarArg = new AstarArg<>(arg, partialOrd, projection, null);
-			cegarHistoryStorage.add(astarArg, prec);
+			// TODO why?
+			check(!heuristic.isInfinite)
+
+			if (heuristic <= astarCandidate.heuristic) {
+				// breakpoint here (removeFromWaitlist reaching target again with cover edge)
+				if (!argNode.isTarget && candidate.isTarget) { println("test") }
+
+				argNode.cover(candidate)
+				return
+			}
+		}
+	}
+
+	// uses previous AstarArg then calls checkFromNode with root=null
+	// it is assumed that last AstarArg in astarArgStore should be used if exists
+	override fun check(arg: ARG<S, A>, prec: P): AbstractorResult {
+		val astarArg: AstarArg<S, A>
+		if (cegarHistoryStorage.size == 0) {
+			astarArg = AstarArg(arg, partialOrd, projection, null)
+			cegarHistoryStorage.add(astarArg, prec)
 		} else {
-			var pair = cegarHistoryStorage.getLast();
-			astarArg = pair.getFirst();
+			// TODO use parameter arg and create astarArg here (means we have to create connections here)?
+			val pair = cegarHistoryStorage.last
+			astarArg = pair.first
 			// prec is not modified but copied after prune by the CegarChecker
-			astarArgStore.setLast(astarArg, prec);
+			cegarHistoryStorage.setLast(astarArg, prec)
 			// prune was only applied to arg by the CegarChecker
-			astarArg.pruneApply();
+			astarArg.pruneApply()
 		}
 
 		// initialize: prune can keep initialized state
-		if (!arg.isInitialized()) {
-			logger.write(Level.SUBSTEP, "|  |  (Re)initializing ARG...");
-			Collection<ArgNode<S, A>> newInitNodes = argBuilder.init(arg, prec);
-			newInitNodes.forEach(initArgNode -> {
-				assert !initArgNode.isCovered();
-				astarArg.createSuccAstarNode(initArgNode);
-			});
-			logger.write(Level.SUBSTEP, "done%n");
+		if (!arg.isInitialized) {
+			logger.substep("|  |  (Re)initializing ARG...")
+			argBuilder.init(arg, prec).forEach { newNode ->
+				check(!newNode.isCovered)
+				astarArg.createSuccAstarNode(newNode)
+			}
+			logger.substepLine("done")
+			check(arg.isInitialized)
 		}
-		assert arg.isInitialized();
 
-		//// parents + (parents & covering edges) make this difficult: arg.getIncompleteNodes().map(astarArg::get).filter(n -> n.distance.getType() != DistanceType.INFINITE)
-		//// 		add to reachedSet if implemented
-		Collection<AstarNode<S, A>> incompleteAstarNodes = astarArg.getArg().getIncompleteNodes().map(astarArg::get).toList();
 		// If we start from incomplete nodes then we have to know their shortest depth from an init node.
 		// Unexpanded child might have shorter distance from a covered node.
-		findDistance(astarArg, initialStopCriterion, astarArg.getAstarInitNodes().values(), "", prec);
+		astarArg.astarInitNodes.values.findDistanceForAny(initialStopCriterion, "", prec)
 
 		// AstarArg has to be copied as arg will be modified after refinement
-		AstarArg<S, A> astarArgCopy = AstarIterator.createIterationReplacement(astarArg, partialOrd, projection, this);
-		cegarHistoryStorage.setLast(astarArgCopy, prec);
+		val astarArgCopy = createIterationReplacement(astarArg, partialOrd, projection, this)
+		cegarHistoryStorage.setLast(astarArgCopy, prec)
 
 		// prec will be overwritten
-		cegarHistoryStorage.add(astarArg, prec);
+		cegarHistoryStorage.add(astarArg, prec)
 
 		// found and isSafe is different: e.g. full expand
-		if (arg.isSafe()) {
-			// Arg may won't be expanded as we can get INFINITE heuristic avoiding expansion
-			//   therefore we don't need this: checkState(arg.isComplete(), "Returning incomplete ARG as safe");
-			return AbstractorResult.safe();
+		return if (arg.isSafe) {
+			// Arg may not be expanded as we can get INFINITE heuristic avoiding expansion
+			// require(arg.isComplete) { "Returning incomplete ARG as safe" };
+			AbstractorResult.safe()
 		} else {
-			/*if (type == Type.FULL) {
-				astarArg.setUnknownDistanceInfinite();
-			}*/
-			return AbstractorResult.unsafe();
+			AbstractorResult.unsafe()
 		}
 	}
 
-	private void debug(AstarArg<S, A> astarArg, Collection<ArgNode<S,A>> startNodes) {
-		boolean enabled = astarFileVisualizer.getEnabled();
-		astarFileVisualizer.setEnabled(true);
-		astarFileVisualizer.visualize("debug", cegarHistoryStorage.indexOf(astarArg), startNodes);
-		astarFileVisualizer.setEnabled(enabled);
+	override fun createArg(): ARG<S, A> = argBuilder.createArg()
+
+	enum class HeuristicSearchType {
+		FULL,
+		SEMI_ONDEMAND,
+		DECREASING,
 	}
 
-	private void debugInit(AstarArg<S, A> astarArg) {
-		debug(astarArg, astarArg.getArg().getInitNodes().toList());
-	}
-
-	private void debugAll() {
-		for (int i = 0; i < cegarHistoryStorage.getSize(); i++) {
-			debugInit(cegarHistoryStorage.get(i).getFirst());
-		}
-	}
-
-	// TODO should this be here?
-	private void close(final AstarNode<S, A> astarNode, final Collection<AstarNode<S, A>> candidates) {
-		ArgNode<S, A> argNode = astarNode.getArgNode();
-		assert !argNode.isCovered();
-		assert !argNode.isExpanded();
-		for (final AstarNode<S, A> astarCandidate : candidates) {
-			ArgNode<S, A> candidate = astarCandidate.getArgNode();
-			if (!candidate.mayCover(argNode)) {
-				continue;
-			}
-
-			// Out goal is to keep consistency.
-			// E.g. keeping monotone covering edges would guarantee that but is a stronger property.
-			// TODO what if candidate has lowerbound distance
-			assert astarNode.getHeuristic().getType() != Distance.Type.INFINITE;
-			if (astarNode.getHeuristic().compareTo(astarCandidate.getHeuristic()) <= 0) {
-				argNode.cover(candidate);
-				return;
-			}
-		}
+	companion object {
+		// TODO: make it non singleton
+		lateinit var heuristicSearchType: HeuristicSearchType
+		fun <S: State, A: Action, P: Prec> builder(argBuilder: ArgBuilder<S, A, P>) = Builder(argBuilder)
 	}
 
 	/*@Override
-	public String toString() {
-		return Utils.lispStringBuilder(getClass().getSimpleName()).add(waitlist).toString();
-	}*/
+    public String toString() {
+        return Utils.lispStringBuilder(getClass().getSimpleName()).add(waitlist).toString();
+    }*/
+	override fun toString() = "Utils.lispStringBuilder(getClass().getSimpleName()).add(waitlist).toString()"
 
 	class Builder<S: State, A: Action, P: Prec>(private val argBuilder: ArgBuilder<S, A, P>) {
 		private var projection: (S) -> Any = { 0 }
