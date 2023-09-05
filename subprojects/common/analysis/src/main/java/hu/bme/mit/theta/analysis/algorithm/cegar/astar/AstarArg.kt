@@ -12,7 +12,7 @@ class AstarArg<S: State, A: Action>(
 	val arg: ARG<S, A>,
 	private val partialOrd: PartialOrd<S>,
 	projection: (S) -> Any,
-	var provider: AstarArg<S, A>?
+	var provider: AstarArg<S, A>? // TODO should this be in here, not in a special structure in CegarHistoryStorage
 ) {
 	// Contains init nodes as well
 	var astarNodes = hashMapOf<ArgNode<S, A>, AstarNode<S, A>>()
@@ -42,26 +42,24 @@ class AstarArg<S: State, A: Action>(
 		astarNodes = astarNodesNew
 	}
 
-	// TODO extension method?
 	fun createSuccAstarNode(argNode: ArgNode<S, A>): AstarNode<S, A> {
-		val providerAstarNode = getProviderAstarNode(argNode)
+		val providerAstarNode = argNode.getProviderAstarNode()
 		val astarNode = AstarNode(argNode, providerAstarNode, this)
 		reachedSet.add(astarNode)
 		put(astarNode)
 		return astarNode
 	}
 
-	// TODO extension method?
-	private fun getProviderAstarNode(argNode: ArgNode<S, A>): AstarNode<S, A>? {
+	private fun ArgNode<S, A>.getProviderAstarNode(): AstarNode<S, A>? {
 		val provider = provider
 		provider ?: return null
-		require(!provider.contains(argNode))
+		require(!provider.contains(this))
 
-		var providerCandidates = getProviderCandidates(argNode)
+		var providerCandidates = this.getProviderCandidates()
 		providerCandidates ?: return null
 
 		// filter based on partialOrd.isLeq == "<=" == subset of
-		providerCandidates = providerCandidates.filter { partialOrd.isLeq(argNode.state, it.state) }
+		providerCandidates = providerCandidates.filter { partialOrd.isLeq(state, it.state) }
 
 		// If we knew all nodes heuristics then we would choose the largest one as it is the most precise lower bound
 		if (providerCandidates.any { provider[it].distance.isKnown }) {
@@ -74,7 +72,8 @@ class AstarArg<S: State, A: Action>(
 		if (AstarAbstractor.heuristicSearchType == AstarAbstractor.HeuristicSearchType.DECREASING) {
 			if (providerNode == null) {
 				// this fails for test 48,51,61 on Xsts
-				check(!argNode.isInit)
+				check(!isInit)
+				// TODO pattern
 				return null
 			}
 		} else {
@@ -83,12 +82,11 @@ class AstarArg<S: State, A: Action>(
 		return provider[providerNode]
 	}
 
-	// TODO extension method?
-	private fun getProviderCandidates(argNode: ArgNode<S, A>): List<ArgNode<S, A>>? {
+	private fun ArgNode<S, A>.getProviderCandidates(): List<ArgNode<S, A>>? {
 		val provider = provider!!
-		val parentAstarNode = argNode.parent()?.astarNode
+		val parentAstarNode = parent()?.astarNode
 		if (parentAstarNode == null) {
-			require(argNode.isInit)
+			require(isInit)
 			return provider.astarInitNodes.keys.toList()
 		}
 

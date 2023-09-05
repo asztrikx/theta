@@ -124,10 +124,11 @@ public final class ArgNode<S extends State, A extends Action> {
 	}
 
 	// node: who we cover with
+	// it is guaranteed that we can't walk two covering nodes right after each other (clearCoveredNodes and checkArgument)
 	public void cover(final ArgNode<S, A> node) {
 		checkArgument(!node.isExcluded(), "Node is not excluded");
 		final Collection<ArgNode<S, A>> oldCoveredNodes = new ArrayList<>(coveredNodes);
-		descendants().forEach(ArgNode::clearCoveredNodes); // TODO why is this sound, do we need to modify parents
+		descendants().forEach(ArgNode::clearCoveredNodes); // currently assertions avoid covering expanded nodes
 		setCoveringNode(node);
 		oldCoveredNodes.forEach(n -> n.setCoveringNode(node));
 	}

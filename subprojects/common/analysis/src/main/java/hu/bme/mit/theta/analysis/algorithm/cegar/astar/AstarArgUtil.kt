@@ -17,6 +17,7 @@ fun <S: State, A: Action> AstarArg<S, A>.propagateUpDistanceFromKnownDistance(
 	until: Set<ArgNode<S, A>>,
 	parents: Map<ArgNode<S, A>, ArgNode<S, A>?>,
 ) {
+	// TODO does it really handle inf distance?
 	require(from.distance.isKnown)
 
 	val conditionalNodes = mutableListOf<ArgNode<S, A>>()
@@ -103,7 +104,7 @@ private fun <S: State, A: Action> AstarArg<S, A>.propagateUpDistanceFromConditio
 					if (previousDistance!!.isInfinite) {
 						check(astarNode.distance <= previousDistance!!)
 					} else {
-						check(astarNode.distance <= Distance(Distance.Type.BOUNDED, previousDistance!!.value + 1))
+						check(astarNode.distance <= previousDistance!! + 1)
 					}
 				}
 				return@walkUpParents true
@@ -276,9 +277,8 @@ fun <S: State, A: Action> AstarArg<S, A>.setDistanceFromAllTargets(targets: Coll
 	// Set exact distances
 	targets.walkReverseSubtree skip@ { argNode, distance ->
 		// An ancestor can be a target because targets are expanded
-		// TODO targets can't have a distance when function is called
 		if (argNode.astarNode.distance.isKnown) {
-			return@skip true // TODO check why old coded didn't failed
+			return@skip true
 		}
 
 		argNode.astarNode.distance = Distance.boundedOf(distance)

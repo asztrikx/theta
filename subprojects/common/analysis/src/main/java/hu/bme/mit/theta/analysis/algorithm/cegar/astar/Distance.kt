@@ -6,6 +6,7 @@ class Distance private constructor(
 ) : Comparable<Distance> {
 	var value = value
 		get(): Int {
+			// TODO if we auto set infinite for inf heuristic then propagateUpDistanceFromInfiniteDistance's 5) logic have to be rechecked
 			check(type == Type.BOUNDED)
 			return field
 		}
@@ -40,17 +41,17 @@ class Distance private constructor(
 
 	override fun equals(other: Any?) = other is Distance && compareTo(other) == 0
 
-	override fun hashCode(): Int = 31 * type.hashCode() + value
+	override fun hashCode() = 31 * type.hashCode() + value
 
 	override fun toString() = when (type) {
 		Type.BOUNDED -> "(B$value)"
-		Type.UNKNOWN -> "(U)"
 		Type.INFINITE -> "(I)"
+		Type.UNKNOWN -> "(U)"
 	}
 
 	enum class Type {
-		INFINITE,
 		BOUNDED,
+		INFINITE,
 		UNKNOWN,
 	}
 

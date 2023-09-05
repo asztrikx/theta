@@ -6,6 +6,7 @@ import hu.bme.mit.theta.analysis.algorithm.ArgNode
 import kotlin.jvm.optionals.getOrNull
 
 // Kotlin doesn't allow bounds here
+// Second parameter: distance
 typealias Skip<S, A> = (ArgNode<S, A>, Int) -> Boolean
 typealias NewVisits<S, A> = (Visit<S, A>) -> Collection<Visit<S, A>>
 
@@ -19,10 +20,12 @@ class Visit<S: State, A: Action>(
 }
 
 /**
- * Calls [skip] on all nodes visited with [newVisitsFunc].
+ * Visits nodes from start nodes with BFS.
  *
- * If [skip] returns true on a node `n` then the result of [newVisitsFunc]`(n)` will not be processed.
- * [skip] also should be used to process nodes, it receives the node and the distance calculated by [newVisitsFunc].
+ * @param newVisitsFunc determines the neighbour nodes of a node.
+ *
+ * @param skip is called on all nodes visited which determines whether to skip processing the neighbours of a node.
+ * This also should be used to receive and process the visited nodes with the parameters: node, shortest distance from any start node.
  */
 fun <S: State, A: Action> Collection<ArgNode<S, A>>.walk(
 	skip: Skip<S, A>,
@@ -69,11 +72,11 @@ fun <S: State, A: Action> Collection<ArgNode<S, A>>.walk(
 }
 
 /**
- * Calls [walk] with a newVisitFunc that only visits children or the coveringNode.
+ * Calls [walk] with a newVisitFunc that only visits children or the covering node.
  *
  * The difference between this and [ArgNode::getNodes] is that this gives the distances for each node from the startNodes
  *
- * @receiver startNodes
+ * @receiver start nodes
  */
 fun <S: State, A: Action> Collection<ArgNode<S, A>>.walkSubtree(skip: Skip<S, A>) {
 	walk(skip) newVisits@ { (argNode, distance) ->

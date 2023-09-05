@@ -50,6 +50,7 @@ object AstarIterator {
 			astarArgCopy.put(astarNodeCopy)
 			astarArgCopy.reachedSet.add(astarNodeCopy)
 
+			// TODO pattern
 			if (AstarAbstractor.heuristicSearchType == AstarAbstractor.HeuristicSearchType.DECREASING) {
 				handleAstarDecreasing(astarNode, astarAbstractor)
 			}
