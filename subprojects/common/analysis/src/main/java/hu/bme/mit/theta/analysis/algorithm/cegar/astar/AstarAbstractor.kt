@@ -192,7 +192,7 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 		for (succArgNode in argNode.succNodes()) {
 			val succAstarNode = astarArg[succArgNode]
 
-			heuristicFinder.findHeuristic(succAstarNode) // maybe don't do this if one of child is target?
+			heuristicFinder.findHeuristic(succAstarNode)
 			astarNode.checkConsistency(succAstarNode)
 			search.addToWaitlist(succAstarNode, astarNode, depth + 1)
 		}
