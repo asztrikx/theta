@@ -5,6 +5,9 @@ import hu.bme.mit.theta.analysis.State
 import hu.bme.mit.theta.analysis.algorithm.ArgNode
 import hu.bme.mit.theta.analysis.waitlist.PriorityWaitlist
 
+/**
+ * TODO document early exit
+ */
 class AstarSearch<S: State, A: Action>(val startAstarNodes: Collection<AstarNode<S, A>>) {
 	// We could already have started to explore a subgraph therefore do not use global doneSet variable
 	private val doneSet = hashSetOf<AstarNode<S, A>>()
@@ -41,7 +44,9 @@ class AstarSearch<S: State, A: Action>(val startAstarNodes: Collection<AstarNode
 	var reachedBoundeds = ArrayDeque<AstarNode<S, A>>()
 
 	fun addToWaitlist(astarNode: AstarNode<S, A>, parentAstarNode: AstarNode<S, A>?, depth: Int) {
+		val argNode = astarNode.argNode
 		check(astarNode.heuristic.isKnown)
+
 		if (astarNode.heuristic.isInfinite) {
 			return
 		}
@@ -51,15 +56,23 @@ class AstarSearch<S: State, A: Action>(val startAstarNodes: Collection<AstarNode
 		}
 
 		if (astarNode in doneSet) {
-			check(depths[astarNode.argNode]!! <= depth)
+			check(depths[argNode]!! <= depth)
 			return
 		}
 
 		if (!minDepths.containsKey(astarNode) || minDepths[astarNode]!! > depth) {
-			waitlist.add(Edge(astarNode, depth))
-			parents[astarNode.argNode] = parentAstarNode?.argNode
-			depths[astarNode.argNode] = depth
+			parents[argNode] = parentAstarNode?.argNode
+			depths[argNode] = depth
 			minDepths[astarNode] = depth
+			// TODO document early exit, only need to set [parents]
+			if (!argNode.isTarget) {
+				// !expanded && isLeaf: handle leftover nodes
+				if (astarNode.heuristic == Distance.ZERO && !argNode.isCovered && (!argNode.isExpanded && argNode.isLeaf)) {
+					// [AstarWaitlistComparator] depends on knowing whether a node is coverable // TODO move to comparator?
+					astarNode.close(astarArg.reachedSet[astarNode], this)?.let {}
+				}
+				waitlist.add(Edge(astarNode, depth))
+			}
 		}
 	}
 

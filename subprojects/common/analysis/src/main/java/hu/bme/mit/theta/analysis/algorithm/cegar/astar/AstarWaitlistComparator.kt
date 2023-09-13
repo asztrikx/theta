@@ -6,23 +6,24 @@ import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarSearch.Edge
 
 class AstarWaitlistComparator<S: State, A: Action> : Comparator<Edge<S, A>> {
 	override fun compare(edge1: Edge<S, A>, edge2: Edge<S, A>): Int {
-		val astarNode1 = edge1.end
-		val astarNode2 = edge2.end
-		val argNode1 = astarNode1.argNode
-		val argNode2 = astarNode2.argNode
-
-		val weight1 = astarNode1.getWeight(edge1.depthFromAStartNode).value
-		val weight2 = astarNode2.getWeight(edge2.depthFromAStartNode).value
-
-		// optimization
-		return when {
-			weight1 == weight2 -> when {
-				argNode1.isTarget && argNode2.isTarget -> 0
-				argNode1.isTarget -> -1
-				argNode2.isTarget -> 1
-				else -> 0
-			}
-			else -> weight1 - weight2
+		val weightComparator = compareBy { it: Edge<S, A> ->
+			it.end.getWeight(it.depthFromAStartNode).value
 		}
+
+		/*
+		TODO https://photos.app.goo.gl/wguQ7K9opyLqTUPa7
+		Monotonicity
+		Indirect proof
+		- target selection
+
+		dokumentálás: cserébe 0-ásakat nem coverelhetjük: okoz e ez gondot (ha target a kövi nem, ha más heurisztikájú akkor csak +1 csúcs és a kövit biztosan lehet coverelni, ha több 0-ás van egymás után akkor árthat csak)
+		*/
+		val earlyExitComparator = predicateOrderedComparator<Edge<S,A>>(
+			{ it.end.argNode.isCovered && it.end.heuristic == Distance.ZERO },
+			{ !it.end.argNode.isCovered && it.end.heuristic == Distance.ONE },
+			{ !it.end.argNode.isCovered && it.end.heuristic == Distance.ZERO },
+		)
+
+		return (weightComparator then earlyExitComparator).compare(edge1, edge2)
 	}
 }

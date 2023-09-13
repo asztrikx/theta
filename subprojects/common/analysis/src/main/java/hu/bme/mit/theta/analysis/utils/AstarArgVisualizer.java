@@ -37,6 +37,7 @@ import java.util.stream.Collectors;
 import static hu.bme.mit.theta.common.visualization.Alignment.LEFT;
 import static hu.bme.mit.theta.common.visualization.Shape.RECTANGLE;
 
+// TODO check this
 public final class AstarArgVisualizer<S extends State, A extends Action> {
 
 	private static final LineStyle COVER_EDGE_STYLE = LineStyle.DASHED;

@@ -61,6 +61,7 @@ class Distance private constructor(
 		fun boundedOf(value: Int) = cache.computeIfAbsent(value) { Distance(Type.BOUNDED, it) }
 
 		val ZERO = boundedOf(0)
+		val ONE = boundedOf(1)
 		val INFINITE = Distance(Type.INFINITE, 0)
 		val UNKNOWN = Distance(Type.UNKNOWN, 0)
 	}

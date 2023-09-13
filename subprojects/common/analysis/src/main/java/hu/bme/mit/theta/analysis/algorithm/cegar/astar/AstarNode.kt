@@ -25,7 +25,7 @@ class AstarNode<S: State, A: Action>(
 		set(value) {
 			checkAdmissibility(value)
 			if (argNode.isTarget) {
-				require(value.value == 0)
+				require(value == Distance.ZERO)
 			}
 			_distance = value
 		}
@@ -57,7 +57,7 @@ class AstarNode<S: State, A: Action>(
 
 			// Requirement for heuristic consistency
 			if (argNode.isTarget) {
-				check(value.value == 0)
+				check(value == Distance.ZERO)
 			}
 			_heuristic = value
 		}

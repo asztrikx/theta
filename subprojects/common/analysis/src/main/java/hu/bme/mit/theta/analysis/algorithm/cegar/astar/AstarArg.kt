@@ -65,11 +65,11 @@ class AstarArg<S: State, A: Action>(
 		if (providerCandidates.any { provider[it].distance.isKnown }) {
 			providerCandidates = providerCandidates
 				.filter { provider[it].distance.isKnown }
-				.sortedBy { provider[it].distance }
+				.sortedBy { provider[it].distance } // TODO no need to sort, only need to find max in O(n)
 		}
 
 		val providerNode = providerCandidates.firstOrNull()
-		if (AstarAbstractor.heuristicSearchType == AstarAbstractor.HeuristicSearchType.DECREASING) {
+		if (AstarAbstractor.heuristicSearchType == AstarAbstractor.HeuristicSearchType.DECREASING) {  // TODO decreasing is handled why does it fail on check
 			if (providerNode == null) {
 				// this fails for test 48,51,61 on Xsts
 				check(!isInit)

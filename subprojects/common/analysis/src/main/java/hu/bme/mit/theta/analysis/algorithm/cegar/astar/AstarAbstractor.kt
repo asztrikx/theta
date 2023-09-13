@@ -16,6 +16,7 @@
 package hu.bme.mit.theta.analysis.algorithm.cegar.astar
 
 import hu.bme.mit.theta.analysis.Action
+import hu.bme.mit.theta.analysis.Analysis
 import hu.bme.mit.theta.analysis.PartialOrd
 import hu.bme.mit.theta.analysis.Prec
 import hu.bme.mit.theta.analysis.State
@@ -33,6 +34,7 @@ import hu.bme.mit.theta.analysis.algorithm.cegar.astar.argstore.CegarHistoryStor
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.distanceSetter.DistanceSetter
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.heuristicFinder.HeuristicFinder
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.filevisualizer.AstarFileVisualizer
+import hu.bme.mit.theta.analysis.prod2.prod2explpred.Prod2ExplPredAnalysis
 import hu.bme.mit.theta.common.logging.Logger
 import hu.bme.mit.theta.common.logging.NullLogger
 import java.util.function.Function
@@ -54,20 +56,6 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 ): Abstractor<S, A, P> {
 	private val astarFileVisualizer = AstarFileVisualizer(true, cegarHistoryStorage, logger)
 
-	init {
-		if (heuristicSearchType == HeuristicSearchType.FULL) {
-			require(initialStopCriterion is FullExploration<S, A>)
-		}
-		if (heuristicSearchType != HeuristicSearchType.FULL) {
-			// Currently weightSupremumXYZ is a single value not a list so it is unsupported. Also findDistanceFor**Any**
-			// If we are looking for n targets then it is possible that we reached [1,n) target
-			require(initialStopCriterion !is AtLeastNCexs<S, A>)
-		}
-		if (heuristicSearchType == HeuristicSearchType.FULL || heuristicSearchType == HeuristicSearchType.DECREASING) {
-			require(cegarHistoryStorage is CegarHistoryStoragePrevious<S, A, P>)
-		}
-	}
-
 	/**
 	 * Determines the closest target to any of the node or determines that no node can reach target.
 	 */
@@ -84,11 +72,18 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 			logger.infoLine("|  |  Skipping AstarArg: startAstarNodes already have a distance")
 			return
 		}
+
 		logger.detailLine("|  |  Precision: $prec")
 		logger.infoLine("|  |  Starting ARG: ${arg.nodes.count()} nodes, ${arg.incompleteNodes.count()} incomplete, ${arg.unsafeNodes.count()} unsafe")
 		logger.substepLine("|  |  Starting AstarArg: ${astarFileVisualizer.getTitle("", cegarHistoryStorage.indexOf(astarArg))}")
 		logger.substepLine("|  |  Building ARG...")
 		astarFileVisualizer.visualize("start $visualizerState", cegarHistoryStorage.indexOf(astarArg))
+
+		if (any { it.argNode.isTarget }) {
+			filter { it.argNode.isTarget }.forEach { it.distance = Distance.ZERO }
+			// TODO loggings at the end of function
+			return
+		}
 
 		// expanded targets' children may not have heuristic
 		forEach { heuristicFinder.findHeuristic(it) }
@@ -96,7 +91,7 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 		val search = AstarSearch(filter { !it.heuristic.isInfinite })
 		while (true) {
 			val (astarNode, depth) = search.removeFromWaitlist() ?: break
-			// TODO see theta-tdk: https://photos.app.goo.gl/DQr5WP6KAtBtwc22A https://photos.app.goo.gl/apCCfwrk5beZD3hg6
+			// TODO see theta-tdk: https://photos.app.goo.gl/apCCfwrk5beZD3hg6
 
 			// TODO: stopCriterion.canStop(astarArg.arg, listOf(astarNode.argNode))
 			if (search.reachedBoundeds.size != 0) {
@@ -145,57 +140,35 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 		astarArg: AstarArg<S, A>,
 		prec: P,
 	) {
-		val argNode = astarNode.argNode
+		var astarNode = astarNode
+		var argNode = astarNode.argNode
 
 		// After prune node may have children but not fully expanded (isExpanded false).
 		// If node has no children it still can already be expanded, therefore expanded is already set (should not be covered).
 		// If node already has covering node, close cloud still choose another one, therefore avoid.
 		if (!argNode.isExpanded && argNode.isLeaf && !argNode.isCovered) {
-			astarNode.close(astarArg.reachedSet[astarNode])
+			astarNode.close(astarArg.reachedSet[astarNode], search)?.let {
+				astarNode.checkConsistency(astarArg[argNode.coveringNode()!!])
+				astarNode = it
+				argNode = astarNode.argNode
+			}
 		}
 		if (argNode.isCovered) {
-			val coveringNode = argNode.coveringNode()!!
-			val coveringAstarNode = astarArg[coveringNode]
-
-			check(coveringAstarNode.heuristic == astarNode.heuristic) // TODO this is created to be hit, test this, for provider node children exists should have failed earlier
+			val coveringAstarNode = astarArg[argNode.coveringNode()!!]
 
 			// We are either covered into
 			// - completed node (was in waitlist => has heuristic)
 			// - completed node's child (in waitlist => has heuristic)
-			// - leftover from prune (after copy we apply decreasing for all nodes => has heuristic)
+			// - leftover from prune:
+			//   - decreasing: during copy we call [findHeuristic] => has heuristic
+			//   - non-decreasing: we can cover into a leftover node before it is visited (even when starting from init nodes) => may not have
 			if (heuristicSearchType == HeuristicSearchType.DECREASING) {
 				check(coveringAstarNode.heuristic.isKnown)
 			}
-
-			// If astarNode's parent is also covered then covering edges have been redirected. (see ArgNode::cover)
-			// We have to update parents map according to that.
-			//  1) a - - -> b (argNode,coveredAstarNode)
-			//  2) a - - -> b - - -> c (coveringNode)
-			//  3) a        b - - -> c
-			//	   |                 ^
-			//     | - - - - - - - - |
-			val parentArgNode = search.parents[astarNode.argNode]
-			val parentAstarNode = parentArgNode?.let { astarArg[it] }
-			val coveredAstarNode = if (parentArgNode != null && parentArgNode.isCovered && parentArgNode.coveringNode()!! === argNode) {
-				// Because argNode is covered it can only reach coveringNode with the same distance as it's new parent
-				// therefore we can safely remove it
-				search.parents.remove(argNode)
-
-				// Update to new parent if we this node is the current parent
-				// as coveringAstarNode may already have a better parent or already in doneSet
-				parentAstarNode
-			} else {
-				astarNode
-			}
-
-			// New cover edge's consistency (b -> c).
-			// If rewiring happened we don't need to check the rewired edge (a -> c) for consistency
-			// as it is distributive property for this case.
 			heuristicFinder.findHeuristic(coveringAstarNode)
 			astarNode.checkConsistency(coveringAstarNode)
 			// Covering edge has 0 weight therefore depth doesn't increase
-			search.addToWaitlist(coveringAstarNode, coveredAstarNode, depth)
-			// Covering node is not a new node therefore it's already in reachedSet
+			search.addToWaitlist(coveringAstarNode, astarNode, depth)
 			return
 		}
 
@@ -203,19 +176,15 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 			return
 		}
 
-		if (heuristicSearchType != HeuristicSearchType.FULL) {
-			check(!argNode.isTarget)
-		}
-		check(!argNode.isCovered)
-
 		// expand: create nodes
 		if (!argNode.isExpanded) {
 			val newArgNodes = argBuilder.expand(argNode, prec)
 			for (newArgNode in newArgNodes) {
+				// TODO this should definitely be a pattern: blocking expanding older arg
 				if (astarArg.provider != null && heuristicSearchType == HeuristicSearchType.SEMI_ONDEMAND) {
-					astarNode.providerAstarNode!!.createChildren(prec)
+					astarNode.providerAstarNode!!.createChildren(prec, search)
 				}
-				astarArg.createSuccAstarNode(newArgNode) // TODO why wasn't it here?
+				astarArg.createSuccAstarNode(newArgNode)
 			}
 		}
 
@@ -223,10 +192,6 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 		for (succArgNode in argNode.succNodes()) {
 			val succAstarNode = astarArg[succArgNode]
 
-			// already existing succAstarNode, e.g:
-			// 		although we only add leaves to startAstarNodes and findHeuristic is called upon them
-			//		they may get covered with a non leaf which has succAstarNode (because of how copy works)
-			//		but its provider doesn't have distance, therefore there is no heuristic
 			heuristicFinder.findHeuristic(succAstarNode) // maybe don't do this if one of child is target?
 			astarNode.checkConsistency(succAstarNode)
 			search.addToWaitlist(succAstarNode, astarNode, depth + 1)
@@ -238,12 +203,12 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 	 * so that different node's children will have candidate provider nodes.
 	 *
 	 * A node's children :=
-	 * - if it is/can be expanded: its graph children
+	 * - if it is/can be expanded: its tree children
 	 * - if it is/can be covered: its coverer node's children (recursive definition)
 	 *
 	 * [heuristicFinder] is not called during this.
 	 */
-	private fun AstarNode<S, A>.createChildren(prec: P) {
+	private fun AstarNode<S, A>.createChildren(prec: P, search: AstarSearch<S, A>) {
 		// we could call expand on found target nodes after each search however
 		// - the intention would not be as clear as calling it before [createSuccAstarNode]
 		// - it could expande more nodes than we would actually need
@@ -266,6 +231,11 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 			argNode = argNode.coveringNode()!!
 			astarNode = astarArg[argNode]
 		}
+		require(argNode.isTarget)
+
+		if (heuristicSearchType == HeuristicSearchType.FULL) {
+			require(argNode.isCovered || argNode.isExpanded)
+		}
 
 		if (argNode.isCovered) {
 			// [createChildren] is already called (directly or indirectly) on this node
@@ -274,8 +244,8 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 
 		// [createChildren] can be already called on this node through a different edge
 		while(!argNode.isExpanded) {
-			// optimization (leq): target node can only be covered with a target node
-			astarNode.close(astarArg.reachedSet[astarNode].filter { it.argNode.isTarget })
+			// optimization (leq uses smt solver): target node can only be covered with a target node
+			astarNode.close(astarArg.reachedSet[astarNode].filter { it.argNode.isTarget }, search)?.let {}
 			if (argNode.coveringNode() != null) {
 				argNode = argNode.coveringNode()!!
 				astarNode = astarArg[argNode]
@@ -285,24 +255,6 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 			}
 			argBuilder.expand(argNode, prec).forEach {
 				astarArg.createSuccAstarNode(it)
-			}
-		}
-	}
-
-	private fun AstarNode<S, A>.close(candidates: Collection<AstarNode<S, A>>) {
-		require(!argNode.isCovered)
-		require(!argNode.isExpanded)
-		for (astarCandidate in candidates) {
-			val candidate = astarCandidate.argNode
-			if (!candidate.mayCover(argNode)) {
-				continue
-			}
-			check(!(argNode.isTarget && !candidate.isTarget))
-			if(!argNode.isTarget && candidate.isTarget) { println("expected") }
-
-			if (heuristic <= astarCandidate.heuristic) {
-				argNode.cover(candidate)
-				return
 			}
 		}
 	}
@@ -335,8 +287,6 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 			check(arg.isInitialized)
 		}
 
-		// TODO rethink: only add leaf nodes from leftovers: will a* be violated?
-
 		// If we start from incomplete nodes then we have to know their shortest depth from an init node.
 		// Unexpanded child might have shorter distance from a covered node.
 		astarArg.astarInitNodes.values.findDistanceForAny(initialStopCriterion, "", prec)
@@ -367,7 +317,7 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 	}
 
 	companion object {
-		// Only used for assertions
+		// Only used for assertions // TODO make this true and move this out to somewhere else
 		lateinit var heuristicSearchType: HeuristicSearchType
 		fun <S: State, A: Action, P: Prec> builder(argBuilder: ArgBuilder<S, A, P>) = Builder(argBuilder)
 	}
@@ -379,24 +329,44 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 	override fun toString() = "Utils.lispStringBuilder(getClass().getSimpleName()).add(waitlist).toString()"
 
 	class Builder<S: State, A: Action, P: Prec>(private val argBuilder: ArgBuilder<S, A, P>) {
+		private lateinit var analysis: Analysis<S, A, P>
 		private var projection: (S) -> Any = { 0 }
 		private var stopCriterion = StopCriterions.firstCex<S, A>()
 		private var logger: Logger = NullLogger.getInstance()
-		private lateinit var cegarHistory: CegarHistoryStorage<S, A, P>
+		private lateinit var cegarHistoryStorage: CegarHistoryStorage<S, A, P>
 		private lateinit var partialOrd: PartialOrd<S>
+
+		// Only used to warn about bad PartialOrder
+		fun analysis(prod2Analysis: Analysis<S, A, P>) = apply {
+			require(prod2Analysis !is Prod2ExplPredAnalysis) // TODO 8th failing case, use decreasing heuristic for this when findProviderAstarNode fails
+			this.analysis = prod2Analysis
+		}
 
 		fun projection(projection: Function<in S, *>) = apply { this.projection = { s -> projection.apply(s) } }
 
-		//fun projection(projection: (S) -> Any) = apply { this.projection = projection }
-
-		fun stopCriterion(stopCriterion: StopCriterion<S, A>) = apply { this.stopCriterion = stopCriterion }
+		fun stopCriterion(stopCriterion: StopCriterion<S, A>) = apply {
+			if (heuristicSearchType == HeuristicSearchType.FULL) {
+				require(stopCriterion is FullExploration<S, A>)
+			}
+			if (heuristicSearchType != HeuristicSearchType.FULL) {
+				// Currently weightSupremumXYZ is a single value not a list so it is unsupported. Also findDistanceFor**Any**
+				// If we are looking for n targets then it is possible that we reached [1,n) target
+				require(stopCriterion !is AtLeastNCexs<S, A>)
+			}
+			this.stopCriterion = stopCriterion
+		}
 
 		fun logger(logger: Logger) = apply { this.logger = logger }
 
-		fun cegarHistoryStorage(cegarHistoryStorage: CegarHistoryStorage<S, A, P>) = apply { this.cegarHistory = cegarHistoryStorage }
+		fun cegarHistoryStorage(cegarHistoryStorage: CegarHistoryStorage<S, A, P>) = apply {
+			if (heuristicSearchType == HeuristicSearchType.FULL || heuristicSearchType == HeuristicSearchType.DECREASING) {
+				require(cegarHistoryStorage is CegarHistoryStoragePrevious<S, A, P>)
+			}
+			this.cegarHistoryStorage = cegarHistoryStorage
+		}
 
 		fun partialOrder(partialOrd: PartialOrd<S>) = apply { this.partialOrd = partialOrd }
 
-		fun build() = AstarAbstractor(argBuilder, projection, stopCriterion, logger, cegarHistory, partialOrd)
+		fun build() = AstarAbstractor(argBuilder, projection, stopCriterion, logger, cegarHistoryStorage, partialOrd)
 	}
 }

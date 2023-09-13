@@ -59,8 +59,8 @@ fun <S: State, A: Action> AstarArg<S, A>.propagateUpDistanceFromKnownDistance(
 
 		// Parent is a covered node
 		if (!node.isInit && node.parent()!! !== parentNode) {
-			// Graph parent's other children may have already reached a target with a covered node parent.
-			// But then graph parent's distance hasn't been set and won't be as there isn't any children left.
+			// Tree parent's other children may have already reached a target with a covered node parent.
+			// But then tree parent's distance hasn't been set and won't be as there isn't any children left.
 			conditionalNodes += node.parent()!!
 		}
 		return@walkUpParents until.contains(node)

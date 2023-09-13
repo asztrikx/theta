@@ -15,17 +15,25 @@ class DecreasingHeuristicFinder<S: State, A: Action>: HeuristicFinder<S, A> {
 		// We don't have heuristic from provider therefore we decrease parent's
 		// astarArg.provider == null case could also be handled by this
 		val astarArg = astarNode.astarArg
-		val parentAstarNode = astarNode.argNode.parent()?.let { astarArg[it] }
+		// TODO why take graph parent? take max of covered node's heuristics (if they exists) and graph parent - 1 (-,,-)
+		// TODO ^-- this is a bug introduced in refactoring (see theta-tdk for correct)
+		/*
+		https://github.com/asztrikx/theta/blob/9f50b52f9fd098b32e09f7f65e0aab0ad19cbe48/subprojects/common/analysis/src/main/java/hu/bme/mit/theta/analysis/algorithm/cegar/astar/AstarNode.java#L48
+			fedőélen át lehet olyan h a szülő csökkentett heurisztikás de a rendes szülője nem az: https://github.com/asztrikx/theta/blob/9f50b52f9fd098b32e09f7f65e0aab0ad19cbe48/subprojects/common/analysis/src/main/java/hu/bme/mit/theta/analysis/algorithm/cegar/astar/AstarAbstractor.java#L479
+			biztosítani kell ebben az esetben is h a rendes szülőnek legyen már meglegyen a csökkentett heurisztikája (copy miatt lehet nincs még meg)
+			illetve hogy azt csökkentse
+		*/
+		val treeParentAstarNode = astarNode.argNode.parent()?.let { astarArg[it] }
 
 		// init node as we are always starting from startNodes
-		if (parentAstarNode == null) {
+		if (treeParentAstarNode == null) {
 			astarNode.heuristic = Distance.ZERO
 			return
 		}
-		check(parentAstarNode.argNode.coveringNode() == null)
-		check(parentAstarNode.heuristic.isKnown)
-		var parentHeuristicValue = parentAstarNode.heuristic.value
-		parentHeuristicValue = max(parentHeuristicValue - 1, 0)
-		astarNode.heuristic = Distance.boundedOf(parentHeuristicValue)
+		check(treeParentAstarNode.heuristic.isKnown) // TODO why should it always exists? give proof
+		astarNode.heuristic = Distance.boundedOf(
+			// 0 is always a known lowerbound, so it is more precise to use than negative numbers
+			max(treeParentAstarNode.heuristic.value - 1, 0)
+		)
 	}
 }
