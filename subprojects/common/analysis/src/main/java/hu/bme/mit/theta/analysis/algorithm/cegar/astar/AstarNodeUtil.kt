@@ -20,9 +20,13 @@ fun <S: State, A: Action> AstarNode<S, A>.close(
     candidates: Collection<AstarNode<S, A>>,
     search: AstarSearch<S, A>
 ): AstarNode<S, A>? {
-    require(!argNode.isCovered)
-    require(!argNode.isExpanded)
-    require(argNode.isLeaf)
+    // isLeaf: After prune node may have children but not fully expanded.
+    // isExpanded: If node has no children it still can already be expanded, therefore expanded is already set (should not be covered).
+    // isCovered: If node already has covering node, close cloud still choose another one, therefore avoid.
+    if ((argNode.isExpanded || !argNode.isLeaf) || argNode.isCovered) {
+        return null
+    }
+
     if (heuristic == Distance.ZERO) {
         // TODO https://photos.app.goo.gl/wguQ7K9opyLqTUPa7
         return null // TODO null or this?

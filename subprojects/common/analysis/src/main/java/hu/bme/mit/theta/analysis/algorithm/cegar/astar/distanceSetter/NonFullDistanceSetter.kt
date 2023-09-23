@@ -5,19 +5,23 @@ import hu.bme.mit.theta.analysis.State
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.*
 
 class NonFullDistanceSetter<S: State, A: Action>: DistanceSetter<S, A> {
-	override fun setInnerNodesDistances(search: AstarSearch<S, A>) {
+	override operator fun invoke(search: AstarSearch<S, A>) {
 		val startNodes = search.startAstarNodes.map { it.argNode }
 		search.reachedBoundeds.apply {
-			// TODO: [reachedBoundeds] should be ordered
+			// [search.reachedBoundeds] are expected to be ordered by depth
+			check(zipWithNext { a, b -> search.minDepths[a]!! <= search.minDepths[b]!! }.all { it })
+			filter { it.argNode.isTarget }.forEach { it.distance = Distance.ZERO }
 			forEach { search.astarArg.propagateUpDistanceFromKnownDistance(it, startNodes.toSet(), search.parents) }
 			clear()
 		}
 
-		if (search.startAstarNodes.none { it.distance.isBounded }) {
-			search.astarArg.propagateDownDistanceFromInfiniteDistance(startNodes)
-		} else {
-			search.astarArg.propagateUpDistanceFromInfiniteDistance()
+		search.astarArg.apply {
+			if (search.startAstarNodes.none { it.distance.isBounded }) {
+				propagateDownDistanceFromInfiniteDistance(startNodes)
+			} else {
+				propagateUpDistanceFromInfiniteDistance()
+			}
+			checkShortestDistance()
 		}
-		search.astarArg.checkShortestDistance()
 	}
 }

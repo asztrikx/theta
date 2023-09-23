@@ -5,5 +5,5 @@ import hu.bme.mit.theta.analysis.State
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarSearch
 
 interface DistanceSetter<S: State, A: Action> {
-	fun setInnerNodesDistances(search: AstarSearch<S, A>)
+	operator fun invoke(search: AstarSearch<S, A>)
 }

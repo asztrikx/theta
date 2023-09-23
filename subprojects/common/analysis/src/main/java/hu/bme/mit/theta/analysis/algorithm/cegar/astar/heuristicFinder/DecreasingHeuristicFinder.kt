@@ -1,17 +1,13 @@
 package hu.bme.mit.theta.analysis.algorithm.cegar.astar.heuristicFinder
 
 import hu.bme.mit.theta.analysis.Action
+import hu.bme.mit.theta.analysis.Prec
 import hu.bme.mit.theta.analysis.State
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.*
 import kotlin.math.max
 
-class DecreasingHeuristicFinder<S: State, A: Action>: HeuristicFinder<S, A> {
-	override fun findHeuristic(astarNode: AstarNode<S, A>,) {
-		super.findHeuristic(astarNode)
-		if (astarNode.heuristic.isKnown) {
-			return
-		}
-
+class DecreasingHeuristicFinder<S: State, A: Action, P: Prec>: HeuristicFinder<S, A, P>() {
+	override fun findHeuristicFromPrevious(astarNode: AstarNode<S, A>, abstractor: AstarAbstractor<S, A, P>) {
 		// We don't have heuristic from provider therefore we decrease parent's
 		// astarArg.provider == null case could also be handled by this
 		val astarArg = astarNode.astarArg
