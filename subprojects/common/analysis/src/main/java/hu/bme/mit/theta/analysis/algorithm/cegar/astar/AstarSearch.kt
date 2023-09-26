@@ -3,12 +3,17 @@ package hu.bme.mit.theta.analysis.algorithm.cegar.astar
 import hu.bme.mit.theta.analysis.Action
 import hu.bme.mit.theta.analysis.State
 import hu.bme.mit.theta.analysis.algorithm.ArgNode
+import hu.bme.mit.theta.analysis.algorithm.cegar.abstractor.StopCriterion
 import hu.bme.mit.theta.analysis.waitlist.PriorityWaitlist
 
+// TODO projection!
 /**
  * TODO document early exit
  */
-class AstarSearch<S: State, A: Action>(val startAstarNodes: Collection<AstarNode<S, A>>) {
+class AstarSearch<S: State, A: Action>(
+	val startAstarNodes: Collection<AstarNode<S, A>>,
+	val stopCriterion: StopCriterion<S, A>,
+) {
 	// We could already have started to explore a subgraph therefore do not use global doneSet variable
 	private val doneSet = hashSetOf<AstarNode<S, A>>()
 
@@ -32,37 +37,38 @@ class AstarSearch<S: State, A: Action>(val startAstarNodes: Collection<AstarNode
 	// Possible cases:
 	//   - target in a different subgraph reached by covering edge
 	//   - target in the same subgraph which was reached earlier from a different subgraph (by a covering edge)
-	var weightSupremumValue: Int? = null
-	var weightSupremumAstarNode: AstarNode<S, A>? = null
+	private var weightSupremumValue: Int? = null
+	private var weightSupremumAstarNode: AstarNode<S, A>? = null
 
-	// Only used in check-s
-	// TODO check naming (depthFromAStartNode?)
-	private var depths = mutableMapOf<ArgNode<S, A>, Int>()
-
+	// Contains reached targets ordered by closest to furthest. Not unique and should not be as it is used for setting distances.
 	// Non-target nodes the exact values must be from a previous findDistanceForAny call as we set exact distances at the end of iteration.
-	// May contain same node multiple times: normal node covers into target already visited
-	var reachedBoundeds = ArrayDeque<AstarNode<S, A>>()
+	// TODO target doesn't have a distance so name can be confusing
+	var reachedBoundeds = mutableListOf<AstarNode<S, A>>()
 
 	fun addToWaitlist(astarNode: AstarNode<S, A>, parentAstarNode: AstarNode<S, A>?, depth: Int) {
 		val argNode = astarNode.argNode
 		check(astarNode.heuristic.isKnown)
 
+		if (argNode.isTarget) {
+			reachedBoundeds += astarNode
+		}
+
 		if (astarNode.heuristic.isInfinite) {
 			return
 		}
-		// TODO document when/why can this happen?
+
+		// TODO rephrase: We can reach into infinite subgraph (cover or even with normal edge as some parts are marked as infinite in optimization)
 		if (astarNode.distance.isInfinite) {
 			return
 		}
 
 		if (astarNode in doneSet) {
-			check(depths[argNode]!! <= depth)
+			check(minDepths[astarNode]!! <= depth)
 			return
 		}
 
 		if (!minDepths.containsKey(astarNode) || minDepths[astarNode]!! > depth) {
 			parents[argNode] = parentAstarNode?.argNode
-			depths[argNode] = depth
 			minDepths[astarNode] = depth
 			// TODO document early exit, only need to set [parents]
 			if (!argNode.isTarget) {
@@ -77,14 +83,13 @@ class AstarSearch<S: State, A: Action>(val startAstarNodes: Collection<AstarNode
 	}
 
 	fun removeFromWaitlist(): Edge<S, A>? {
+		if (stopCriterion.canStop(astarArg.arg, reachedBoundeds.map { it.argNode })) {
+			return null
+		}
+
 		while (!waitlist.isEmpty) {
 			val edge = waitlist.remove()
 			val (astarNode, depth) = edge
-
-			// We can reach a target again (has bounded distance, in [doneSet]) through covering edge
-			if (astarNode.argNode.isTarget) {
-				return edge
-			}
 
 			if (astarNode in doneSet) {
 				continue

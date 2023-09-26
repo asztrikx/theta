@@ -51,24 +51,27 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 	private val logger: Logger,
 	private val cegarHistoryStorage: CegarHistoryStorage<S, A, P>,
 	private val partialOrd: PartialOrd<S>,
-	private val heuristicFinder: HeuristicFinder<S, A>,
+	private val heuristicFinder: HeuristicFinder<S, A, P>,
 	private val distanceSetter: DistanceSetter<S, A>,
 ): Abstractor<S, A, P> {
 	private val astarFileVisualizer = AstarFileVisualizer(true, cegarHistoryStorage, logger)
 
 	/**
 	 * Determines the closest target to any of the node or determines that no node can reach target.
+	 *
+	 * Kotlin can't create a reference of a function which is a member and is an extension
 	 */
-	private fun Collection<AstarNode<S, A>>.findDistanceForAny(
+	fun findDistanceForAny(
+		startAstarNodes: Collection<AstarNode<S, A>>,
 		stopCriterion: StopCriterion<S, A>,
 		visualizerState: String,
 		prec: P,
 	) {
-		val astarArg = first().astarArg
+		var startAstarNodes = startAstarNodes
+		val astarArg = startAstarNodes.first().astarArg
 		val arg = astarArg.arg
-		//if (stopCriterion.canStop(arg))
 
-		if (any { it.distance.isBounded }) {
+		if (startAstarNodes.any { it.distance.isBounded }) {
 			logger.infoLine("|  |  Skipping AstarArg: startAstarNodes already have a distance")
 			return
 		}
@@ -79,53 +82,23 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 		logger.substepLine("|  |  Building ARG...")
 		astarFileVisualizer.visualize("start $visualizerState", cegarHistoryStorage.indexOf(astarArg))
 
-		if (any { it.argNode.isTarget }) {
-			filter { it.argNode.isTarget }.forEach { it.distance = Distance.ZERO }
-			// TODO loggings at the end of function
-			return
-		}
+		if (startAstarNodes.any { it.argNode.isTarget }) {
+			startAstarNodes
+				.filter { it.argNode.isTarget }
+				.forEach { it.distance = Distance.ZERO }
+		} else {
+			// expanded targets' children may not have heuristic
+			startAstarNodes.forEach { heuristicFinder(it, this@AstarAbstractor) }
+			startAstarNodes = startAstarNodes.filter { !it.heuristic.isInfinite }
 
-		// expanded targets' children may not have heuristic
-		forEach { heuristicFinder.findHeuristic(it) }
-
-		val search = AstarSearch(filter { !it.heuristic.isInfinite })
-		while (true) {
-			val (astarNode, depth) = search.removeFromWaitlist() ?: break
-			// TODO see theta-tdk: https://photos.app.goo.gl/apCCfwrk5beZD3hg6
-
-			// TODO: stopCriterion.canStop(astarArg.arg, listOf(astarNode.argNode))
-			if (search.reachedBoundeds.size != 0) {
-				break
+			val search = AstarSearch(startAstarNodes, stopCriterion)
+			while (true) {
+				val (astarNode, depth) = search.removeFromWaitlist() ?: break
+				visitNode(search, astarNode, depth, astarArg, prec)
 			}
-
-			if (astarNode.argNode.isTarget) {
-				// can't have leftover nodes as target subgraph is purged
-				check(astarNode.argNode.isLeaf)
-
-				if (astarNode.distance.isUnknown) {
-					search.reachedBoundeds += astarNode
-					if (stopCriterion.canStop(astarArg.arg, listOf(astarNode.argNode))) {
-						break
-					}
-				}
-
-				// TODO use strategy pattern OR move this to setting distances
-				if (heuristicSearchType != HeuristicSearchType.FULL) {
-					astarNode.distance = Distance.ZERO
-					continue
-				}
-			}
-
-			visitNode(search, astarNode, depth, astarArg, prec)
+			distanceSetter(search)
 		}
-
-		// [reachedBoundeds] are expected to be ordered by depth
-		check(search.reachedBoundeds.asSequence().zipWithNext { a, b -> search.minDepths[a]!! <= search.minDepths[b]!! }.all { it })
-
-		distanceSetter.setInnerNodesDistances(search)
-
-		// Sanity check
-		check(search.startAstarNodes.any { it.distance.isBounded } || search.startAstarNodes.all { it.distance.isInfinite })
+		check(startAstarNodes.any { it.distance.isBounded } || startAstarNodes.all { it.distance.isInfinite })
 
 		astarFileVisualizer.visualize("end $visualizerState", cegarHistoryStorage.indexOf(astarArg))
 		logger.substepLine("done")
@@ -143,15 +116,10 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 		var astarNode = astarNode
 		var argNode = astarNode.argNode
 
-		// After prune node may have children but not fully expanded (isExpanded false).
-		// If node has no children it still can already be expanded, therefore expanded is already set (should not be covered).
-		// If node already has covering node, close cloud still choose another one, therefore avoid.
-		if (!argNode.isExpanded && argNode.isLeaf && !argNode.isCovered) {
-			astarNode.close(astarArg.reachedSet[astarNode], search)?.let {
-				astarNode.checkConsistency(astarArg[argNode.coveringNode()!!])
-				astarNode = it
-				argNode = astarNode.argNode
-			}
+		astarNode.close(astarArg.reachedSet[astarNode], search)?.let {
+			astarNode.checkConsistency(astarArg[argNode.coveringNode()!!])
+			astarNode = it
+			argNode = astarNode.argNode
 		}
 		if (argNode.isCovered) {
 			val coveringAstarNode = astarArg[argNode.coveringNode()!!]
@@ -165,36 +133,30 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 			if (heuristicSearchType == HeuristicSearchType.DECREASING) {
 				check(coveringAstarNode.heuristic.isKnown)
 			}
-			heuristicFinder.findHeuristic(coveringAstarNode)
+			heuristicFinder(coveringAstarNode, this)
 			astarNode.checkConsistency(coveringAstarNode)
 			// Covering edge has 0 weight therefore depth doesn't increase
 			search.addToWaitlist(coveringAstarNode, astarNode, depth)
-			return
-		}
-
-		if (!argNode.isFeasible) {
-			return
-		}
-
-		// expand: create nodes
-		if (!argNode.isExpanded) {
-			val newArgNodes = argBuilder.expand(argNode, prec)
-			for (newArgNode in newArgNodes) {
-				// TODO this should definitely be a pattern: blocking expanding older arg
-				if (astarArg.provider != null && heuristicSearchType == HeuristicSearchType.SEMI_ONDEMAND) {
-					astarNode.providerAstarNode!!.createChildren(prec, search)
+		} else if (argNode.isFeasible) {
+			if (!argNode.isExpanded) {
+				val newArgNodes = argBuilder.expand(argNode, prec)
+				for (newArgNode in newArgNodes) {
+					// TODO this should definitely be a pattern: blocking expanding older arg
+					if (astarArg.provider != null && heuristicSearchType == HeuristicSearchType.SEMI_ONDEMAND) {
+						astarNode.providerAstarNode!!.createChildren(prec, search)
+					}
+					astarArg.createSuccAstarNode(newArgNode)
 				}
-				astarArg.createSuccAstarNode(newArgNode)
 			}
-		}
 
-		// go over recreated and remained nodes
-		for (succArgNode in argNode.succNodes()) {
-			val succAstarNode = astarArg[succArgNode]
+			// go over recreated and remained nodes
+			for (succArgNode in argNode.succNodes()) {
+				val succAstarNode = astarArg[succArgNode]
 
-			heuristicFinder.findHeuristic(succAstarNode)
-			astarNode.checkConsistency(succAstarNode)
-			search.addToWaitlist(succAstarNode, astarNode, depth + 1)
+				heuristicFinder(succAstarNode, this)
+				astarNode.checkConsistency(succAstarNode)
+				search.addToWaitlist(succAstarNode, astarNode, depth + 1)
+			}
 		}
 	}
 
@@ -268,39 +230,31 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 			cegarHistoryStorage.add(astarArg, prec)
 		} else {
 			// TODO use parameter arg and create astarArg here (means we have to create connections here)?
-			val pair = cegarHistoryStorage.last
-			astarArg = pair.first
-			// prec is not modified but copied after prune by the CegarChecker
+			astarArg = cegarHistoryStorage.last.first
 			cegarHistoryStorage.setLast(astarArg, prec)
-			// prune was only applied to arg by the CegarChecker
 			astarArg.pruneApply()
 		}
 
 		// initialize: prune can keep initialized state
 		if (!arg.isInitialized) {
 			logger.substep("|  |  (Re)initializing ARG...")
-			argBuilder.init(arg, prec).forEach { newNode ->
-				check(!newNode.isCovered)
-				astarArg.createSuccAstarNode(newNode)
+			argBuilder.init(arg, prec).forEach {
+				astarArg.createSuccAstarNode(it)
 			}
 			logger.substepLine("done")
-			check(arg.isInitialized)
 		}
 
 		// If we start from incomplete nodes then we have to know their shortest depth from an init node.
 		// Unexpanded child might have shorter distance from a covered node.
-		astarArg.astarInitNodes.values.findDistanceForAny(initialStopCriterion, "", prec)
+		findDistanceForAny(astarArg.astarInitNodes.values, initialStopCriterion, "init", prec)
 
-		// AstarArg has to be copied as arg will be modified after refinement
+		// prec is not modified but copied after prune by the CegarChecker
 		val astarArgCopy = createIterationReplacement(astarArg, partialOrd, projection, this)
 		cegarHistoryStorage.setLast(astarArgCopy, prec)
-
-		// prec will be overwritten
 		cegarHistoryStorage.add(astarArg, prec)
 
-		// found and isSafe is different: e.g. full expand
 		return if (arg.isSafe) {
-			// Arg may not be expanded as we can get INFINITE heuristic avoiding expansion
+			// Arg may not be complete (== fully expanded) as INFINITE heuristic can avoid expanding some nodes.
 			// require(arg.isComplete) { "Returning incomplete ARG as safe" };
 			AbstractorResult.safe()
 		} else {
