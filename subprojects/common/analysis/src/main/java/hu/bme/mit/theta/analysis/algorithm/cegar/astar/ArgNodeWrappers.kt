@@ -5,8 +5,6 @@ import hu.bme.mit.theta.analysis.State
 import hu.bme.mit.theta.analysis.algorithm.ArgNode
 import kotlin.jvm.optionals.getOrNull
 
-// TODO asSequence instead of toList?
-
 fun <S: State, A: Action> ArgNode<S, A>.parent() = this.parent.getOrNull()
 fun <S: State, A: Action> ArgNode<S, A>.inEdge() = this.inEdge.getOrNull()
 fun <S: State, A: Action> ArgNode<S, A>.outEdges() = this.outEdges.toList()

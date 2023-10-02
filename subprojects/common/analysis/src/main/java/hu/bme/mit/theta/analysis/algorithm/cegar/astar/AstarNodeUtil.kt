@@ -11,9 +11,9 @@ fun <S: State, A: Action> AstarNode<S, A>.checkConsistency(child: AstarNode<S, A
         return
     }
 
-    val heuristicDistanceValue = parent.heuristic.value - child.heuristic.value
+    val heuristicDistanceValue = parent.heuristic - child.heuristic
     val edgeWeight = if (parent.argNode.isCovered) 0 else 1
-    check(heuristicDistanceValue <= edgeWeight)
+    check(heuristicDistanceValue.value <= edgeWeight)
 }
 
 fun <S: State, A: Action> AstarNode<S, A>.close(
@@ -28,8 +28,8 @@ fun <S: State, A: Action> AstarNode<S, A>.close(
     }
 
     if (heuristic == Distance.ZERO) {
-        // TODO https://photos.app.goo.gl/wguQ7K9opyLqTUPa7
-        return null // TODO null or this?
+        // TODO document this: https://photos.app.goo.gl/wguQ7K9opyLqTUPa7
+        return null
     }
 
     for (astarCandidate in candidates) {
@@ -50,14 +50,10 @@ fun <S: State, A: Action> AstarNode<S, A>.close(
 }
 
 /**
- * TODO text
- *
- * @return The actual parent node for covering node after [AstarNode.close].
+ * @return The actual AstarNode which is covered after [AstarNode.close].
  * The AstarNode reference should be replaced with the return value.
  */
 fun <S: State, A: Action> AstarNode<S, A>.handleCloseRewire(search: AstarSearch<S, A>): AstarNode<S, A> {
-    // TODO renaming according to this function context
-
     // If astarNode's parent is also covered then covering edges have been redirected. (see ArgNode::cover)
     // We have to update parents map according to that.
     //  1) a - - -> b (argNode,coveredAstarNode)
@@ -65,17 +61,17 @@ fun <S: State, A: Action> AstarNode<S, A>.handleCloseRewire(search: AstarSearch<
     //  3) a        b - - -> c
     //	   |                 ^
     //     | - - - - - - - - |
-    // Heuristic consistency doesn't break as c has >= heuristic than b
-    val parentArgNode = search.parents[argNode]
-    val parentAstarNode = parentArgNode?.let { astarArg[it] }
+    // Heuristic consistency doesn't break as `c` has >= heuristic than `b`
+    val parentAstarNode = search.parents[this]
+    val parentArgNode = parentAstarNode?.argNode
     val coveredAstarNode = if (parentArgNode != null && parentArgNode.isCovered && parentArgNode.coveringNode()!! === argNode.coveringNode()!!) {
         // Because argNode is covered it can only reach coveringNode with the same distance as it's new parent
         // therefore we can safely remove it
-        search.parents.remove(argNode)
+        search.parents.remove(this)
 
         // Update to new parent if we this node is the current parent
         // as coveringAstarNode may already have a better parent or already in doneSet
-        parentAstarNode!!
+        parentAstarNode
     } else {
         this
     }

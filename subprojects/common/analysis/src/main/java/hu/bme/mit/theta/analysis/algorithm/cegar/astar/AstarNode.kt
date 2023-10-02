@@ -3,14 +3,14 @@ package hu.bme.mit.theta.analysis.algorithm.cegar.astar
 import hu.bme.mit.theta.analysis.Action
 import hu.bme.mit.theta.analysis.State
 import hu.bme.mit.theta.analysis.algorithm.ArgNode
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarAbstractor.HeuristicSearchType
 
-// TODO rename to provider?
 class AstarNode<S: State, A: Action>(
 	val argNode: ArgNode<S, A>,
-	// Can be null if it is the first arg
-	// Can change to its coverer as it may get covered later
-	// Its distance may change later
-	var providerAstarNode: AstarNode<S, A>?,
+	// Can be null if it is the first arg.
+	// Can change to its then coverer as it may get covered later.
+	// Its distance may change later.
+	var providerAstarNode: AstarNode<S, A>?, // TODO rename to provider?
 	val astarArg: AstarArg<S, A>,
 ) {
 	private var _distance = Distance.UNKNOWN
@@ -34,11 +34,6 @@ class AstarNode<S: State, A: Action>(
 	var heuristic: Distance
 		// It is guaranteed that once it returns a known value it won't change unless reset is called (e.g. AstarIterator).
 		get() {
-			providerAstarNode?.let {
-				if (_heuristic.isUnknown && it.distance.isKnown) {
-					heuristic = it.distance
-				}
-			}
 			return _heuristic
 		}
 		// Do not call with unknown distance, use reset().

@@ -5,6 +5,7 @@ import hu.bme.mit.theta.analysis.PartialOrd
 import hu.bme.mit.theta.analysis.State
 import hu.bme.mit.theta.analysis.algorithm.ARG
 import hu.bme.mit.theta.analysis.algorithm.ArgNode
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarAbstractor.HeuristicSearchType
 import hu.bme.mit.theta.analysis.reachedset.Partition
 import kotlin.jvm.optionals.getOrNull
 
@@ -12,7 +13,7 @@ class AstarArg<S: State, A: Action>(
 	val arg: ARG<S, A>,
 	private val partialOrd: PartialOrd<S>,
 	projection: (S) -> Any,
-	var provider: AstarArg<S, A>? // TODO should this be in here, not in a special structure in CegarHistoryStorage
+	var provider: AstarArg<S, A>?
 ) {
 	// Contains init nodes as well
 	var astarNodes = hashMapOf<ArgNode<S, A>, AstarNode<S, A>>()
@@ -51,35 +52,41 @@ class AstarArg<S: State, A: Action>(
 	}
 
 	private fun ArgNode<S, A>.getProviderAstarNode(): AstarNode<S, A>? {
-		val provider = provider
-		provider ?: return null
-		require(!provider.contains(this))
+		val providerArg = provider ?: return null
+		var providerCandidates = this.getProviderCandidates() ?: return null
 
-		var providerCandidates = this.getProviderCandidates()
-		providerCandidates ?: return null
-
-		// filter based on partialOrd.isLeq == "<=" == subset of
 		providerCandidates = providerCandidates.filter { partialOrd.isLeq(state, it.state) }
 
-		// If we knew all nodes heuristics then we would choose the largest one as it is the most precise lower bound
-		if (providerCandidates.any { provider[it].distance.isKnown }) {
-			providerCandidates = providerCandidates
-				.filter { provider[it].distance.isKnown }
-				.sortedBy { provider[it].distance } // TODO no need to sort, only need to find max in O(n)
+		val providerNode = if (providerCandidates.any { providerArg[it].distance.isKnown }) {
+			// TODO when can this happen (see git history maybe it has been deleted)
+
+			providerCandidates
+				.filter { providerArg[it].distance.isKnown }
+				// Largest one is the most precise lower bound
+				.maxByOrNull { providerArg[it].distance }!!
+		} else {
+			providerCandidates.firstOrNull()
 		}
 
-		val providerNode = providerCandidates.firstOrNull()
-		if (AstarAbstractor.heuristicSearchType == AstarAbstractor.HeuristicSearchType.DECREASING) {  // TODO decreasing is handled why does it fail on check
-			if (providerNode == null) {
-				// this fails for test 48,51,61 on Xsts
-				check(!isInit)
-				// TODO pattern
-				return null
+		if (AstarAbstractor.heuristicSearchType == HeuristicSearchType.DECREASING) {
+			if (isInit && providerNode == null) {
+				// Xsts test case 48, 51, 61
+				check(AstarAbstractor.analysisBadLeq)
+
+				// Heuristic will be 0 if providerNode is kept null, so we don't have to fail
 			}
 		} else {
-			check(providerNode != null)
+			if (providerNode == null) {
+				check(AstarAbstractor.analysisBadLeq)
+
+				// In this case we could extend the candidates to all nodes, *maybe* for one the analysis works correctly.
+				// We probably could use decreasing heuristic in this case if the previous also fails.
+				check(false)
+			}
 		}
-		return provider[providerNode]
+
+		providerNode ?: return null
+		return providerArg[providerNode]
 	}
 
 	private fun ArgNode<S, A>.getProviderCandidates(): List<ArgNode<S, A>>? {

@@ -29,8 +29,8 @@ import hu.bme.mit.theta.analysis.algorithm.cegar.abstractor.StopCriterions
 import hu.bme.mit.theta.analysis.algorithm.cegar.abstractor.StopCriterions.AtLeastNCexs
 import hu.bme.mit.theta.analysis.algorithm.cegar.abstractor.StopCriterions.FullExploration
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarIterator.createIterationReplacement
-import hu.bme.mit.theta.analysis.algorithm.cegar.astar.argstore.CegarHistoryStorage
-import hu.bme.mit.theta.analysis.algorithm.cegar.astar.argstore.CegarHistoryStoragePrevious
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.cegarhistorystorage.CegarHistoryStorage
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.cegarhistorystorage.CegarHistoryStoragePrevious
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.distanceSetter.DistanceSetter
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.heuristicFinder.HeuristicFinder
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.filevisualizer.AstarFileVisualizer
@@ -120,6 +120,7 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 			astarNode.checkConsistency(astarArg[argNode.coveringNode()!!])
 			astarNode = it
 			argNode = astarNode.argNode
+			astarNode.checkConsistency(astarArg[argNode.coveringNode()!!])
 		}
 		if (argNode.isCovered) {
 			val coveringAstarNode = astarArg[argNode.coveringNode()!!]
@@ -141,8 +142,8 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 			if (!argNode.isExpanded) {
 				val newArgNodes = argBuilder.expand(argNode, prec)
 				for (newArgNode in newArgNodes) {
-					// TODO this should definitely be a pattern: blocking expanding older arg
-					if (astarArg.provider != null && heuristicSearchType == HeuristicSearchType.SEMI_ONDEMAND) {
+					// TODO pattern
+					if (astarArg.provider != null && heuristicSearchType != HeuristicSearchType.DECREASING  && heuristicSearchType != HeuristicSearchType.FULL) {
 						astarNode.providerAstarNode!!.createChildren(prec, search)
 					}
 					astarArg.createSuccAstarNode(newArgNode)
@@ -221,16 +222,15 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 		}
 	}
 
-	// uses previous AstarArg then calls checkFromNode with root=null
-	// it is assumed that last AstarArg in astarArgStore should be used if exists
+	// TODO document: arg must be the same reference in every call
 	override fun check(arg: ARG<S, A>, prec: P): AbstractorResult {
 		val astarArg: AstarArg<S, A>
 		if (cegarHistoryStorage.size == 0) {
 			astarArg = AstarArg(arg, partialOrd, projection, null)
 			cegarHistoryStorage.add(astarArg, prec)
 		} else {
-			// TODO use parameter arg and create astarArg here (means we have to create connections here)?
 			astarArg = cegarHistoryStorage.last.first
+			// update Prec
 			cegarHistoryStorage.setLast(astarArg, prec)
 			astarArg.pruneApply()
 		}
@@ -244,13 +244,12 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 			logger.substepLine("done")
 		}
 
-		// If we start from incomplete nodes then we have to know their shortest depth from an init node.
-		// Unexpanded child might have shorter distance from a covered node.
 		findDistanceForAny(astarArg.astarInitNodes.values, initialStopCriterion, "init", prec)
 
-		// prec is not modified but copied after prune by the CegarChecker
 		val astarArgCopy = createIterationReplacement(astarArg, partialOrd, projection, this)
 		cegarHistoryStorage.setLast(astarArgCopy, prec)
+
+		// old Prec
 		cegarHistoryStorage.add(astarArg, prec)
 
 		return if (arg.isSafe) {
@@ -271,8 +270,9 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 	}
 
 	companion object {
-		// Only used for assertions // TODO make this true and move this out to somewhere else
+		// Only used for assertions
 		lateinit var heuristicSearchType: HeuristicSearchType
+		var analysisBadLeq = false
 		fun <S: State, A: Action, P: Prec> builder(argBuilder: ArgBuilder<S, A, P>) = Builder(argBuilder)
 	}
 
@@ -283,17 +283,16 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 	override fun toString() = "Utils.lispStringBuilder(getClass().getSimpleName()).add(waitlist).toString()"
 
 	class Builder<S: State, A: Action, P: Prec>(private val argBuilder: ArgBuilder<S, A, P>) {
-		private lateinit var analysis: Analysis<S, A, P>
+		private var analysisSet = false
 		private var projection: (S) -> Any = { 0 }
 		private var stopCriterion = StopCriterions.firstCex<S, A>()
 		private var logger: Logger = NullLogger.getInstance()
 		private lateinit var cegarHistoryStorage: CegarHistoryStorage<S, A, P>
 		private lateinit var partialOrd: PartialOrd<S>
 
-		// Only used to warn about bad PartialOrder
-		fun analysis(prod2Analysis: Analysis<S, A, P>) = apply {
-			require(prod2Analysis !is Prod2ExplPredAnalysis) // TODO 8th failing case, use decreasing heuristic for this when findProviderAstarNode fails
-			this.analysis = prod2Analysis
+		fun analysis(analysis: Analysis<S, A, P>) = apply {
+			analysisBadLeq = analysis is Prod2ExplPredAnalysis
+			analysisSet = true
 		}
 
 		fun projection(projection: Function<in S, *>) = apply { this.projection = { s -> projection.apply(s) } }
@@ -321,6 +320,9 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 
 		fun partialOrder(partialOrd: PartialOrd<S>) = apply { this.partialOrd = partialOrd }
 
-		fun build() = AstarAbstractor(argBuilder, projection, stopCriterion, logger, cegarHistoryStorage, partialOrd)
+		fun build(): AstarAbstractor<S, A, P> {
+			require(analysisSet)
+			return AstarAbstractor(argBuilder, projection, stopCriterion, logger, cegarHistoryStorage, partialOrd)
+		}
 	}
 }

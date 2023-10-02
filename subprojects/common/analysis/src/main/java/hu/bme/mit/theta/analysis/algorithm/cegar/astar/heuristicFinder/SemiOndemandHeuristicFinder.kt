@@ -4,7 +4,7 @@ import hu.bme.mit.theta.analysis.Action
 import hu.bme.mit.theta.analysis.Prec
 import hu.bme.mit.theta.analysis.State
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.*
-import hu.bme.mit.theta.analysis.algorithm.cegar.astar.argstore.CegarHistoryStorage
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.cegarhistorystorage.CegarHistoryStorage
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.filevisualizer.AstarFileVisualizer
 import hu.bme.mit.theta.common.logging.Logger
 
@@ -32,7 +32,7 @@ class SemiOndemandHeuristicFinder<S: State, A: Action, P: Prec>(
 		logger.substepLine("|  |  Paused AstarArg: ${astarFileVisualizer.getTitle("", cegarHistoryStorage.indexOf(astarArg))}")
 
 		// get the heuristic with findDistance in parent arg
-		astarAbstractor.findDistanceForAny(listOf(providerAstarNode), AstarDistanceKnowable(astars), "${providerAstarNode.argNode}", prec)
+		astarAbstractor.findDistanceForAny(listOf(providerAstarNode), AstarDistanceKnowable(), "${providerAstarNode.argNode}", prec)
 
 		// Visualize current (redundant)
 		astarFileVisualizer.visualize("resumed ${astarNode.argNode}", cegarHistoryStorage.indexOf(astarArg))

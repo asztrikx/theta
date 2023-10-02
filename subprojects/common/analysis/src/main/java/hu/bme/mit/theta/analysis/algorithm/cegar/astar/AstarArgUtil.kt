@@ -15,14 +15,14 @@ import kotlin.jvm.optionals.getOrNull
 fun <S: State, A: Action> AstarArg<S, A>.propagateUpDistanceFromKnownDistance(
 	from: AstarNode<S, A>,
 	until: Set<ArgNode<S, A>>,
-	parents: Map<ArgNode<S, A>, ArgNode<S, A>?>,
+	parents: Map<AstarNode<S, A>, AstarNode<S, A>?>,
 ) {
 	// TODO does it really handle inf distance?
 	require(from.distance.isKnown)
 
 	val conditionalNodes = mutableListOf<ArgNode<S, A>>()
 
-	from.argNode.walkUpParents(from.distance.value, parents::get) { node, distance -> // TODO relativeDistance is 2 when coveringnode is also 2
+	from.argNode.walkUpParents(from.distance.value, { parents[this@propagateUpDistanceFromKnownDistance[this]]?.argNode }) { node, distance -> // TODO relativeDistance is 2 when coveringnode is also 2
 		val astarNode = get(node)
 
 		// We expand targets therefore we can have a target ancestor.
@@ -47,12 +47,12 @@ fun <S: State, A: Action> AstarArg<S, A>.propagateUpDistanceFromKnownDistance(
 		astarNode.distance = Distance.boundedOf(distance)
 
 		// if true it may be a target without known succ distance or a non-target covering node with distance
-		if (node !== from.argNode && parents[node] === node.coveringNode.getOrNull()) {
+		if (node !== from.argNode && parents[astarNode]?.argNode === node.coveringNode.getOrNull()) { // TODO coveringNode or coveredNodes?
 			check(distance == node.minKnownSuccDistance!!.value + 1)
 		}
 
 		// Save covered nodes
-		val parentNode = parents[node]
+		val parentNode = parents[astarNode]?.argNode
 		val nonParentCoveredNodes = node.coveredNodes()
 			.filter { it !== parentNode }
 		conditionalNodes += nonParentCoveredNodes
@@ -63,7 +63,7 @@ fun <S: State, A: Action> AstarArg<S, A>.propagateUpDistanceFromKnownDistance(
 			// But then tree parent's distance hasn't been set and won't be as there isn't any children left.
 			conditionalNodes += node.parent()!!
 		}
-		return@walkUpParents until.contains(node)
+		return@walkUpParents node in until
 	}
 
 	propagateUpDistanceFromConditionalNodes(conditionalNodes)
@@ -300,7 +300,6 @@ fun <S: State, A: Action> AstarArg<S, A>.checkShortestDistance() {
 		val astarNode = argNode.astarNode
 
 		// An ancestor can be a target because targets are expanded
-		// TODO check why old coded didn't failed
 		if (distance != 0 && argNode.isTarget) {
 			return@skip true
 		}

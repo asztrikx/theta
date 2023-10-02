@@ -51,6 +51,7 @@ object AstarIterator {
 			astarArgCopy.reachedSet.add(astarNodeCopy)
 
 			// TODO pattern
+			// Fully and Semi-ondemand will always give the same heuristic for covering- and covered node (=> consistent) as they are based on distance
 			if (AstarAbstractor.heuristicSearchType == AstarAbstractor.HeuristicSearchType.DECREASING) {
 				handleAstarDecreasing(astarNode, astarAbstractor)
 			}
@@ -64,12 +65,9 @@ object AstarIterator {
 		astarNode: AstarNode<S, A>,
 		astarAbstractor: AstarAbstractor<S, A, P>,
 	) {
-		// Nodes in the next iteration already have covering edges which can break the consistency requirement
-		// with the decreasing method described in the abstractor.
-		// therefore we remove it here so that we can have a strict check for consistency during search.
-		// See XstsTest 48th, 51th testcase failing at cover() because of consistency check before covering.
-		// Full and Semiondemand will always give the same heuristic for covering- and covered node as they are based on distance
-		// therefore the heuristic (which is based on the distance values) will be consistent.
+		// Nodes in the next iteration already have covering edges which can break the consistency requirement with the decreasing heuristics.
+		// Therefore, we remove those here so that we can check for consistency during search.
+		// See XstsTest 48, 51 testcase fail without this.
 
 		val astarArg = astarNode.astarArg
 		val argNode = astarNode.argNode
@@ -78,32 +76,29 @@ object AstarIterator {
 		astarAbstractor.findHeuristic(astarNode)
 
 		argNode.coveringNode()?.let {
-			handleDecreasingCoverEdgeConsistency(argNode, it, astarArg)
+			astarArg.handleDecreasingCoverEdgeConsistency(argNode, it)
 		}
 		// Avoid concurrent modification exception by copying stream to list
 		argNode.coveredNodes().forEach { coveredNode ->
-			handleDecreasingCoverEdgeConsistency(coveredNode, argNode, astarArg)
+			astarArg.handleDecreasingCoverEdgeConsistency(coveredNode, argNode)
 		}
 	}
 
 	// There is no guarantee that cover edges will still be consistent
-	// TODO which tests would fail?
-	private fun <S: State, A: Action> handleDecreasingCoverEdgeConsistency(
+	private fun <S: State, A: Action> AstarArg<S, A>.handleDecreasingCoverEdgeConsistency(
 		coveredNode: ArgNode<S, A>,
 		coveringNode: ArgNode<S, A>,
-		astarArg: AstarArg<S, A>,
 	) {
 		// Other astar node (covering or covered) may not exist when trying to handle consistency
 		// It will be checked from the other end of the edge later.
-		if (coveredNode !in astarArg || coveringNode !in astarArg) {
+		if (coveredNode !in this || coveringNode !in this) {
 			return
 		}
 
-		// TODO use .astarArg extension when this method is moved to util (and changed to extension method)
-		val astarCoveredNode = astarArg[coveredNode]
-		val astarCoveringNode = astarArg[coveringNode]
+		val astarCoveredNode = this[coveredNode]
+		val astarCoveringNode = this[coveringNode]
 		check(astarCoveredNode.heuristic.isKnown && astarCoveringNode.heuristic.isKnown)
-		if (astarCoveredNode.heuristic != astarCoveringNode.heuristic) {
+		if (astarCoveredNode.heuristic > astarCoveringNode.heuristic) {
 			coveredNode.unsetCoveringNode()
 		}
 	}

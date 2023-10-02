@@ -4,7 +4,7 @@ import hu.bme.mit.theta.analysis.Action
 import hu.bme.mit.theta.analysis.Prec
 import hu.bme.mit.theta.analysis.State
 import hu.bme.mit.theta.analysis.algorithm.ArgNode
-import hu.bme.mit.theta.analysis.algorithm.cegar.astar.argstore.CegarHistoryStorage
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.cegarhistorystorage.CegarHistoryStorage
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.initNodes
 import hu.bme.mit.theta.analysis.utils.AstarArgVisualizer
 import hu.bme.mit.theta.common.logging.Logger

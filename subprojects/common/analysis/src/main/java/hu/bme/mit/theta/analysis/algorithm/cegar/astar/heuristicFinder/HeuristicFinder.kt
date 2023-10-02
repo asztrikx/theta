@@ -17,19 +17,31 @@ abstract class HeuristicFinder<S: State, A: Action, P: Prec> {
 	 *
 	 * @param astarNode should already have providerNode if not in the first arg
 	 */
-	operator fun invoke(astarNode: AstarNode<S, A>, astarAbstractor: AstarAbstractor<S, A, P>) {
+	operator fun invoke(
+		astarNode: AstarNode<S, A>,
+		astarAbstractor: AstarAbstractor<S, A, P>,
+	) {
+		if (astarNode.heuristic.isKnown) {
+			return
+		}
 		if (astarNode.astarArg.provider == null) {
 			// Lowest lower bound that satisfies a* requirements
 			astarNode.heuristic = Distance.ZERO
 			return
 		}
-		if (astarNode.heuristic.isKnown) {
-			return
+		astarNode.providerAstarNode?.let {
+			if (it.distance.isKnown) {
+				astarNode.heuristic = it.distance
+				return
+			}
 		}
 
 		findHeuristicFromPrevious(astarNode, astarAbstractor)
 		check(astarNode.heuristic.isKnown)
 	}
 
-	protected abstract fun findHeuristicFromPrevious(astarNode: AstarNode<S, A>, astarAbstractor: AstarAbstractor<S, A, P>)
+	protected abstract fun findHeuristicFromPrevious(
+		astarNode: AstarNode<S, A>,
+		astarAbstractor: AstarAbstractor<S, A, P>,
+	)
 }

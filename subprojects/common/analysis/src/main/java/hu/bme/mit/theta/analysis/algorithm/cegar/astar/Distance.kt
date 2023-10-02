@@ -1,21 +1,21 @@
 package hu.bme.mit.theta.analysis.algorithm.cegar.astar
 
 class Distance private constructor(
-	var type: Type,
+	val type: Type,
 	value: Int,
 ) : Comparable<Distance> {
-	var value = value
+	val value = value
 		get(): Int {
 			// TODO if we auto set infinite for inf heuristic then propagateUpDistanceFromInfiniteDistance's 5) logic have to be rechecked
-			check(type == Type.BOUNDED)
+			check(type === Type.BOUNDED)
 			return field
 		}
 
 	val isBounded: Boolean
-		get() = type == Type.BOUNDED
+		get() = type === Type.BOUNDED
 
 	val isInfinite: Boolean
-		get() = type == Type.INFINITE
+		get() = type === Type.INFINITE
 
 	val isKnown: Boolean
 		get() = isBounded || isInfinite
@@ -35,10 +35,6 @@ class Distance private constructor(
 		}
 	}
 
-	// TODO use this for astarNode getWeight
-	// TODO also handle infinity??: ".value + 1" lines in other files
-	operator fun plus(otherValue: Int) = boundedOf(value + otherValue)
-
 	override fun equals(other: Any?) = other is Distance && compareTo(other) == 0
 
 	override fun hashCode() = 31 * type.hashCode() + value
@@ -57,7 +53,7 @@ class Distance private constructor(
 
 	companion object {
 		// static factory with caching: Distance object with same immutable content are often created
-		private val cache = HashMap<Int, Distance>(100)
+		private val cache = HashMap<Int, Distance>(100) // random number, not measured
 		fun boundedOf(value: Int) = cache.computeIfAbsent(value) { Distance(Type.BOUNDED, it) }
 
 		val ZERO = boundedOf(0)
