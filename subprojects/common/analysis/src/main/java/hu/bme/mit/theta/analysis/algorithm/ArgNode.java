@@ -158,10 +158,12 @@ public final class ArgNode<S extends State, A extends Action> {
 	////
 
 	public Stream<ArgNode<S, A>> getSuccNodes() {
+		assert(isExpanded());
 		return getOutEdges().map(ArgEdge::getTarget);
 	}
 
 	public Stream<S> getSuccStates() {
+		assert(isExpanded());
 		return getSuccNodes().map(ArgNode::getState);
 	}
 

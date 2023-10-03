@@ -6,7 +6,9 @@ import hu.bme.mit.theta.analysis.Prec
 import hu.bme.mit.theta.analysis.State
 import hu.bme.mit.theta.analysis.algorithm.ArgCopier
 import hu.bme.mit.theta.analysis.algorithm.ArgNode
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarAbstractor.HeuristicSearchType
 
+// TODO rename, replace with extension function
 object AstarIterator {
 	/**
 	 * Creates a copy of [astarArg]. The original [astarArg] will be connected to this copy.
@@ -26,8 +28,7 @@ object AstarIterator {
 		val argCopy = ArgCopier.createCopy(astarArg.arg) { argNode, argNodeCopy ->
 			translation += Pair(argNode, argNodeCopy)
 		}
-		val astarArgCopy = AstarArg(argCopy, partialOrd, projection, astarArg)
-		astarArgCopy.provider = astarArg.provider
+		val astarArgCopy = AstarArg(argCopy, partialOrd, projection, astarArg.provider)
 		astarArg.provider = astarArgCopy
 
 		// Covering edges are created after createCopy finished
@@ -52,7 +53,7 @@ object AstarIterator {
 
 			// TODO pattern
 			// Fully and Semi-ondemand will always give the same heuristic for covering- and covered node (=> consistent) as they are based on distance
-			if (AstarAbstractor.heuristicSearchType == AstarAbstractor.HeuristicSearchType.DECREASING) {
+			if (AstarAbstractor.heuristicSearchType == HeuristicSearchType.DECREASING) {
 				handleAstarDecreasing(astarNode, astarAbstractor)
 			}
 		}

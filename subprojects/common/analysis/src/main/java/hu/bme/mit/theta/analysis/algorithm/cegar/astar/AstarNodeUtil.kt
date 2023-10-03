@@ -5,9 +5,13 @@ import hu.bme.mit.theta.analysis.State
 
 fun <S: State, A: Action> AstarNode<S, A>.checkConsistency(child: AstarNode<S, A>) {
     val parent = this
-    require(!parent.heuristic.isInfinite)
+    require(parent.heuristic.isKnown && child.heuristic.isKnown)
+
+    if (parent.heuristic.isInfinite && child.heuristic.isInfinite) {
+        return
+    }
+    check(!parent.heuristic.isInfinite)
     if (child.heuristic.isInfinite) {
-        check(parent.heuristic.isKnown) // why? only exact
         return
     }
 
@@ -20,16 +24,22 @@ fun <S: State, A: Action> AstarNode<S, A>.close(
     candidates: Collection<AstarNode<S, A>>,
     search: AstarSearch<S, A>
 ): AstarNode<S, A>? {
-    // isLeaf: After prune node may have children but not fully expanded.
-    // isExpanded: If node has no children it still can already be expanded, therefore expanded is already set (should not be covered).
-    // isCovered: If node already has covering node, close cloud still choose another one, therefore avoid.
     if ((argNode.isExpanded || !argNode.isLeaf) || argNode.isCovered) {
+        // isLeaf: After prune node may have children but not fully expanded.
+        // isExpanded: If node has no children it still can already be expanded, therefore expanded is already set (should not be covered).
+        // isCovered: If node already has covering node, close cloud still choose another one, therefore avoid.
         return null
     }
 
     if (heuristic == Distance.ZERO) {
         // TODO document this: https://photos.app.goo.gl/wguQ7K9opyLqTUPa7
         return null
+    }
+
+    var candidates = candidates
+    if (argNode.isTarget) {
+        // optimization (leq uses smt solver): target node can only be covered with a target node
+        candidates = candidates.filter { it.argNode.isTarget }
     }
 
     for (astarCandidate in candidates) {
@@ -43,6 +53,7 @@ fun <S: State, A: Action> AstarNode<S, A>.close(
 
         if (heuristic <= astarCandidate.heuristic) {
             argNode.cover(candidate)
+            search ?: return null
             return handleCloseRewire(search)
         }
     }

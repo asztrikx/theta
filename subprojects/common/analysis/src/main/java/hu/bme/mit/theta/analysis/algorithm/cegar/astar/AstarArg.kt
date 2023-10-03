@@ -2,8 +2,10 @@ package hu.bme.mit.theta.analysis.algorithm.cegar.astar
 
 import hu.bme.mit.theta.analysis.Action
 import hu.bme.mit.theta.analysis.PartialOrd
+import hu.bme.mit.theta.analysis.Prec
 import hu.bme.mit.theta.analysis.State
 import hu.bme.mit.theta.analysis.algorithm.ARG
+import hu.bme.mit.theta.analysis.algorithm.ArgBuilder
 import hu.bme.mit.theta.analysis.algorithm.ArgNode
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarAbstractor.HeuristicSearchType
 import hu.bme.mit.theta.analysis.reachedset.Partition
@@ -43,17 +45,17 @@ class AstarArg<S: State, A: Action>(
 		astarNodes = astarNodesNew
 	}
 
-	fun createSuccAstarNode(argNode: ArgNode<S, A>): AstarNode<S, A> {
-		val providerAstarNode = argNode.getProviderAstarNode()
+	fun <P: Prec> createSuccAstarNode(argNode: ArgNode<S, A>, argBuilder: ArgBuilder<S, A, P>): AstarNode<S, A> {
+		val providerAstarNode = argNode.getProviderAstarNode(argBuilder)
 		val astarNode = AstarNode(argNode, providerAstarNode, this)
 		reachedSet.add(astarNode)
 		put(astarNode)
 		return astarNode
 	}
 
-	private fun ArgNode<S, A>.getProviderAstarNode(): AstarNode<S, A>? {
+	private fun <P: Prec> ArgNode<S, A>.getProviderAstarNode(argBuilder: ArgBuilder<S, A, P>): AstarNode<S, A>? {
 		val providerArg = provider ?: return null
-		var providerCandidates = this.getProviderCandidates() ?: return null
+		var providerCandidates = this.getProviderCandidates(argBuilder) ?: return null
 
 		providerCandidates = providerCandidates.filter { partialOrd.isLeq(state, it.state) }
 
@@ -89,26 +91,25 @@ class AstarArg<S: State, A: Action>(
 		return providerArg[providerNode]
 	}
 
-	private fun ArgNode<S, A>.getProviderCandidates(): List<ArgNode<S, A>>? {
+	private fun <P: Prec> ArgNode<S, A>.getProviderCandidates(argBuilder: ArgBuilder<S, A, P>): Collection<ArgNode<S, A>>? {
 		val provider = provider!!
-		val parentAstarNode = parent()?.astarNode
-		if (parentAstarNode == null) {
+		val treeParentAstarNode = parent()?.astarNode ?: run {
 			require(isInit)
-			return provider.astarInitNodes.keys.toList()
+			return provider.astarInitNodes.keys
 		}
-
-		var parentAstarNodeProvider = parentAstarNode.providerAstarNode ?: run {
-			// If parent doesn't have provider then we also won't have.
-			check(AstarAbstractor.heuristicSearchType == AstarAbstractor.HeuristicSearchType.DECREASING)
-
-			// If we reach a state more general later than a parent provider's child state then it won't get covered.
-			// Therefore, there can be a candidate anywhere in the astar arg, so we should return null.
+		var treeParentAstarNodeProvider = treeParentAstarNode.providerAstarNode ?: run {
+			// If [treeParentAstarNode] doesn't have provider then we also won't have.
+			check(AstarAbstractor.heuristicSearchType == HeuristicSearchType.DECREASING)
 			return provider.arg.nodes()
 		}
 
-		// parentAstarNodeProvider can be covered.
+		if (AstarAbstractor.heuristicSearchType == HeuristicSearchType.SEMI_ONDEMAND) {
+			//astarNode.providerAstarNode!!.createChildren(prec, search)
+		}
+
+		// [treeParentAstarNodeProvider] can be covered.
 		// Because a covered node's children are the covering node's children we must follow the chain.
-		parentAstarNodeProvider.argNode.coveringNode.getOrNull()?.let { parentNodeCoveringNodeProvider ->
+		treeParentAstarNodeProvider.argNode.coveringNode.getOrNull()?.let { treeParentNodeCoveringNodeProvider ->
 			// The chain can only contain 1 covering edge because they are compressed in an ARG.
 
 			// TODO check this
@@ -119,21 +120,24 @@ class AstarArg<S: State, A: Action>(
 			//	 That case is handled by expanded target when found.
 
 			// Visualization optimization: set parent's provider to the covering node
-			parentAstarNode.providerAstarNode = provider[parentNodeCoveringNodeProvider]
-
-			parentAstarNodeProvider = parentAstarNode.providerAstarNode!!
+			treeParentAstarNode.providerAstarNode = provider[treeParentNodeCoveringNodeProvider]
+			treeParentAstarNodeProvider = treeParentAstarNode.providerAstarNode!!
 		}
 
-		// parentAstarNode had to be in waitlist or is a leftover node
-		// => it's heuristic is known
-		// => (if not decreasing) it's provider's distance is known
-		// => must be expanded or covered (even if it's a target)
-		// => (because of previous compression) covering node can't have covering node. // TODO surely?
-		if (AstarAbstractor.heuristicSearchType != AstarAbstractor.HeuristicSearchType.DECREASING) {
-			check(parentAstarNodeProvider.argNode.isExpanded)
+		if (AstarAbstractor.heuristicSearchType != HeuristicSearchType.DECREASING) {
+			// [treeParentAstarNode] was in queue or is a leftover node =>
+			// [treeParentAstarNode] has heuristic =>
+			// (if not decreasing) [treeParentAstarNode]'s provider has distance &&
+			// [treeParentAstarNode]'s provider must be expanded or covered (even if it's a target) => // TODO make sure
+			// (because of compression covering node can't have covering node and covering case has been handled) => [treeParentAstarNode] expanded
+			check(treeParentAstarNodeProvider.argNode.isExpanded)
 		}
 
-		return parentAstarNodeProvider.argNode.succNodes()
+		return if (treeParentAstarNodeProvider.argNode.isExpanded) {
+			treeParentAstarNodeProvider.argNode.succNodes()
+		} else {
+			null
+		}
 	}
 
 	/// ArgNode extension which depend on an AstarArg
@@ -159,6 +163,7 @@ class AstarArg<S: State, A: Action>(
 	 */
 	val ArgNode<S, A>.minSuccDistance: Distance?
 		get() {
+			require(!isCovered)
 			require(allSuccDistanceKnown)
 			return minKnownSuccDistance
 		}
@@ -168,6 +173,7 @@ class AstarArg<S: State, A: Action>(
 	 */
 	val ArgNode<S, A>.minKnownSuccDistance: Distance?
 		get() {
+			require(!isCovered)
 			return succNodes()
 				.map { it.astarNode.distance }
 				.filter(Distance::isKnown)

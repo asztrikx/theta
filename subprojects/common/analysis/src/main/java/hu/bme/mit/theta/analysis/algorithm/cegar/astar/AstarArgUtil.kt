@@ -6,33 +6,32 @@ import hu.bme.mit.theta.analysis.algorithm.ArgNode
 import kotlin.jvm.optionals.getOrNull
 
 /**
- * Propagate exact distance up from a node ([from]) until any node in a set ([until]) is reached.
+ * Propagate bounded distance up from a node ([from]) until any node in a set ([until]) is reached.
  * **If all target in an ARG is known the [setDistanceFromAllTargets] should be used for setting all distances**
  *
  * @param until As we are not always searching from the root it's important to only set distances for nodes involved in the search.
  * @param parents should map from a node to its parent.
  */
-fun <S: State, A: Action> AstarArg<S, A>.propagateUpDistanceFromKnownDistance(
+fun <S: State, A: Action> AstarArg<S, A>.propagateUpDistanceFromBoundedDistance(
 	from: AstarNode<S, A>,
 	until: Set<ArgNode<S, A>>,
 	parents: Map<AstarNode<S, A>, AstarNode<S, A>?>,
 ) {
-	// TODO does it really handle inf distance?
-	require(from.distance.isKnown)
+	require(from.distance.isBounded)
 
 	val conditionalNodes = mutableListOf<ArgNode<S, A>>()
 
-	from.argNode.walkUpParents(from.distance.value, { parents[this@propagateUpDistanceFromKnownDistance[this]]?.argNode }) { node, distance -> // TODO relativeDistance is 2 when coveringnode is also 2
-		val astarNode = get(node)
+	from.argNode.walkUpParents(from.distance.value, { parents[this@propagateUpDistanceFromBoundedDistance[this]]?.argNode }) { argNode, distance ->
+		val astarNode = argNode.astarNode
 
 		// We expand targets therefore we can have a target ancestor.
 		// This function should have been called on that target by this point even in full expand or n-cex => it should have distance.
-		if (node.isTarget && from.argNode !== node) {
+		if (argNode.isTarget && from.argNode !== argNode) {
 			check(astarNode.distance.isKnown)
 		}
 
 		if (astarNode.distance.isBounded) {
-			return@walkUpParents if (from.argNode === node) {
+			return@walkUpParents if (from.argNode === argNode) {
 				// We start from a known distance
 				false
 			} else {
@@ -46,32 +45,32 @@ fun <S: State, A: Action> AstarArg<S, A>.propagateUpDistanceFromKnownDistance(
 
 		astarNode.distance = Distance.boundedOf(distance)
 
-		// if true it may be a target without known succ distance or a non-target covering node with distance
-		if (node !== from.argNode && parents[astarNode]?.argNode === node.coveringNode.getOrNull()) { // TODO coveringNode or coveredNodes?
-			check(distance == node.minKnownSuccDistance!!.value + 1)
+		if (argNode !== from.argNode && !argNode.isCovered) {
+			check(distance == argNode.minKnownSuccDistance!!.value + 1)
 		}
 
 		// Save covered nodes
 		val parentNode = parents[astarNode]?.argNode
-		val nonParentCoveredNodes = node.coveredNodes()
+		val nonParentCoveredNodes = argNode.coveredNodes()
 			.filter { it !== parentNode }
 		conditionalNodes += nonParentCoveredNodes
+		check(nonParentCoveredNodes.all { it.astarNode.distance.isUnknown })
 
-		// Parent is a covered node
-		if (!node.isInit && node.parent()!! !== parentNode) {
-			// Tree parent's other children may have already reached a target with a covered node parent.
+		// Parent is a covered argNode
+		if (!argNode.isInit && argNode.parent()!! !== parentNode) {
+			// Tree parent's other children may have already reached a target with a covered argNode parent.
 			// But then tree parent's distance hasn't been set and won't be as there isn't any children left.
-			conditionalNodes += node.parent()!!
+			conditionalNodes += argNode.parent()!!
+			// [argNode]'s tree parent can already have distance
 		}
-		return@walkUpParents node in until
+		return@walkUpParents argNode in until
 	}
 
 	propagateUpDistanceFromConditionalNodes(conditionalNodes)
 }
 
-// TODO infinitre ugyanolyan jól működik-e még: esetleg korábbi verzió printelje ki mennit talált illetve a mostani is (elég gyorsan kiderül így)
 /**
- * Propagate exact distance up (also through covering edges) until we find a node with a child with unknown distance.
+ * Propagate bounded distance up (also through covering edges) until we find a node with a child with unknown distance.
  * Distance value is derived from the child with minimum distance value.
  *
  * [nodes] may not only be from a covered node but also from non-covered nodes (with > 0 children)
@@ -93,16 +92,16 @@ private fun <S: State, A: Action> AstarArg<S, A>.propagateUpDistanceFromConditio
 
 		var previousDistance: Distance? = null
 		startNode.walkUpParents(0, { parent.getOrNull() }) { node, _ ->
-			val astarNode = get(node)
+			val astarNode = node.astarNode
 
 			if (node.isTarget) {
-				check(astarNode.distance.isKnown) // TODO comment to not remove
+				check(astarNode.distance.isKnown)
 				return@walkUpParents true
 			} else if (astarNode.distance.isKnown) {
 				check(astarNode.distance.isBounded)
 				if (node !== startNode) {
 					if (previousDistance!!.isInfinite) {
-						check(astarNode.distance <= previousDistance!!)
+						check(astarNode.distance <= Distance.INFINITE)
 					} else {
 						check(astarNode.distance <= previousDistance!! + 1)
 					}
@@ -112,12 +111,13 @@ private fun <S: State, A: Action> AstarArg<S, A>.propagateUpDistanceFromConditio
 
 			if (node === startNode && node.isCovered) {
 				// Copy known distance
-				astarNode.distance = get(node.coveringNode()!!).distance
+				astarNode.distance = node.coveringNode()!!.astarNode.distance
 			} else if (node === startNode && node.isLeaf) {
 				// This must be infinite distance propagation
 				astarNode.distance = Distance.INFINITE
 			} else {
-				// node === startNode can hold if propagateUpDistanceFromKnownDistance's parents gone through a covering edge
+				// [node] === [startNode] can hold if [propagateUpDistanceFromKnownDistance]'s parents gone through a covering edge
+				// node may not be expanded whether its the [startNode] or not
 
 				if (!node.allSuccDistanceKnown) {
 					return@walkUpParents true
@@ -137,7 +137,7 @@ private fun <S: State, A: Action> AstarArg<S, A>.propagateUpDistanceFromConditio
 			previousDistance = astarNode.distance
 
 			node.coveredNodes().forEach {
-				check(get(it).distance.isUnknown)
+				check(it.astarNode.distance.isUnknown)
 			}
 			queue += node.coveredNodes()
 			return@walkUpParents false
@@ -159,7 +159,7 @@ fun <S: State, A: Action> AstarArg<S, A>.propagateDownDistanceFromInfiniteDistan
 	while (!queue.isEmpty()) {
 		val node = queue.removeFirst()
 		listOf(node).walkSubtree { argNode, _ ->
-			val astarNode = get(argNode)
+			val astarNode = argNode.astarNode
 
 			check(!astarNode.distance.isBounded)
 			// Unexpanded regions shouldn't exist unless its known it can't reach any target
@@ -168,6 +168,7 @@ fun <S: State, A: Action> AstarArg<S, A>.propagateDownDistanceFromInfiniteDistan
 			}
 
 			conditionalNodes += argNode.coveredNodes()
+			check(argNode.coveredNodes().all { it.astarNode.distance.isUnknown })
 
 			astarNode.distance = Distance.INFINITE
 			return@walkSubtree false
@@ -203,35 +204,35 @@ fun <S: State, A: Action> AstarArg<S, A>.propagateUpDistanceFromInfiniteDistance
 	*/
 
 	/*
-	Cases for nodes which doesn't have a distance => possibly have infinite distance *which could have been set during search*
-		- covered
-			- coverer marked as infinite (from previous iteration) 1)
-			- coverer not marked as infinite
-				- covering edge is part of a circle 2) not handled: seems too complex
-					- covered to ancestor
-					- covered to non-ancestor
-				- covering edge is not part of a circle 3) it will be handled if coverer is marked as infinite here
-		- not covered
-			- expanded
-				- leaf (non leaves will be added by their leaves as they must also be infinite) 4)
-				- not leaf 5) it will be handled if all children is marked as infinite here
-					- has infinite heuristic
-					- has non-infinite heuristic
-			- not expanded
-				- has infinite heuristic 6)
-				- has non-infinite heuristic 7) not handled: we can't determine without expanding
+	Cases for nodes which doesn't have a distance => possibly have infinite distance
+	- covered
+		- coverer marked as infinite (from previous iteration) 1)
+		- coverer not marked as infinite
+			- covering edge is part of a circle 2) not handled: seems too complex
+				- covered to ancestor
+				- covered to non-ancestor
+			- covering edge is not part of a circle 3) it will be handled if coverer is marked as infinite here
+	- not covered
+		- expanded
+			- leaf (non leaves will be added by their leaves as they must also be infinite) 4)
+			- not leaf 5) it will be handled if all children is marked as infinite here
+				- has infinite heuristic
+				- has non-infinite heuristic
+		- not expanded
+			- has infinite heuristic 6)
+			- has non-infinite heuristic 7) not handled: we can't determine without expanding
 	*/
 	val conditionalNodes = mutableListOf<ArgNode<S, A>>()
-	val excludeKnownDistance = { node: ArgNode<S, A> -> get(node).distance.isUnknown }
+	val excludeKnownDistance = { node: ArgNode<S, A> -> node.astarNode.distance.isUnknown }
 	val excludeTarget = { node: ArgNode<S, A> -> !node.isTarget }
 
 	// 1)
 	val lateCoveredNodes = arg.coveredNodes().filter { coveredNode ->
 		val covererNode = coveredNode.coveringNode()!!
-		val astarCovererNode = get(covererNode)
+		val astarCovererNode = covererNode.astarNode
 		return@filter astarCovererNode.distance.isInfinite
 	}
-	conditionalNodes += lateCoveredNodes.filter(excludeKnownDistance) // TODO can this be a target?
+	conditionalNodes += lateCoveredNodes.filter(excludeKnownDistance)
 
 	// 4)
 	conditionalNodes += arg.expandedLeafNodes().filter(excludeKnownDistance and excludeTarget)
@@ -239,25 +240,20 @@ fun <S: State, A: Action> AstarArg<S, A>.propagateUpDistanceFromInfiniteDistance
 	// 6)
 	val infiniteHeuristicNodes = astarNodes.values
 		.filter { it.heuristic.isInfinite }
-		.filter { astarNode ->
-			val argNode = astarNode.argNode
-
-			// TODO if we stop copying infinite subgraph then swap if branches and move .map above this
-			if (false) {
-				check(!argNode.isExpanded)
-			} else {
-				if (argNode.isExpanded) {
-					check( // TODO recheck
-						astarNode.providerAstarNode != null &&
-						argNode.toString() == astarNode.providerAstarNode!!.argNode.toString() &&
-						astarNode.providerAstarNode!!.argNode.isExpanded
-					)
-				}
+		.filter {
+			// TODO future: if we stop copying infinite subgraph (which also makes less covering available..) (ArgCopy doesn't know about heuristics) then check(!argNode.isExpanded) (and remove filter for it)
+			if (it.argNode.isExpanded) {
+				// Must have been part of the copied infinite subgraph
+				check(
+					it.providerAstarNode != null &&
+					it.argNode.toString() == it.providerAstarNode!!.argNode.toString() &&
+					it.providerAstarNode!!.argNode.isExpanded
+				)
 			}
-
-			return@filter !argNode.isCovered && !argNode.isExpanded
+			true
 		}
 		.map { it.argNode }
+		.filter { !it.isCovered && !it.isExpanded }
 	conditionalNodes += infiniteHeuristicNodes.filter(excludeKnownDistance)
 
 	// Check if previous logic is implemented correctly
@@ -274,7 +270,7 @@ fun <S: State, A: Action> AstarArg<S, A>.propagateUpDistanceFromInfiniteDistance
 fun <S: State, A: Action> AstarArg<S, A>.setDistanceFromAllTargets(targets: Collection<ArgNode<S, A>>) {
 	check(targets.all { it.isTarget })
 
-	// Set exact distances
+	// Set bounded distances
 	targets.walkReverseSubtree skip@ { argNode, distance ->
 		// An ancestor can be a target because targets are expanded
 		if (argNode.astarNode.distance.isKnown) {
@@ -304,8 +300,10 @@ fun <S: State, A: Action> AstarArg<S, A>.checkShortestDistance() {
 			return@skip true
 		}
 
-		check(astarNode.distance.isBounded) // TODO this can fail
-		check(astarNode.distance.value == distance)
+		// Because [AstarArg.propagateUpDistanceFromInfiniteDistance] doesn't handle all cases there might be distance not set.
+		if (astarNode.distance.isBounded) {
+			check(astarNode.distance.value == distance)
+		}
 		return@skip false
 	}
 }

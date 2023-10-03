@@ -171,7 +171,8 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 	 *
 	 * [heuristicFinder] is not called during this.
 	 */
-	private fun AstarNode<S, A>.createChildren(prec: P, search: AstarSearch<S, A>) {
+	private fun AstarNode<S, A>.createChildren(prec: P, search: AstarSearch<S, A>?) {
+		require(heuristicSearchType == HeuristicSearchType.SEMI_ONDEMAND)
 		// we could call expand on found target nodes after each search however
 		// - the intention would not be as clear as calling it before [createSuccAstarNode]
 		// - it could expande more nodes than we would actually need
@@ -181,11 +182,11 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 		val astarArg = astarNode.astarArg
 		if (!argNode.isTarget) {
 			if (!argNode.isCovered || !argNode.coveringNode()!!.isTarget) {
-				// provided astarNode was in queue =>
-				// provided astarNode has heuristic =>
-				// provider astarNode has distance &&
-				// provider astarNode is not a target =>
-				// provider astarNode must have been expanded or if covered then the coverer (if non target) must have been expanded
+				// provided AstarNode was in queue =>
+				// provided AstarNode has heuristic =>
+				// (if not decreasing) [astarNode] has distance &&
+				// [astarNode] is not a target =>
+				// [astarNode] must have been expanded or if covered then the coverer (if non target) must have been expanded
 				check(argNode.isExpanded || argNode.coveringNode()!!.isExpanded)
 				return
 			}
@@ -207,10 +208,12 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 
 		// [createChildren] can be already called on this node through a different edge
 		while(!argNode.isExpanded) {
-			// optimization (leq uses smt solver): target node can only be covered with a target node
-			astarNode.close(astarArg.reachedSet[astarNode].filter { it.argNode.isTarget }, search)?.let {}
+			astarNode.close(astarArg.reachedSet[astarNode], search)?.let {}
 			if (argNode.coveringNode() != null) {
 				argNode = argNode.coveringNode()!!
+
+				// TODO document: why no 0 distance set
+
 				astarNode = astarArg[argNode]
 				check(argNode.isTarget)
 				check(!argNode.isCovered)
@@ -224,6 +227,8 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 
 	// TODO document: arg must be the same reference in every call
 	override fun check(arg: ARG<S, A>, prec: P): AbstractorResult {
+		require(arg.targetNodes().isEmpty())
+
 		val astarArg: AstarArg<S, A>
 		if (cegarHistoryStorage.size == 0) {
 			astarArg = AstarArg(arg, partialOrd, projection, null)
@@ -240,6 +245,7 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 			logger.substep("|  |  (Re)initializing ARG...")
 			argBuilder.init(arg, prec).forEach {
 				astarArg.createSuccAstarNode(it)
+				// TODO later (currently there is only one init node): check if they can't cover each other as it is used // check if it even used anywhere
 			}
 			logger.substepLine("done")
 		}

@@ -2,29 +2,28 @@ package hu.bme.mit.theta.analysis.algorithm.cegar.astar
 
 import hu.bme.mit.theta.analysis.Action
 import hu.bme.mit.theta.analysis.State
-import hu.bme.mit.theta.analysis.algorithm.ArgNode
 import hu.bme.mit.theta.analysis.algorithm.cegar.abstractor.StopCriterion
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarAbstractor.HeuristicSearchType
 import hu.bme.mit.theta.analysis.waitlist.PriorityWaitlist
 
-// TODO projection!
 /**
  * TODO document early exit
  */
 class AstarSearch<S: State, A: Action>(
 	val startAstarNodes: Collection<AstarNode<S, A>>,
-	val stopCriterion: StopCriterion<S, A>,
+	private val stopCriterion: StopCriterion<S, A>,
 ) {
 	// We could already have started to explore a subgraph therefore do not use global doneSet variable
 	private val doneSet = hashSetOf<AstarNode<S, A>>()
 
 	// Useful to know whether the current item is smaller than the one in the waitlist (if not in doneSet)
-	val minDepths = mutableMapOf<AstarNode<S, A>, Int>()
+	val minDepths = hashMapOf<AstarNode<S, A>, Int>()
 
 	// After we reach target we know the distance for all nodes between root and target which is visitable by parent entries
 	// This is needed because with covering edges there can be multiple in-edges
 	// node -> parent
-	// TODO map always gives null if not found, this is somewhat missleading
-	var parents = mutableMapOf<ArgNode<S, A>, ArgNode<S, A>?>() // TODO why argNodes?
+	// TODO map always gives null if key is not found, value type is somewhat misleading
+	var parents = hashMapOf<AstarNode<S, A>, AstarNode<S, A>?>()
 
 	val astarArg: AstarArg<S, A> = startAstarNodes.first().astarArg
 
@@ -37,11 +36,11 @@ class AstarSearch<S: State, A: Action>(
 	// Possible cases:
 	//   - target in a different subgraph reached by covering edge
 	//   - target in the same subgraph which was reached earlier from a different subgraph (by a covering edge)
-	private var weightSupremumValue: Int? = null
+	private var weightSupremumValue: Int? = null // TODO document: only when not refining
 	private var weightSupremumAstarNode: AstarNode<S, A>? = null
 
 	// Contains reached targets ordered by closest to furthest. Not unique and should not be as it is used for setting distances.
-	// Non-target nodes the exact values must be from a previous findDistanceForAny call as we set exact distances at the end of iteration.
+	// Non-target nodes the bounded values must be from a previous findDistanceForAny call as we set bounded distances at the end of iteration.
 	// TODO target doesn't have a distance so name can be confusing
 	var reachedBoundeds = mutableListOf<AstarNode<S, A>>()
 
@@ -68,13 +67,13 @@ class AstarSearch<S: State, A: Action>(
 		}
 
 		if (!minDepths.containsKey(astarNode) || minDepths[astarNode]!! > depth) {
-			parents[argNode] = parentAstarNode?.argNode
+			parents[astarNode] = parentAstarNode
 			minDepths[astarNode] = depth
 			// TODO document early exit, only need to set [parents]
 			if (!argNode.isTarget) {
 				// !expanded && isLeaf: handle leftover nodes
 				if (astarNode.heuristic == Distance.ZERO && !argNode.isCovered && (!argNode.isExpanded && argNode.isLeaf)) {
-					// [AstarWaitlistComparator] depends on knowing whether a node is coverable // TODO move to comparator?
+					// [AstarWaitlistComparator] depends on knowing whether a node is coverable
 					astarNode.close(astarArg.reachedSet[astarNode], this)?.let {}
 				}
 				waitlist.add(Edge(astarNode, depth))
@@ -111,7 +110,7 @@ class AstarSearch<S: State, A: Action>(
 			// proof: current [weightSupremumValue] > weightSupremumValue' = depth + distance > depth + heuristic = priority of a node in queue
 			if ((weightSupremumValue ?: Int.MAX_VALUE) > depth + astarNode.distance.value) {
 				// TODO Note for future: if target gets distance immediately then this won't be true <== is not target !!!!!!!!!!!!!!!!!!!!!
-				check(AstarAbstractor.heuristicSearchType != AstarAbstractor.HeuristicSearchType.FULL)
+				check(AstarAbstractor.heuristicSearchType != HeuristicSearchType.FULL)
 
 				weightSupremumValue = depth + astarNode.distance.value
 				weightSupremumAstarNode = astarNode
@@ -121,7 +120,7 @@ class AstarSearch<S: State, A: Action>(
 
 		// If we can't reach a depth greater than [weightSupremumValue] then other target is not reachable.
 		if (weightSupremumValue != null) {
-			check(AstarAbstractor.heuristicSearchType !== AstarAbstractor.HeuristicSearchType.FULL)
+			check(AstarAbstractor.heuristicSearchType !== HeuristicSearchType.FULL)
 			reachedBoundeds += weightSupremumAstarNode!!
 		}
 

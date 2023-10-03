@@ -46,7 +46,7 @@ class AstarNode<S: State, A: Action>(
 					check(value == it.distance)
 					// Once provider's distance is known it can't change in value => no need to recheck
 				} else {
-					//check(TODO("check for decreasing a* type"))
+					check(AstarAbstractor.heuristicSearchType == HeuristicSearchType.DECREASING)
 				}
 			}
 

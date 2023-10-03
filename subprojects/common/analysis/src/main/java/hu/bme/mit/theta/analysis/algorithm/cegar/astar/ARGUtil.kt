@@ -30,7 +30,7 @@ class Visit<S: State, A: Action>(
  */
 fun <S: State, A: Action> Collection<ArgNode<S, A>>.walk(
 	skip: Skip<S, A>,
-	newVisitsFunc: NewVisits<S, A>
+	newVisitsFunc: NewVisits<S, A>,
 ): Parents<S, A> {
 	val doneSet = hashSetOf<ArgNode<S, A>>()
 	val parents = hashMapOf<ArgNode<S, A>, ArgNode<S, A>?>()
