@@ -151,7 +151,7 @@ fun <S: State, A: Action, P: Prec> AstarNode<S, A>.createChildren(prec: P, searc
             continue
         }
         argBuilder.expand(argNode, prec).forEach {
-            astarArg.createSuccAstarNode(it, argBuilder)
+            astarArg.createSuccAstarNode(it, argBuilder, prec)
         }
     }
 }
