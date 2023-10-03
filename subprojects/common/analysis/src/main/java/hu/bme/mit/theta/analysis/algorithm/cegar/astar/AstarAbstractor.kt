@@ -183,8 +183,8 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 		val astarArgCopy = createIterationReplacement(astarArg, partialOrd, projection, heuristicFinder, this)
 		cegarHistoryStorage.setLast(astarArgCopy, prec)
 
-		// old Prec
-		cegarHistoryStorage.add(astarArg, prec)
+		lateinit var dummyPrec: P
+		cegarHistoryStorage.add(astarArg, dummyPrec)
 
 		return if (arg.isSafe) {
 			// Arg may not be complete (== fully expanded) as INFINITE heuristic can avoid expanding some nodes.
