@@ -1,7 +1,9 @@
 package hu.bme.mit.theta.analysis.algorithm.cegar.astar
 
 import hu.bme.mit.theta.analysis.Action
+import hu.bme.mit.theta.analysis.Prec
 import hu.bme.mit.theta.analysis.State
+import hu.bme.mit.theta.analysis.algorithm.ArgBuilder
 
 fun <S: State, A: Action> AstarNode<S, A>.checkConsistency(child: AstarNode<S, A>) {
     val parent = this
@@ -22,7 +24,7 @@ fun <S: State, A: Action> AstarNode<S, A>.checkConsistency(child: AstarNode<S, A
 
 fun <S: State, A: Action> AstarNode<S, A>.close(
     candidates: Collection<AstarNode<S, A>>,
-    search: AstarSearch<S, A>
+    search: AstarSearch<S, A>?
 ): AstarNode<S, A>? {
     if ((argNode.isExpanded || !argNode.isLeaf) || argNode.isCovered) {
         // isLeaf: After prune node may have children but not fully expanded.
@@ -88,3 +90,68 @@ fun <S: State, A: Action> AstarNode<S, A>.handleCloseRewire(search: AstarSearch<
     }
     return coveredAstarNode
 }
+
+/**
+ * [astarNode] is the provider node of a different node. This is used to creates children for [astarNode],
+ * so that different node's children will have candidate provider nodes.
+ *
+ * A node's children :=
+ * - if it is/can be expanded: its tree children
+ * - if it is/can be covered: its coverer node's children (recursive definition)
+ *
+ * [heuristicFinder] is not called during this.
+ */
+fun <S: State, A: Action, P: Prec> AstarNode<S, A>.createChildren(prec: P, search: AstarSearch<S, A>?, argBuilder: ArgBuilder<S, A, P>) {
+    require(AstarAbstractor.heuristicSearchType == AstarAbstractor.HeuristicSearchType.SEMI_ONDEMAND)
+    // we could call expand on found target nodes after each search however
+    // - the intention would not be as clear as calling it before [createSuccAstarNode]
+    // - it could expande more nodes than we would actually need
+
+    var astarNode = this
+    var argNode = astarNode.argNode
+    val astarArg = astarNode.astarArg
+    if (!argNode.isTarget) {
+        if (!argNode.isCovered || !argNode.coveringNode()!!.isTarget) {
+            // provided AstarNode was in queue =>
+            // provided AstarNode has heuristic =>
+            // (if not decreasing) [astarNode] has distance &&
+            // [astarNode] is not a target =>
+            // [astarNode] must have been expanded or if covered then the coverer (if non target) must have been expanded
+            check(argNode.isExpanded || argNode.coveringNode()!!.isExpanded)
+            return
+        }
+
+        // target covering node
+        argNode = argNode.coveringNode()!!
+        astarNode = astarArg[argNode]
+    }
+    require(argNode.isTarget)
+
+    if (AstarAbstractor.heuristicSearchType == AstarAbstractor.HeuristicSearchType.FULL) {
+        require(argNode.isCovered || argNode.isExpanded)
+    }
+
+    if (argNode.isCovered) {
+        // [createChildren] is already called (directly or indirectly) on this node
+        return
+    }
+
+    // [createChildren] can be already called on this node through a different edge
+    while(!argNode.isExpanded) {
+        astarNode.close(astarArg.reachedSet[astarNode], search)?.let {}
+        if (argNode.coveringNode() != null) {
+            argNode = argNode.coveringNode()!!
+
+            // TODO document: why no 0 distance set
+
+            astarNode = astarArg[argNode]
+            check(argNode.isTarget)
+            check(!argNode.isCovered)
+            continue
+        }
+        argBuilder.expand(argNode, prec).forEach {
+            astarArg.createSuccAstarNode(it, argBuilder)
+        }
+    }
+}
+

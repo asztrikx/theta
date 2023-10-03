@@ -142,11 +142,7 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 			if (!argNode.isExpanded) {
 				val newArgNodes = argBuilder.expand(argNode, prec)
 				for (newArgNode in newArgNodes) {
-					// TODO pattern
-					if (astarArg.provider != null && heuristicSearchType != HeuristicSearchType.DECREASING  && heuristicSearchType != HeuristicSearchType.FULL) {
-						astarNode.providerAstarNode!!.createChildren(prec, search)
-					}
-					astarArg.createSuccAstarNode(newArgNode)
+					astarArg.createSuccAstarNode(newArgNode, argBuilder, prec)
 				}
 			}
 
@@ -157,70 +153,6 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 				heuristicFinder(succAstarNode, this)
 				astarNode.checkConsistency(succAstarNode)
 				search.addToWaitlist(succAstarNode, astarNode, depth + 1)
-			}
-		}
-	}
-
-	/**
-	 * [astarNode] is the provider node of a different node. This is used to creates children for [astarNode],
-	 * so that different node's children will have candidate provider nodes.
-	 *
-	 * A node's children :=
-	 * - if it is/can be expanded: its tree children
-	 * - if it is/can be covered: its coverer node's children (recursive definition)
-	 *
-	 * [heuristicFinder] is not called during this.
-	 */
-	private fun AstarNode<S, A>.createChildren(prec: P, search: AstarSearch<S, A>?) {
-		require(heuristicSearchType == HeuristicSearchType.SEMI_ONDEMAND)
-		// we could call expand on found target nodes after each search however
-		// - the intention would not be as clear as calling it before [createSuccAstarNode]
-		// - it could expande more nodes than we would actually need
-
-		var astarNode = this
-		var argNode = astarNode.argNode
-		val astarArg = astarNode.astarArg
-		if (!argNode.isTarget) {
-			if (!argNode.isCovered || !argNode.coveringNode()!!.isTarget) {
-				// provided AstarNode was in queue =>
-				// provided AstarNode has heuristic =>
-				// (if not decreasing) [astarNode] has distance &&
-				// [astarNode] is not a target =>
-				// [astarNode] must have been expanded or if covered then the coverer (if non target) must have been expanded
-				check(argNode.isExpanded || argNode.coveringNode()!!.isExpanded)
-				return
-			}
-
-			// target covering node
-			argNode = argNode.coveringNode()!!
-			astarNode = astarArg[argNode]
-		}
-		require(argNode.isTarget)
-
-		if (heuristicSearchType == HeuristicSearchType.FULL) {
-			require(argNode.isCovered || argNode.isExpanded)
-		}
-
-		if (argNode.isCovered) {
-			// [createChildren] is already called (directly or indirectly) on this node
-			return
-		}
-
-		// [createChildren] can be already called on this node through a different edge
-		while(!argNode.isExpanded) {
-			astarNode.close(astarArg.reachedSet[astarNode], search)?.let {}
-			if (argNode.coveringNode() != null) {
-				argNode = argNode.coveringNode()!!
-
-				// TODO document: why no 0 distance set
-
-				astarNode = astarArg[argNode]
-				check(argNode.isTarget)
-				check(!argNode.isCovered)
-				continue
-			}
-			argBuilder.expand(argNode, prec).forEach {
-				astarArg.createSuccAstarNode(it)
 			}
 		}
 	}
@@ -244,7 +176,7 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 		if (!arg.isInitialized) {
 			logger.substep("|  |  (Re)initializing ARG...")
 			argBuilder.init(arg, prec).forEach {
-				astarArg.createSuccAstarNode(it)
+				astarArg.createSuccAstarNode(it, argBuilder, prec)
 				// TODO later (currently there is only one init node): check if they can't cover each other as it is used // check if it even used anywhere
 			}
 			logger.substepLine("done")

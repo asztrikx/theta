@@ -45,17 +45,17 @@ class AstarArg<S: State, A: Action>(
 		astarNodes = astarNodesNew
 	}
 
-	fun <P: Prec> createSuccAstarNode(argNode: ArgNode<S, A>, argBuilder: ArgBuilder<S, A, P>): AstarNode<S, A> {
-		val providerAstarNode = argNode.getProviderAstarNode(argBuilder)
+	fun <P: Prec> createSuccAstarNode(argNode: ArgNode<S, A>, argBuilder: ArgBuilder<S, A, P>, prec: P): AstarNode<S, A> {
+		val providerAstarNode = argNode.getProviderAstarNode(argBuilder, prec)
 		val astarNode = AstarNode(argNode, providerAstarNode, this)
 		reachedSet.add(astarNode)
 		put(astarNode)
 		return astarNode
 	}
 
-	private fun <P: Prec> ArgNode<S, A>.getProviderAstarNode(argBuilder: ArgBuilder<S, A, P>): AstarNode<S, A>? {
+	private fun <P: Prec> ArgNode<S, A>.getProviderAstarNode(argBuilder: ArgBuilder<S, A, P>, prec: P): AstarNode<S, A>? {
 		val providerArg = provider ?: return null
-		var providerCandidates = this.getProviderCandidates(argBuilder) ?: return null
+		var providerCandidates = this.getProviderCandidates(argBuilder, prec) ?: return null
 
 		providerCandidates = providerCandidates.filter { partialOrd.isLeq(state, it.state) }
 
@@ -91,7 +91,7 @@ class AstarArg<S: State, A: Action>(
 		return providerArg[providerNode]
 	}
 
-	private fun <P: Prec> ArgNode<S, A>.getProviderCandidates(argBuilder: ArgBuilder<S, A, P>): Collection<ArgNode<S, A>>? {
+	private fun <P: Prec> ArgNode<S, A>.getProviderCandidates(argBuilder: ArgBuilder<S, A, P>, prec: P): Collection<ArgNode<S, A>>? {
 		val provider = provider!!
 		val treeParentAstarNode = parent()?.astarNode ?: run {
 			require(isInit)
@@ -103,8 +103,9 @@ class AstarArg<S: State, A: Action>(
 			return provider.arg.nodes()
 		}
 
+		// Make sure [treeParentAstarNodeProvider] has children
 		if (AstarAbstractor.heuristicSearchType == HeuristicSearchType.SEMI_ONDEMAND) {
-			//astarNode.providerAstarNode!!.createChildren(prec, search)
+			astarNode.providerAstarNode!!.createChildren(prec, null, argBuilder)
 		}
 
 		// [treeParentAstarNodeProvider] can be covered.
@@ -128,7 +129,7 @@ class AstarArg<S: State, A: Action>(
 			// [treeParentAstarNode] was in queue or is a leftover node =>
 			// [treeParentAstarNode] has heuristic =>
 			// (if not decreasing) [treeParentAstarNode]'s provider has distance &&
-			// [treeParentAstarNode]'s provider must be expanded or covered (even if it's a target) => // TODO make sure
+			// (if createChildren is called and if not decreasing) [treeParentAstarNode]'s provider must be expanded or covered =>
 			// (because of compression covering node can't have covering node and covering case has been handled) => [treeParentAstarNode] expanded
 			check(treeParentAstarNodeProvider.argNode.isExpanded)
 		}
