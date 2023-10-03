@@ -7,6 +7,7 @@ import hu.bme.mit.theta.analysis.State
 import hu.bme.mit.theta.analysis.algorithm.ArgCopier
 import hu.bme.mit.theta.analysis.algorithm.ArgNode
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarAbstractor.HeuristicSearchType
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.heuristicFinder.HeuristicFinder
 
 // TODO rename, replace with extension function
 object AstarIterator {
@@ -22,6 +23,7 @@ object AstarIterator {
 		astarArg: AstarArg<S, A>,
 		partialOrd: PartialOrd<S>,
 		projection: (S) -> Any,
+		heuristicFinder: HeuristicFinder<S, A, P>,
 		astarAbstractor: AstarAbstractor<S, A, P>
 	): AstarArg<S, A> {
 		val translation = mutableListOf<Pair<ArgNode<S, A>, ArgNode<S, A>>>()
@@ -54,7 +56,7 @@ object AstarIterator {
 			// TODO pattern
 			// Fully and Semi-ondemand will always give the same heuristic for covering- and covered node (=> consistent) as they are based on distance
 			if (AstarAbstractor.heuristicSearchType == HeuristicSearchType.DECREASING) {
-				handleAstarDecreasing(astarNode, astarAbstractor)
+				handleAstarDecreasing(astarNode, heuristicFinder, astarAbstractor)
 			}
 		}
 		check(astarArg.arg.nodes.count() == astarArgCopy.astarNodes.values.size.toLong())
@@ -64,7 +66,8 @@ object AstarIterator {
 
 	private fun <S: State, A: Action, P: Prec> handleAstarDecreasing(
 		astarNode: AstarNode<S, A>,
-		astarAbstractor: AstarAbstractor<S, A, P>,
+		heuristicFinder: HeuristicFinder<S, A, P>,
+		abstractor: AstarAbstractor<S, A, P>,
 	) {
 		// Nodes in the next iteration already have covering edges which can break the consistency requirement with the decreasing heuristics.
 		// Therefore, we remove those here so that we can check for consistency during search.
@@ -73,8 +76,7 @@ object AstarIterator {
 		val astarArg = astarNode.astarArg
 		val argNode = astarNode.argNode
 
-		// TODO why do we call this recursive function here ????
-		astarAbstractor.findHeuristic(astarNode)
+		heuristicFinder(astarNode, abstractor)
 
 		argNode.coveringNode()?.let {
 			astarArg.handleDecreasingCoverEdgeConsistency(argNode, it)

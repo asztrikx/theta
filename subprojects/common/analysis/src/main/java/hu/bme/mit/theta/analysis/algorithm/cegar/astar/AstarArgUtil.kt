@@ -86,8 +86,8 @@ private fun <S: State, A: Action> AstarArg<S, A>.propagateUpDistanceFromConditio
 	//      a
 	//    /  \
 	//   b- ->c
-	val queue = ArrayDeque(nodes.filter { get(it).distance.isUnknown })
-	while (!queue.isEmpty()) {
+	val queue = ArrayDeque(nodes.filter { it.astarNode.distance.isUnknown }) // TODO later: do we surely want to filter this and not throw an exception?
+	while (queue.isNotEmpty()) {
 		val startNode = queue.removeFirst()
 
 		var previousDistance: Distance? = null
