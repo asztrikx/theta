@@ -1,8 +1,12 @@
 package hu.bme.mit.theta.analysis.algorithm.cegar.astar
 
 import hu.bme.mit.theta.analysis.Action
+import hu.bme.mit.theta.analysis.PartialOrd
+import hu.bme.mit.theta.analysis.Prec
 import hu.bme.mit.theta.analysis.State
+import hu.bme.mit.theta.analysis.algorithm.ArgCopier
 import hu.bme.mit.theta.analysis.algorithm.ArgNode
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.strategy.astarNodeCopyHandler.AstarNodeCopyHandler
 import kotlin.jvm.optionals.getOrNull
 
 /**
@@ -307,3 +311,52 @@ fun <S: State, A: Action> AstarArg<S, A>.checkShortestDistance() {
 		return@skip false
 	}
 }
+
+
+/**
+ * Creates a copy of [astarArg]. The original [astarArg] will be connected to this copy.
+ *
+ * provider <-- [astarArg] becomes provider <-- astarArgCopy <-- [astarArg]
+ *
+ * The provider's of [astarArg]'s nodes will be matching copied node.
+ * The distance and heuristic fields will also be set.
+ */
+fun <S: State, A: Action, P: Prec> AstarArg<S, A>.createIterationReplacement(
+	partialOrd: PartialOrd<S>,
+	projection: (S) -> Any,
+	astarNodeCopyHandler: AstarNodeCopyHandler<S, A, P>,
+): AstarArg<S, A> {
+	val translation = mutableListOf<Pair<ArgNode<S, A>, ArgNode<S, A>>>()
+	val argCopy = ArgCopier.createCopy(arg) { argNode, argNodeCopy ->
+		translation += Pair(argNode, argNodeCopy)
+	}
+	val astarArgCopy = AstarArg(argCopy, partialOrd, projection, provider)
+	provider = astarArgCopy
+
+	// Covering edges are created after createCopy finished
+	translation.forEach { (argNode, argNodeCopy) ->
+		val astarNode = argNode.astarNode
+		val astarNodeCopy = AstarNode(argNodeCopy, astarNode.providerAstarNode, astarArgCopy)
+		// Heuristic has to be set first otherwise admissibility check fails
+		if (astarNode.heuristic.isKnown) {
+			astarNodeCopy.heuristic = astarNode.heuristic
+
+			// If it has a distance then is must also have a heuristic
+			if (astarNode.distance.isKnown) {
+				astarNodeCopy.distance = astarNode.distance
+			}
+		} else {
+			check(astarNode.distance.isUnknown)
+		}
+		astarNode.providerAstarNode = astarNodeCopy
+		astarNode.reset()
+		astarArgCopy.put(astarNodeCopy)
+		astarArgCopy.reachedSet.add(astarNodeCopy)
+
+		astarNodeCopyHandler(astarNode)
+	}
+	check(arg.nodes.count() == astarArgCopy.astarNodes.values.size.toLong())
+	check(arg.initNodes.count() == astarArgCopy.astarInitNodes.size.toLong())
+	return astarArgCopy
+}
+
