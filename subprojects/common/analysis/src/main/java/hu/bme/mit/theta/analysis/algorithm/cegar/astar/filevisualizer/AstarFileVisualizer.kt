@@ -4,17 +4,14 @@ import hu.bme.mit.theta.analysis.Action
 import hu.bme.mit.theta.analysis.Prec
 import hu.bme.mit.theta.analysis.State
 import hu.bme.mit.theta.analysis.algorithm.ArgNode
-import hu.bme.mit.theta.analysis.algorithm.cegar.astar.cegarhistorystorage.CegarHistoryStorage
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.strategy.cegarhistorystorage.CegarHistoryStorage
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.initNodes
 import hu.bme.mit.theta.analysis.utils.AstarArgVisualizer
-import hu.bme.mit.theta.common.logging.Logger
 import hu.bme.mit.theta.common.visualization.Graph
 
 class AstarFileVisualizer<S: State, A: Action, P: Prec>(
-	enabled: Boolean,
 	internal val cegarHistoryStorage: CegarHistoryStorage<S, A, P>,
-	logger: Logger,
-) : FileVisualizer(enabled, logger) {
+) : FileVisualizer() {
 	override fun visualize(state: String, index: Int) {
 		val astarArg = cegarHistoryStorage[index].first
 		val startNodes = astarArg.arg.initNodes()

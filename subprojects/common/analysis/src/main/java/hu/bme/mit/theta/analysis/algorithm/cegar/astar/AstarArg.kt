@@ -7,7 +7,7 @@ import hu.bme.mit.theta.analysis.State
 import hu.bme.mit.theta.analysis.algorithm.ARG
 import hu.bme.mit.theta.analysis.algorithm.ArgBuilder
 import hu.bme.mit.theta.analysis.algorithm.ArgNode
-import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarAbstractor.HeuristicSearchType
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.strategy.HeuristicSearchType
 import hu.bme.mit.theta.analysis.reachedset.Partition
 import kotlin.jvm.optionals.getOrNull
 
@@ -70,16 +70,16 @@ class AstarArg<S: State, A: Action>(
 			providerCandidates.firstOrNull()
 		}
 
-		if (AstarAbstractor.heuristicSearchType == HeuristicSearchType.DECREASING) {
+		if (DI.heuristicSearchType == HeuristicSearchType.DECREASING) {
 			if (isInit && providerNode == null) {
 				// Xsts test case 48, 51, 61
-				check(AstarAbstractor.analysisBadLeq)
+				check(DI.analysisBadLeq)
 
 				// Heuristic will be 0 if providerNode is kept null, so we don't have to fail
 			}
 		} else {
 			if (providerNode == null) {
-				check(AstarAbstractor.analysisBadLeq)
+				check(DI.analysisBadLeq)
 
 				// In this case we could extend the candidates to all nodes, *maybe* for one the analysis works correctly.
 				// We probably could use decreasing heuristic in this case if the previous also fails.
@@ -99,12 +99,12 @@ class AstarArg<S: State, A: Action>(
 		}
 		var treeParentAstarNodeProvider = treeParentAstarNode.providerAstarNode ?: run {
 			// If [treeParentAstarNode] doesn't have provider then we also won't have.
-			check(AstarAbstractor.heuristicSearchType == HeuristicSearchType.DECREASING)
+			check(DI.heuristicSearchType == HeuristicSearchType.DECREASING)
 			return provider.arg.nodes()
 		}
 
 		// Make sure [treeParentAstarNodeProvider] has children
-		if (AstarAbstractor.heuristicSearchType == HeuristicSearchType.SEMI_ONDEMAND) {
+		if (DI.heuristicSearchType == HeuristicSearchType.SEMI_ONDEMAND) {
 			// Recursive call
 			astarNode.providerAstarNode!!.createChildren(prec, null, argBuilder)
 		}
@@ -126,7 +126,7 @@ class AstarArg<S: State, A: Action>(
 			treeParentAstarNodeProvider = treeParentAstarNode.providerAstarNode!!
 		}
 
-		if (AstarAbstractor.heuristicSearchType != HeuristicSearchType.DECREASING) {
+		if (DI.heuristicSearchType != HeuristicSearchType.DECREASING) {
 			// [treeParentAstarNode] was in queue or is a leftover node =>
 			// [treeParentAstarNode] has heuristic =>
 			// (if not decreasing) [treeParentAstarNode]'s provider has distance &&

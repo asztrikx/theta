@@ -1,4 +1,4 @@
-package hu.bme.mit.theta.analysis.algorithm.cegar.astar.distanceSetter
+package hu.bme.mit.theta.analysis.algorithm.cegar.astar.strategy.distanceSetter
 
 import hu.bme.mit.theta.analysis.Action
 import hu.bme.mit.theta.analysis.State

@@ -3,7 +3,7 @@ package hu.bme.mit.theta.analysis.algorithm.cegar.astar
 import hu.bme.mit.theta.analysis.Action
 import hu.bme.mit.theta.analysis.State
 import hu.bme.mit.theta.analysis.algorithm.ArgNode
-import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarAbstractor.HeuristicSearchType
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.strategy.HeuristicSearchType
 
 class AstarNode<S: State, A: Action>(
 	val argNode: ArgNode<S, A>,
@@ -46,7 +46,7 @@ class AstarNode<S: State, A: Action>(
 					check(value == it.distance)
 					// Once provider's distance is known it can't change in value => no need to recheck
 				} else {
-					check(AstarAbstractor.heuristicSearchType == HeuristicSearchType.DECREASING)
+					check(DI.heuristicSearchType == HeuristicSearchType.DECREASING)
 				}
 			}
 

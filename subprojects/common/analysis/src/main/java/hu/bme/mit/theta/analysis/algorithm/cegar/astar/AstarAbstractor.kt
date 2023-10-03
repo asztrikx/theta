@@ -28,15 +28,10 @@ import hu.bme.mit.theta.analysis.algorithm.cegar.abstractor.StopCriterion
 import hu.bme.mit.theta.analysis.algorithm.cegar.abstractor.StopCriterions
 import hu.bme.mit.theta.analysis.algorithm.cegar.abstractor.StopCriterions.AtLeastNCexs
 import hu.bme.mit.theta.analysis.algorithm.cegar.abstractor.StopCriterions.FullExploration
-import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarIterator.createIterationReplacement
-import hu.bme.mit.theta.analysis.algorithm.cegar.astar.cegarhistorystorage.CegarHistoryStorage
-import hu.bme.mit.theta.analysis.algorithm.cegar.astar.cegarhistorystorage.CegarHistoryStoragePrevious
-import hu.bme.mit.theta.analysis.algorithm.cegar.astar.distanceSetter.DistanceSetter
-import hu.bme.mit.theta.analysis.algorithm.cegar.astar.heuristicFinder.HeuristicFinder
-import hu.bme.mit.theta.analysis.algorithm.cegar.astar.filevisualizer.AstarFileVisualizer
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.strategy.cegarhistorystorage.CegarHistoryStoragePrevious
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.strategy.HeuristicSearchType
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.strategy.Strategy
 import hu.bme.mit.theta.analysis.prod2.prod2explpred.Prod2ExplPredAnalysis
-import hu.bme.mit.theta.common.logging.Logger
-import hu.bme.mit.theta.common.logging.NullLogger
 import java.util.function.Function
 
 /**
@@ -48,13 +43,14 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 	private val argBuilder: ArgBuilder<S, A, P>,
 	private val projection: (S) -> Any,
 	private val initialStopCriterion: StopCriterion<S, A>,
-	private val logger: Logger,
-	private val cegarHistoryStorage: CegarHistoryStorage<S, A, P>,
 	private val partialOrd: PartialOrd<S>,
-	private val heuristicFinder: HeuristicFinder<S, A, P>,
-	private val distanceSetter: DistanceSetter<S, A>,
+	private val strategy: Strategy<S, A, P>,
 ): Abstractor<S, A, P> {
-	private val astarFileVisualizer = AstarFileVisualizer(true, cegarHistoryStorage, logger)
+	val cegarHistoryStorage = strategy.cegarHistoryStorage
+	val heuristicFinder = strategy.heuristicFinder
+	val distanceSetter = strategy.distanceSetter
+	val astarNodeCopyHandler = strategy.astarNodeCopyHandler
+	val astarFileVisualizer = strategy.astarFileVisualizer
 
 	/**
 	 * Determines the closest target to any of the node or determines that no node can reach target.
@@ -72,14 +68,14 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 		val arg = astarArg.arg
 
 		if (startAstarNodes.any { it.distance.isBounded }) {
-			logger.infoLine("|  |  Skipping AstarArg: startAstarNodes already have a distance")
+			DI.logger.infoLine("|  |  Skipping AstarArg: startAstarNodes already have a distance")
 			return
 		}
 
-		logger.detailLine("|  |  Precision: $prec")
-		logger.infoLine("|  |  Starting ARG: ${arg.nodes.count()} nodes, ${arg.incompleteNodes.count()} incomplete, ${arg.unsafeNodes.count()} unsafe")
-		logger.substepLine("|  |  Starting AstarArg: ${astarFileVisualizer.getTitle("", cegarHistoryStorage.indexOf(astarArg))}")
-		logger.substepLine("|  |  Building ARG...")
+		DI.logger.detailLine("|  |  Precision: $prec")
+		DI.logger.infoLine("|  |  Starting ARG: ${arg.nodes.count()} nodes, ${arg.incompleteNodes.count()} incomplete, ${arg.unsafeNodes.count()} unsafe")
+		DI.logger.substepLine("|  |  Starting AstarArg: ${astarFileVisualizer.getTitle("", cegarHistoryStorage.indexOf(astarArg))}")
+		DI.logger.substepLine("|  |  Building ARG...")
 		astarFileVisualizer.visualize("start $visualizerState", cegarHistoryStorage.indexOf(astarArg))
 
 		if (startAstarNodes.any { it.argNode.isTarget }) {
@@ -101,9 +97,9 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 		check(startAstarNodes.any { it.distance.isBounded } || startAstarNodes.all { it.distance.isInfinite })
 
 		astarFileVisualizer.visualize("end $visualizerState", cegarHistoryStorage.indexOf(astarArg))
-		logger.substepLine("done")
-		logger.infoLine("|  |  Finished ARG: ${arg.nodes.count()} nodes, ${arg.incompleteNodes.count()} incomplete, ${arg.unsafeNodes.count()} unsafe")
-		logger.infoLine("|  |  Finished AstarArg: ${astarFileVisualizer.getTitle("", cegarHistoryStorage.indexOf(astarArg))}")
+		DI.logger.substepLine("done")
+		DI.logger.infoLine("|  |  Finished ARG: ${arg.nodes.count()} nodes, ${arg.incompleteNodes.count()} incomplete, ${arg.unsafeNodes.count()} unsafe")
+		DI.logger.infoLine("|  |  Finished AstarArg: ${astarFileVisualizer.getTitle("", cegarHistoryStorage.indexOf(astarArg))}")
 	}
 
 	private fun visitNode(
@@ -131,7 +127,7 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 			// - leftover from prune:
 			//   - decreasing: during copy we call [findHeuristic] => has heuristic
 			//   - non-decreasing: we can cover into a leftover node before it is visited (even when starting from init nodes) => may not have
-			if (heuristicSearchType == HeuristicSearchType.DECREASING) {
+			if (DI.heuristicSearchType == HeuristicSearchType.DECREASING) {
 				check(coveringAstarNode.heuristic.isKnown)
 			}
 			heuristicFinder(coveringAstarNode, this)
@@ -174,12 +170,12 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 
 		// initialize: prune can keep initialized state
 		if (!arg.isInitialized) {
-			logger.substep("|  |  (Re)initializing ARG...")
+			DI.logger.substep("|  |  (Re)initializing ARG...")
 			argBuilder.init(arg, prec).forEach {
 				astarArg.createSuccAstarNode(it, argBuilder, prec)
 				// TODO later (currently there is only one init node): check if they can't cover each other as it is used // check if it even used anywhere
 			}
-			logger.substepLine("done")
+			DI.logger.substepLine("done")
 		}
 
 		findDistanceForAny(astarArg.astarInitNodes.values, initialStopCriterion, "init", prec)
@@ -201,16 +197,7 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 
 	override fun createArg(): ARG<S, A> = argBuilder.createArg()
 
-	enum class HeuristicSearchType {
-		FULL,
-		SEMI_ONDEMAND,
-		DECREASING,
-	}
-
 	companion object {
-		// Only used for assertions
-		lateinit var heuristicSearchType: HeuristicSearchType
-		var analysisBadLeq = false
 		fun <S: State, A: Action, P: Prec> builder(argBuilder: ArgBuilder<S, A, P>) = Builder(argBuilder)
 	}
 
@@ -224,22 +211,21 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 		private var analysisSet = false
 		private var projection: (S) -> Any = { 0 }
 		private var stopCriterion = StopCriterions.firstCex<S, A>()
-		private var logger: Logger = NullLogger.getInstance()
-		private lateinit var cegarHistoryStorage: CegarHistoryStorage<S, A, P>
 		private lateinit var partialOrd: PartialOrd<S>
+		private lateinit var strategy: Strategy<S, A, P>
 
 		fun analysis(analysis: Analysis<S, A, P>) = apply {
-			analysisBadLeq = analysis is Prod2ExplPredAnalysis
+			DI.analysisBadLeq = analysis is Prod2ExplPredAnalysis
 			analysisSet = true
 		}
 
 		fun projection(projection: Function<in S, *>) = apply { this.projection = { s -> projection.apply(s) } }
 
 		fun stopCriterion(stopCriterion: StopCriterion<S, A>) = apply {
-			if (heuristicSearchType == HeuristicSearchType.FULL) {
+			if (DI.heuristicSearchType == HeuristicSearchType.FULL) {
 				require(stopCriterion is FullExploration<S, A>)
 			}
-			if (heuristicSearchType != HeuristicSearchType.FULL) {
+			if (DI.heuristicSearchType != HeuristicSearchType.FULL) {
 				// Currently weightSupremumXYZ is a single value not a list so it is unsupported. Also findDistanceFor**Any**
 				// If we are looking for n targets then it is possible that we reached [1,n) target
 				require(stopCriterion !is AtLeastNCexs<S, A>)
@@ -247,20 +233,18 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 			this.stopCriterion = stopCriterion
 		}
 
-		fun logger(logger: Logger) = apply { this.logger = logger }
-
-		fun cegarHistoryStorage(cegarHistoryStorage: CegarHistoryStorage<S, A, P>) = apply {
-			if (heuristicSearchType == HeuristicSearchType.FULL || heuristicSearchType == HeuristicSearchType.DECREASING) {
-				require(cegarHistoryStorage is CegarHistoryStoragePrevious<S, A, P>)
+		fun strategy(strategy: Strategy<S, A, P>) = apply {
+			if (DI.heuristicSearchType == HeuristicSearchType.FULL || DI.heuristicSearchType == HeuristicSearchType.DECREASING) {
+				require(strategy.cegarHistoryStorage is CegarHistoryStoragePrevious<S, A, P>)
 			}
-			this.cegarHistoryStorage = cegarHistoryStorage
+			this.strategy = strategy
 		}
 
 		fun partialOrder(partialOrd: PartialOrd<S>) = apply { this.partialOrd = partialOrd }
 
 		fun build(): AstarAbstractor<S, A, P> {
 			require(analysisSet)
-			return AstarAbstractor(argBuilder, projection, stopCriterion, logger, cegarHistoryStorage, partialOrd)
+			return AstarAbstractor(argBuilder, projection, stopCriterion, partialOrd, strategy)
 		}
 	}
 }

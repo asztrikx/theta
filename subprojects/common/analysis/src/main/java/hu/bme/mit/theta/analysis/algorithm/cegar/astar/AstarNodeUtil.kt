@@ -4,6 +4,7 @@ import hu.bme.mit.theta.analysis.Action
 import hu.bme.mit.theta.analysis.Prec
 import hu.bme.mit.theta.analysis.State
 import hu.bme.mit.theta.analysis.algorithm.ArgBuilder
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.strategy.HeuristicSearchType
 
 fun <S: State, A: Action> AstarNode<S, A>.checkConsistency(child: AstarNode<S, A>) {
     val parent = this
@@ -102,7 +103,7 @@ fun <S: State, A: Action> AstarNode<S, A>.handleCloseRewire(search: AstarSearch<
  * [heuristicFinder] is not called during this.
  */
 fun <S: State, A: Action, P: Prec> AstarNode<S, A>.createChildren(prec: P, search: AstarSearch<S, A>?, argBuilder: ArgBuilder<S, A, P>) {
-    require(AstarAbstractor.heuristicSearchType == AstarAbstractor.HeuristicSearchType.SEMI_ONDEMAND)
+    require(DI.heuristicSearchType == HeuristicSearchType.SEMI_ONDEMAND)
     // we could call expand on found target nodes after each search however
     // - the intention would not be as clear as calling it before [createSuccAstarNode]
     // - it could expande more nodes than we would actually need
@@ -127,7 +128,7 @@ fun <S: State, A: Action, P: Prec> AstarNode<S, A>.createChildren(prec: P, searc
     }
     require(argNode.isTarget)
 
-    if (AstarAbstractor.heuristicSearchType == AstarAbstractor.HeuristicSearchType.FULL) {
+    if (DI.heuristicSearchType == HeuristicSearchType.FULL) {
         require(argNode.isCovered || argNode.isExpanded)
     }
 

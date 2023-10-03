@@ -1,4 +1,4 @@
-package hu.bme.mit.theta.analysis.algorithm.cegar.astar.heuristicFinder
+package hu.bme.mit.theta.analysis.algorithm.cegar.astar.strategy.heuristicFinder
 
 import hu.bme.mit.theta.analysis.Action
 import hu.bme.mit.theta.analysis.Prec

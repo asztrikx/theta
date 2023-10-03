@@ -30,9 +30,9 @@ import hu.bme.mit.theta.analysis.algorithm.cegar.CegarChecker;
 import hu.bme.mit.theta.analysis.algorithm.cegar.Refiner;
 import hu.bme.mit.theta.analysis.algorithm.cegar.abstractor.StopCriterions;
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarAbstractor;
-import hu.bme.mit.theta.analysis.algorithm.cegar.astar.cegarhistorystorage.CegarHistoryStorage;
-import hu.bme.mit.theta.analysis.algorithm.cegar.astar.cegarhistorystorage.CegarHistoryStoragePrevious;
-import hu.bme.mit.theta.analysis.algorithm.cegar.astar.cegarhistorystorage.CegarHistoryStorageAll;
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.strategy.HeuristicSearchType;
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.strategy.Strategy;
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.strategy.StrategyUtilKt;
 import hu.bme.mit.theta.analysis.expl.ExplAnalysis;
 import hu.bme.mit.theta.analysis.expl.ExplPrec;
 import hu.bme.mit.theta.analysis.expl.ExplState;
@@ -135,7 +135,7 @@ public final class StsConfigBuilder {
 	private final Domain domain;
 	private final Refinement refinement;
 	private Search search = Search.BFS;
-	private @Nullable AstarAbstractor.HeuristicSearchType heuristicSearchType;
+	private @Nullable HeuristicSearchType heuristicSearchType;
 	private PredSplit predSplit = PredSplit.WHOLE;
 	private InitPrec initPrec = InitPrec.EMPTY;
 	private PruneStrategy pruneStrategy = PruneStrategy.LAZY;
@@ -156,7 +156,7 @@ public final class StsConfigBuilder {
 		return this;
 	}
 
-	public StsConfigBuilder heuristicSearchType(final AstarAbstractor.HeuristicSearchType heuristicSearchType) {
+	public StsConfigBuilder heuristicSearchType(final HeuristicSearchType heuristicSearchType) {
 		this.heuristicSearchType = heuristicSearchType;
 		return this;
 	}
@@ -222,22 +222,17 @@ public final class StsConfigBuilder {
 				case ASTAR -> {
 					if (heuristicSearchType == null) {
 						if (isMultiSeq) {
-							heuristicSearchType = AstarAbstractor.HeuristicSearchType.FULL;
+							heuristicSearchType = HeuristicSearchType.FULL;
 						} else {
-							heuristicSearchType = AstarAbstractor.HeuristicSearchType.DECREASING;
+							heuristicSearchType = HeuristicSearchType.Companion.getDEFAULT_NON_FULL();
 						}
 					}
-					final CegarHistoryStorage<ExplState, StsAction, ExplPrec> cegarHistoryStorage = switch (heuristicSearchType) {
-						case FULL, DECREASING -> new CegarHistoryStoragePrevious<>();
-						case SEMI_ONDEMAND -> new CegarHistoryStorageAll<>();
-					};
-					AstarAbstractor.heuristicSearchType = heuristicSearchType;
+					Strategy<ExplState, StsAction, ExplPrec> strategy = StrategyUtilKt.from(heuristicSearchType, logger);
 					final AstarAbstractor<ExplState, StsAction, ExplPrec> abstractor = AstarAbstractor.Companion
 							.builder(argBuilder)
 							.stopCriterion(isMultiSeq ? StopCriterions.fullExploration() : StopCriterions.firstCex())
-							.logger(logger)
-							.cegarHistoryStorage(cegarHistoryStorage)
 							.partialOrder(analysis.getPartialOrd())
+							.strategy(strategy)
 							.build();
 					checker = CegarChecker.create(abstractor, refiner, logger);
 				}
@@ -309,22 +304,17 @@ public final class StsConfigBuilder {
 				case ASTAR -> {
 					if (heuristicSearchType == null) {
 						if (isMultiSeq) {
-							heuristicSearchType = AstarAbstractor.HeuristicSearchType.FULL;
+							heuristicSearchType = HeuristicSearchType.FULL;
 						} else {
-							heuristicSearchType = AstarAbstractor.HeuristicSearchType.DECREASING;
+							heuristicSearchType = HeuristicSearchType.Companion.getDEFAULT_NON_FULL();
 						}
 					}
-					final CegarHistoryStorage<PredState, StsAction, PredPrec> cegarHistoryStorage = switch (heuristicSearchType) {
-						case FULL, DECREASING -> new CegarHistoryStoragePrevious<>();
-						case SEMI_ONDEMAND -> new CegarHistoryStorageAll<>();
-					};
-					AstarAbstractor.heuristicSearchType = heuristicSearchType;
+					Strategy<PredState, StsAction, PredPrec> strategy = StrategyUtilKt.from(heuristicSearchType, logger);
 					final AstarAbstractor<PredState, StsAction, PredPrec> abstractor = AstarAbstractor.Companion
 							.builder(argBuilder)
 							.stopCriterion(isMultiSeq ? StopCriterions.fullExploration() : StopCriterions.firstCex())
-							.logger(logger)
-							.cegarHistoryStorage(cegarHistoryStorage)
 							.partialOrder(analysis.getPartialOrd())
+							.strategy(strategy)
 							.build();
 					checker = CegarChecker.create(abstractor, refiner, logger);
 				}
