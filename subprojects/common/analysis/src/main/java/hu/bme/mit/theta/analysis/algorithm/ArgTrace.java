@@ -56,7 +56,7 @@ public final class ArgTrace<S extends State, A extends Action> implements Iterab
 		nodeList.add(running);
 
 		while (running != node) {
-			final var next = parents.get(node);
+			final var next = parents.get(running);
 			checkNotNull(next);
 			if (!running.isCovered()) {
 				final ArgEdge<S, A> inEdge = next.getInEdge().get();
