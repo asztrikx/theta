@@ -32,6 +32,7 @@ import hu.bme.mit.theta.analysis.algorithm.cegar.astar.strategy.cegarhistorystor
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.strategy.HeuristicSearchType
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.strategy.Strategy
 import hu.bme.mit.theta.analysis.prod2.prod2explpred.Prod2ExplPredAnalysis
+import hu.bme.mit.theta.common.Utils
 import java.util.function.Function
 
 /**
@@ -201,11 +202,7 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 		fun <S: State, A: Action, P: Prec> builder(argBuilder: ArgBuilder<S, A, P>) = Builder(argBuilder)
 	}
 
-	/*@Override
-    public String toString() {
-        return Utils.lispStringBuilder(getClass().getSimpleName()).add(waitlist).toString();
-    }*/
-	override fun toString() = "Utils.lispStringBuilder(getClass().getSimpleName()).add(waitlist).toString()"
+	override fun toString() = Utils.lispStringBuilder(this::class.simpleName).toString()
 
 	class Builder<S: State, A: Action, P: Prec>(private val argBuilder: ArgBuilder<S, A, P>) {
 		private var analysisSet = false
