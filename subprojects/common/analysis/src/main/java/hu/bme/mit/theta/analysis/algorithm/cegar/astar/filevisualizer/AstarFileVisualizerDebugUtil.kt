@@ -18,7 +18,7 @@ fun <S: State, A: Action, P: Prec> AstarFileVisualizer<S, A, P>.debugInit(astarA
     debugVisualize(astarArg, astarArg.arg.initNodes())
 }
 
-@kotlin.ExperimentalStdlibApi
+@OptIn(ExperimentalStdlibApi::class)
 fun <S: State, A: Action, P: Prec> AstarFileVisualizer<S, A, P>.debugAll() {
     for (i in 0..<cegarHistoryStorage.size) {
         debugInit(cegarHistoryStorage[i].first)
