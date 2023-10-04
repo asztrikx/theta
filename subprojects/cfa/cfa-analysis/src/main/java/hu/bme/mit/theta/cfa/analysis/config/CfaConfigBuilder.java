@@ -406,6 +406,7 @@ public class CfaConfigBuilder {
 							.projection(projection) //
 							.stopCriterion(isMultiSeq ? StopCriterions.fullExploration() : StopCriterions.firstCex())
 							.partialOrder(analysis.getPartialOrd())
+							.analysis(analysis)
 							.strategy(strategy)
 							.build();
 					checker = CegarChecker.create(abstractor, refiner, logger);
@@ -531,6 +532,7 @@ public class CfaConfigBuilder {
 							.projection(projection) //
 							.stopCriterion(isMultiSeq ? StopCriterions.fullExploration() : StopCriterions.firstCex())
 							.partialOrder(analysis.getPartialOrd())
+							.analysis(analysis)
 							.strategy(strategy)
 							.build();
 					checker = CegarChecker.create(abstractor, refiner, logger);

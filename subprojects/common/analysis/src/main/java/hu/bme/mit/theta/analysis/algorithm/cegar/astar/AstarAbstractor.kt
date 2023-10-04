@@ -214,7 +214,7 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 		private lateinit var partialOrd: PartialOrd<S>
 		private lateinit var strategy: Strategy<S, A, P>
 
-		fun analysis(analysis: Analysis<S, A, P>) = apply {
+		fun analysis(analysis: Analysis<*, *, *>) = apply {
 			DI.analysisBadLeq = analysis is Prod2ExplPredAnalysis
 			analysisSet = true
 		}

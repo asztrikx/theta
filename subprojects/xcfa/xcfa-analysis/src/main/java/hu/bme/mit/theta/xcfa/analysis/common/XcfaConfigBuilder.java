@@ -500,6 +500,7 @@ public class XcfaConfigBuilder {
 						.projection(projection) //
 						.stopCriterion(isMultiSeq ? StopCriterions.fullExploration() : StopCriterions.firstCex())
 						.partialOrder(algorithm.getPartialOrder(domainAnalysis.getPartialOrd()))
+						.analysis(analysis)
 						.strategy(strategy)
 						.build();
 			}
