@@ -326,6 +326,7 @@ fun <S: State, A: Action, P: Prec> AstarArg<S, A>.createIterationReplacement(
 	partialOrd: PartialOrd<S>,
 	projection: (S) -> Any,
 	astarNodeCopyHandler: AstarNodeCopyHandler<S, A, P>,
+	astarAbstractor: AstarAbstractor<S, A, P>,
 ): AstarArg<S, A> {
 	val translation = mutableListOf<Pair<ArgNode<S, A>, ArgNode<S, A>>>()
 	val argCopy = ArgCopier.createCopy(arg) { argNode, argNodeCopy ->
@@ -355,7 +356,7 @@ fun <S: State, A: Action, P: Prec> AstarArg<S, A>.createIterationReplacement(
 
 		astarNode.providerAstarNode = astarNodeCopy
 		astarNode.reset()
-		astarNodeCopyHandler(astarNode)
+		astarNodeCopyHandler(astarNode, astarAbstractor)
 	}
 	check(arg.nodes.count() == astarArgCopy.astarNodes.values.size.toLong())
 	check(arg.initNodes.count() == astarArgCopy.astarInitNodes.size.toLong())

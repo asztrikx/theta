@@ -180,7 +180,7 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 
 		findDistanceForAny(astarArg.astarInitNodes.values, initialStopCriterion, "init", prec)
 
-		val astarArgCopy = astarArg.createIterationReplacement(partialOrd, projection, astarNodeCopyHandler)
+		val astarArgCopy = astarArg.createIterationReplacement(partialOrd, projection, astarNodeCopyHandler, this)
 		cegarHistoryStorage.setLast(astarArgCopy, prec)
 
 		lateinit var dummyPrec: P

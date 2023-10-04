@@ -10,7 +10,7 @@ import hu.bme.mit.theta.analysis.algorithm.cegar.astar.strategy.heuristicFinder.
 class DecreasingAstarNodeCopyHandler<S: State, A: Action, P: Prec>(
     heuristicFinder: HeuristicFinder<S, A, P>
 ): AstarNodeCopyHandler<S, A, P>(heuristicFinder) {
-    override fun invoke(astarNode: AstarNode<S, A>,) {
+    override fun invoke(astarNode: AstarNode<S, A>, astarAbstractor: AstarAbstractor<S, A, P>) {
         // Nodes in the next iteration already have covering edges which can break the consistency requirement with the decreasing heuristics.
         // Therefore, we remove those here so that we can check for consistency during search.
         // See XstsTest 48, 51 testcase fail without this.
@@ -18,8 +18,7 @@ class DecreasingAstarNodeCopyHandler<S: State, A: Action, P: Prec>(
         val astarArg = astarNode.astarArg
         val argNode = astarNode.argNode
 
-        lateinit var abstractor: AstarAbstractor<S, A, P>
-        heuristicFinder(astarNode, abstractor)
+        heuristicFinder(astarNode, astarAbstractor)
 
         argNode.coveringNode()?.let {
             astarArg.handleDecreasingCoverEdgeConsistency(argNode, it)
