@@ -20,7 +20,7 @@ import hu.bme.mit.theta.analysis.Prec;
 import hu.bme.mit.theta.analysis.State;
 import hu.bme.mit.theta.analysis.Trace;
 import hu.bme.mit.theta.analysis.algorithm.SafetyResult;
-import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarAbstractor.HeuristicSearchType;
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.strategy.HeuristicSearchType;
 import hu.bme.mit.theta.analysis.expl.ExplState;
 import hu.bme.mit.theta.cfa.CFA;
 import hu.bme.mit.theta.cfa.analysis.config.CfaConfig;
@@ -42,7 +42,6 @@ import java.io.FileInputStream;
 import java.util.Arrays;
 import java.util.Collection;
 
-import static hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarAbstractor.HeuristicSearchType.*;
 import static hu.bme.mit.theta.cfa.analysis.config.CfaConfigBuilder.Domain.EXPL;
 import static hu.bme.mit.theta.cfa.analysis.config.CfaConfigBuilder.Domain.PRED_BOOL;
 import static hu.bme.mit.theta.cfa.analysis.config.CfaConfigBuilder.Domain.PRED_CART;
@@ -172,10 +171,10 @@ public class CfaTest {
 		}
 
 		try {
-			var allHeuristics = new HeuristicSearchType[]{
-				DECREASING,
-				SEMI_ONDEMAND,
-				FULL
+			var allHeuristics = new HeuristicSearchType[] {
+				HeuristicSearchType.DECREASING,
+				HeuristicSearchType.SEMI_ONDEMAND,
+				HeuristicSearchType.FULL,
 			};
 			for (var astarHeuristic : allHeuristics) {
 				if (excludedAstarHeuristics != null && Arrays.asList(excludedAstarHeuristics).contains(astarHeuristic)) {

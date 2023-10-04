@@ -3,7 +3,7 @@ package hu.bme.mit.theta.sts.analysis;
 import hu.bme.mit.theta.analysis.Action;
 import hu.bme.mit.theta.analysis.Prec;
 import hu.bme.mit.theta.analysis.State;
-import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarAbstractor.HeuristicSearchType;
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.strategy.HeuristicSearchType;
 import hu.bme.mit.theta.common.Utils;
 import hu.bme.mit.theta.common.logging.ConsoleLogger;
 import hu.bme.mit.theta.common.logging.Logger;
@@ -25,7 +25,6 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collection;
 
-import static hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarAbstractor.HeuristicSearchType.*;
 import static hu.bme.mit.theta.sts.analysis.config.StsConfigBuilder.Domain.*;
 import static hu.bme.mit.theta.sts.analysis.config.StsConfigBuilder.Refinement.SEQ_ITP;
 
@@ -63,7 +62,7 @@ public class StsTest {
 
 				{ "src/test/resources/counter_parametric.system", PRED_CART, SEQ_ITP, true, null },
 
-				{ "src/test/resources/loop.system", EXPL, SEQ_ITP, true, new HeuristicSearchType[]{FULL} },
+				{ "src/test/resources/loop.system", EXPL, SEQ_ITP, true, new HeuristicSearchType[]{HeuristicSearchType.FULL} },
 
 				{ "src/test/resources/loop_bad.system", EXPL, SEQ_ITP, false, null },
 
@@ -92,10 +91,10 @@ public class StsTest {
 			sts = Utils.singleElementOf(spec.getAllSts());
 		}
 
-		var allHeuristics = new HeuristicSearchType[]{
-				DECREASING,
-				SEMI_ONDEMAND,
-				FULL
+		var allHeuristics = new HeuristicSearchType[] {
+			HeuristicSearchType.DECREASING,
+			HeuristicSearchType.SEMI_ONDEMAND,
+			HeuristicSearchType.FULL,
 		};
 		for (var astarHeuristic : allHeuristics) {
 			if (excludedAstarHeuristics != null && Arrays.asList(excludedAstarHeuristics).contains(astarHeuristic)) {

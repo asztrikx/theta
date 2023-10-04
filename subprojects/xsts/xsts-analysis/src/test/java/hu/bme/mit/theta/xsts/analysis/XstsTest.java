@@ -16,7 +16,7 @@
 package hu.bme.mit.theta.xsts.analysis;
 
 import hu.bme.mit.theta.analysis.algorithm.SafetyResult;
-import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarAbstractor.HeuristicSearchType;
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.strategy.HeuristicSearchType;
 import hu.bme.mit.theta.common.logging.ConsoleLogger;
 import hu.bme.mit.theta.common.logging.Logger;
 import hu.bme.mit.theta.common.logging.Logger.Level;
@@ -36,7 +36,6 @@ import java.io.SequenceInputStream;
 import java.util.Arrays;
 import java.util.Collection;
 
-import static hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarAbstractor.HeuristicSearchType.*;
 import static org.junit.Assert.assertTrue;
 
 @RunWith(value = Parameterized.class)
@@ -199,13 +198,13 @@ public class XstsTest {
 
 				{ "src/test/resources/model/array_counter.xsts", "src/test/resources/property/array_10.prop", false, XstsConfigBuilder.Domain.PRED_CART, null },
 
-				{ "src/test/resources/model/array_counter.xsts", "src/test/resources/property/array_10.prop", false, XstsConfigBuilder.Domain.EXPL, new HeuristicSearchType[]{FULL} },
+				{ "src/test/resources/model/array_counter.xsts", "src/test/resources/property/array_10.prop", false, XstsConfigBuilder.Domain.EXPL, new HeuristicSearchType[]{HeuristicSearchType.FULL} },
 
-				{ "src/test/resources/model/array_counter.xsts", "src/test/resources/property/array_10.prop", false, XstsConfigBuilder.Domain.EXPL_PRED_COMBINED, new HeuristicSearchType[]{FULL} }, // TODO FULL: Arg::properDescendants takes a long time
+				{ "src/test/resources/model/array_counter.xsts", "src/test/resources/property/array_10.prop", false, XstsConfigBuilder.Domain.EXPL_PRED_COMBINED, new HeuristicSearchType[]{HeuristicSearchType.FULL} }, // TODO FULL: Arg::properDescendants takes a long time
 
 				{ "src/test/resources/model/array_constant.xsts", "src/test/resources/property/array_constant.prop", true, XstsConfigBuilder.Domain.PRED_CART, null },
 
-				{ "src/test/resources/model/array_constant.xsts", "src/test/resources/property/array_constant.prop", true, XstsConfigBuilder.Domain.EXPL, new HeuristicSearchType[]{FULL} },
+				{ "src/test/resources/model/array_constant.xsts", "src/test/resources/property/array_constant.prop", true, XstsConfigBuilder.Domain.EXPL, new HeuristicSearchType[]{HeuristicSearchType.FULL} },
 
 				{ "src/test/resources/model/array_constant.xsts", "src/test/resources/property/array_constant.prop", true, XstsConfigBuilder.Domain.EXPL_PRED_COMBINED, null },
 
@@ -231,7 +230,7 @@ public class XstsTest {
 
 				{ "src/test/resources/model/if1.xsts", "src/test/resources/property/if1.prop", true, XstsConfigBuilder.Domain.PRED_CART, null },
 
-				{ "src/test/resources/model/if2.xsts", "src/test/resources/property/if2.prop", false, XstsConfigBuilder.Domain.EXPL_PRED_COMBINED, new HeuristicSearchType[]{FULL} },
+				{ "src/test/resources/model/if2.xsts", "src/test/resources/property/if2.prop", false, XstsConfigBuilder.Domain.EXPL_PRED_COMBINED, new HeuristicSearchType[]{HeuristicSearchType.FULL} },
 		});
 	}
 
@@ -246,9 +245,9 @@ public class XstsTest {
 		}
 		
 		var allHeuristics = new HeuristicSearchType[]{
-				DECREASING,
-				SEMI_ONDEMAND,
-				FULL
+			HeuristicSearchType.DECREASING,
+			HeuristicSearchType.SEMI_ONDEMAND,
+			HeuristicSearchType.FULL,
 		};
 		for (var astarHeuristic : allHeuristics) {
 			if (excludedAstarHeuristics != null && Arrays.asList(excludedAstarHeuristics).contains(astarHeuristic)) {
