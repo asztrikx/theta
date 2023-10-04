@@ -337,6 +337,7 @@ fun <S: State, A: Action, P: Prec> AstarArg<S, A>.createIterationReplacement(
 	// Covering edges are created after createCopy finished
 	translation.forEach { (argNode, argNodeCopy) ->
 		val astarNode = argNode.astarNode
+
 		val astarNodeCopy = AstarNode(argNodeCopy, astarNode.providerAstarNode, astarArgCopy)
 		// Heuristic has to be set first otherwise admissibility check fails
 		if (astarNode.heuristic.isKnown) {
@@ -349,11 +350,11 @@ fun <S: State, A: Action, P: Prec> AstarArg<S, A>.createIterationReplacement(
 		} else {
 			check(astarNode.distance.isUnknown)
 		}
-		astarNode.providerAstarNode = astarNodeCopy
-		astarNode.reset()
 		astarArgCopy.put(astarNodeCopy)
 		astarArgCopy.reachedSet.add(astarNodeCopy)
 
+		astarNode.providerAstarNode = astarNodeCopy
+		astarNode.reset()
 		astarNodeCopyHandler(astarNode)
 	}
 	check(arg.nodes.count() == astarArgCopy.astarNodes.values.size.toLong())

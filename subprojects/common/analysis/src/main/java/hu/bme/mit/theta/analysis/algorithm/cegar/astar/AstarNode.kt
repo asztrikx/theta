@@ -42,9 +42,7 @@ class AstarNode<S: State, A: Action>(
 
 			providerAstarNode?.let {
 				if (it.distance.isKnown) {
-					// Provider can change if original provider is covered => use equals
-					check(value == it.distance)
-					// Once provider's distance is known it can't change in value => no need to recheck
+					check(value === it.distance)
 				} else {
 					check(DI.heuristicSearchType == HeuristicSearchType.DECREASING)
 				}

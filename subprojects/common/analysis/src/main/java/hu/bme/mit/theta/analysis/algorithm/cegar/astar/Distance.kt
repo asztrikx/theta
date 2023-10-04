@@ -31,7 +31,7 @@ class Distance private constructor(
 			type == Type.INFINITE && other.type == Type.INFINITE -> 0
 			type == Type.INFINITE -> 1
 			other.type == Type.INFINITE -> -1
-			else -> value - other.value
+			else -> value.compareTo(other.value)
 		}
 	}
 
