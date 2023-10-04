@@ -7,18 +7,18 @@ class Distance private constructor(
 	val value = value
 		get(): Int {
 			// TODO if we auto set infinite for inf heuristic then propagateUpDistanceFromInfiniteDistance's 5) logic have to be rechecked
-			check(type === Type.BOUNDED)
+			check(type === Type.FINITE)
 			return field
 		}
 
-	val isBounded: Boolean
-		get() = type === Type.BOUNDED
+	val isFinite: Boolean
+		get() = type === Type.FINITE
 
 	val isInfinite: Boolean
 		get() = type === Type.INFINITE
 
 	val isKnown: Boolean
-		get() = isBounded || isInfinite
+		get() = isFinite || isInfinite
 
 	val isUnknown: Boolean
 		get() = !isKnown
@@ -40,13 +40,13 @@ class Distance private constructor(
 	override fun hashCode() = 31 * type.hashCode() + value
 
 	override fun toString() = when (type) {
-		Type.BOUNDED -> "(B$value)"
+		Type.FINITE -> "(F$value)"
 		Type.INFINITE -> "(I)"
 		Type.UNKNOWN -> "(U)"
 	}
 
 	enum class Type {
-		BOUNDED,
+		FINITE,
 		INFINITE,
 		UNKNOWN,
 	}
@@ -54,10 +54,10 @@ class Distance private constructor(
 	companion object {
 		// static factory with caching: Distance object with same immutable content are often created
 		private val cache = HashMap<Int, Distance>(100) // random number, not measured
-		fun boundedOf(value: Int) = cache.computeIfAbsent(value) { Distance(Type.BOUNDED, it) }
+		fun finiteOf(value: Int) = cache.computeIfAbsent(value) { Distance(Type.FINITE, it) }
 
-		val ZERO = boundedOf(0)
-		val ONE = boundedOf(1)
+		val ZERO = finiteOf(0)
+		val ONE = finiteOf(1)
 		val INFINITE = Distance(Type.INFINITE, 0)
 		val UNKNOWN = Distance(Type.UNKNOWN, 0)
 	}

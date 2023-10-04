@@ -10,22 +10,22 @@ import hu.bme.mit.theta.analysis.algorithm.cegar.astar.strategy.astarNodeCopyHan
 import kotlin.jvm.optionals.getOrNull
 
 /**
- * Propagate bounded distance up from a node ([from]) until any node in a set ([until]) is reached.
+ * Propagate finite distance up from a node ([from]) until any node in a set ([until]) is reached.
  * **If all target in an ARG is known the [setDistanceFromAllTargets] should be used for setting all distances**
  *
  * @param until As we are not always searching from the root it's important to only set distances for nodes involved in the search.
  * @param parents should map from a node to its parent.
  */
-fun <S: State, A: Action> AstarArg<S, A>.propagateUpDistanceFromBoundedDistance(
+fun <S: State, A: Action> AstarArg<S, A>.propagateUpDistanceFromFiniteDistance(
 	from: AstarNode<S, A>,
 	until: Set<ArgNode<S, A>>,
 	parents: Map<AstarNode<S, A>, AstarNode<S, A>?>,
 ) {
-	require(from.distance.isBounded)
+	require(from.distance.isFinite)
 
 	val conditionalNodes = mutableListOf<ArgNode<S, A>>()
 
-	from.argNode.walkUpParents(from.distance.value, { parents[this@propagateUpDistanceFromBoundedDistance[this]]?.argNode }) { argNode, distance ->
+	from.argNode.walkUpParents(from.distance.value, { parents[this@propagateUpDistanceFromFiniteDistance[this]]?.argNode }) { argNode, distance ->
 		val astarNode = argNode.astarNode
 
 		// We expand targets therefore we can have a target ancestor.
@@ -34,7 +34,7 @@ fun <S: State, A: Action> AstarArg<S, A>.propagateUpDistanceFromBoundedDistance(
 			check(astarNode.distance.isKnown)
 		}
 
-		if (astarNode.distance.isBounded) {
+		if (astarNode.distance.isFinite) {
 			return@walkUpParents if (from.argNode === argNode) {
 				// We start from a known distance
 				false
@@ -47,7 +47,7 @@ fun <S: State, A: Action> AstarArg<S, A>.propagateUpDistanceFromBoundedDistance(
 
 		check(astarNode.distance.isUnknown)
 
-		astarNode.distance = Distance.boundedOf(distance)
+		astarNode.distance = Distance.finiteOf(distance)
 
 		if (argNode !== from.argNode && !argNode.isCovered) {
 			check(distance == argNode.minKnownSuccDistance!!.value + 1)
@@ -74,7 +74,7 @@ fun <S: State, A: Action> AstarArg<S, A>.propagateUpDistanceFromBoundedDistance(
 }
 
 /**
- * Propagate bounded distance up (also through covering edges) until we find a node with a child with unknown distance.
+ * Propagate finite distance up (also through covering edges) until we find a node with a child with unknown distance.
  * Distance value is derived from the child with minimum distance value.
  *
  * [nodes] may not only be from a covered node but also from non-covered nodes (with > 0 children)
@@ -102,7 +102,7 @@ private fun <S: State, A: Action> AstarArg<S, A>.propagateUpDistanceFromConditio
 				check(astarNode.distance.isKnown)
 				return@walkUpParents true
 			} else if (astarNode.distance.isKnown) {
-				check(astarNode.distance.isBounded)
+				check(astarNode.distance.isFinite)
 				if (node !== startNode) {
 					if (previousDistance!!.isInfinite) {
 						check(astarNode.distance <= Distance.INFINITE)
@@ -165,7 +165,7 @@ fun <S: State, A: Action> AstarArg<S, A>.propagateDownDistanceFromInfiniteDistan
 		listOf(node).walkSubtree { argNode, _ ->
 			val astarNode = argNode.astarNode
 
-			check(!astarNode.distance.isBounded)
+			check(!astarNode.distance.isFinite)
 			// Unexpanded regions shouldn't exist unless its known it can't reach any target
 			if (!argNode.isExpanded && !argNode.isCovered) {
 				check(astarNode.heuristic.isInfinite)
@@ -274,14 +274,14 @@ fun <S: State, A: Action> AstarArg<S, A>.propagateUpDistanceFromInfiniteDistance
 fun <S: State, A: Action> AstarArg<S, A>.setDistanceFromAllTargets(targets: Collection<ArgNode<S, A>>) {
 	check(targets.all { it.isTarget })
 
-	// Set bounded distances
+	// Set finite distances
 	targets.walkReverseSubtree skip@ { argNode, distance ->
 		// An ancestor can be a target because targets are expanded
 		if (argNode.astarNode.distance.isKnown) {
 			return@skip true
 		}
 
-		argNode.astarNode.distance = Distance.boundedOf(distance)
+		argNode.astarNode.distance = Distance.finiteOf(distance)
 		return@skip false
 	}
 
@@ -296,8 +296,8 @@ fun <S: State, A: Action> AstarArg<S, A>.setDistanceFromAllTargets(targets: Coll
 }
 
 // TODO this only works for targets
-fun <S: State, A: Action> AstarArg<S, A>.checkShortestDistance(boundeds: Collection<AstarNode<S, A>>) {
-	boundeds.map { it.argNode }.walkReverseSubtree skip@ { argNode, distance ->
+fun <S: State, A: Action> AstarArg<S, A>.checkShortestDistance(finites: Collection<AstarNode<S, A>>) {
+	finites.map { it.argNode }.walkReverseSubtree skip@ { argNode, distance ->
 		val astarNode = argNode.astarNode
 
 		// An ancestor can be a target because targets are expanded
@@ -306,7 +306,7 @@ fun <S: State, A: Action> AstarArg<S, A>.checkShortestDistance(boundeds: Collect
 		}
 
 		// Because [AstarArg.propagateUpDistanceFromInfiniteDistance] doesn't handle all cases there might be distance not set.
-		if (astarNode.distance.isBounded) {
+		if (astarNode.distance.isFinite) {
 			check(astarNode.distance.value == distance)
 		}
 		return@skip false

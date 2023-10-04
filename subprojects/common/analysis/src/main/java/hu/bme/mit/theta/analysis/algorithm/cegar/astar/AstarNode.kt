@@ -60,7 +60,7 @@ class AstarNode<S: State, A: Action>(
 	fun getWeight(depth: Int) = if (heuristic.isInfinite) {
 		heuristic
 	} else {
-		require(heuristic.isBounded)
+		require(heuristic.isFinite)
 		heuristic + depth
 	}
 

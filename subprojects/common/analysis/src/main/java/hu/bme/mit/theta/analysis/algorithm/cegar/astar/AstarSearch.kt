@@ -40,16 +40,16 @@ class AstarSearch<S: State, A: Action>(
 	private var weightSupremumAstarNode: AstarNode<S, A>? = null
 
 	// Contains reached targets ordered by closest to furthest. Not unique and should not be as it is used for setting distances.
-	// Non-target nodes the bounded values must be from a previous findDistanceForAny call as we set bounded distances at the end of iteration.
+	// Non-target nodes the finite values must be from a previous findDistanceForAny call as we set finite distances at the end of iteration.
 	// TODO target doesn't have a distance so name can be confusing
-	var reachedBoundeds = mutableListOf<AstarNode<S, A>>()
+	var reachedFinites = mutableListOf<AstarNode<S, A>>()
 
 	fun addToWaitlist(astarNode: AstarNode<S, A>, parentAstarNode: AstarNode<S, A>?, depth: Int) {
 		val argNode = astarNode.argNode
 		check(astarNode.heuristic.isKnown)
 
 		if (argNode.isTarget) {
-			reachedBoundeds += astarNode
+			reachedFinites += astarNode
 		}
 
 		if (astarNode.heuristic.isInfinite) {
@@ -82,7 +82,7 @@ class AstarSearch<S: State, A: Action>(
 	}
 
 	fun removeFromWaitlist(): Edge<S, A>? {
-		if (stopCriterion.canStop(astarArg.arg, reachedBoundeds.map { it.argNode })) {
+		if (stopCriterion.canStop(astarArg.arg, reachedFinites.map { it.argNode })) {
 			return null
 		}
 
@@ -96,13 +96,13 @@ class AstarSearch<S: State, A: Action>(
 			doneSet += astarNode
 
 			if (astarNode.getWeight(depth).value >= (weightSupremumValue ?: Int.MAX_VALUE)) {
-				reachedBoundeds += weightSupremumAstarNode!!
+				reachedFinites += weightSupremumAstarNode!!
 				weightSupremumValue = null
 				weightSupremumAstarNode = null
 				return edge
 			}
 
-			if (!astarNode.distance.isBounded) {
+			if (!astarNode.distance.isFinite) {
 				return edge
 			}
 
@@ -121,7 +121,7 @@ class AstarSearch<S: State, A: Action>(
 		// If we can't reach a depth greater than [weightSupremumValue] then other target is not reachable.
 		if (weightSupremumValue != null) {
 			check(DI.heuristicSearchType !== HeuristicSearchType.FULL)
-			reachedBoundeds += weightSupremumAstarNode!!
+			reachedFinites += weightSupremumAstarNode!!
 		}
 
 		return null

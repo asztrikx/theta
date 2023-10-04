@@ -7,15 +7,15 @@ import hu.bme.mit.theta.analysis.algorithm.cegar.astar.*
 class NonFullDistanceSetter<S: State, A: Action>: DistanceSetter<S, A> {
 	override operator fun invoke(search: AstarSearch<S, A>) {
 		val startNodes = search.startAstarNodes.map { it.argNode }
-		search.reachedBoundeds.apply {
-			// [search.reachedBoundeds] are expected to be ordered by depth
+		search.reachedFinites.apply {
+			// [search.reachedFinites] are expected to be ordered by depth
 			check(zipWithNext { a, b -> search.minDepths[a]!! <= search.minDepths[b]!! }.all { it })
 			filter { it.argNode.isTarget }.forEach { it.distance = Distance.ZERO }
-			forEach { search.astarArg.propagateUpDistanceFromBoundedDistance(it, startNodes.toSet(), search.parents) }
+			forEach { search.astarArg.propagateUpDistanceFromFiniteDistance(it, startNodes.toSet(), search.parents) }
 		}
 
 		search.astarArg.apply {
-			if (search.startAstarNodes.none { it.distance.isBounded }) {
+			if (search.startAstarNodes.none { it.distance.isFinite }) {
 				propagateDownDistanceFromInfiniteDistance(startNodes)
 			} else {
 				propagateUpDistanceFromInfiniteDistance()
@@ -23,6 +23,6 @@ class NonFullDistanceSetter<S: State, A: Action>: DistanceSetter<S, A> {
 			//checkShortestDistance()
 		}
 
-		search.reachedBoundeds.clear()
+		search.reachedFinites.clear()
 	}
 }

@@ -67,7 +67,7 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 		val astarArg = startAstarNodes.first().astarArg
 		val arg = astarArg.arg
 
-		if (startAstarNodes.any { it.distance.isBounded }) {
+		if (startAstarNodes.any { it.distance.isFinite }) {
 			DI.logger.infoLine("|  |  Skipping AstarArg: startAstarNodes already have a distance")
 			return
 		}
@@ -94,7 +94,7 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 			}
 			distanceSetter(search)
 		}
-		check(startAstarNodes.any { it.distance.isBounded } || startAstarNodes.all { it.distance.isInfinite })
+		check(startAstarNodes.any { it.distance.isFinite } || startAstarNodes.all { it.distance.isInfinite })
 
 		astarFileVisualizer.visualize("end $visualizerState", cegarHistoryStorage.indexOf(astarArg))
 		DI.logger.substepLine("done")

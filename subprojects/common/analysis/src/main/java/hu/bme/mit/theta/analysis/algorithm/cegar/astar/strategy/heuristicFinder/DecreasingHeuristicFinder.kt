@@ -30,7 +30,7 @@ class DecreasingHeuristicFinder<S: State, A: Action, P: Prec>: HeuristicFinder<S
 		astarNode.heuristic = if (heuristicProvider == null) {
 			Distance.ZERO
 		} else {
-			Distance.boundedOf(
+			Distance.finiteOf(
 				// 0 is always a known lowerbound, so it is more precise to use than negative numbers
 				max(heuristicProvider.heuristic.value - 1, 0)
 			)
