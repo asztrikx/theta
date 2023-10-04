@@ -291,7 +291,7 @@ public class XstsConfigBuilder {
 					Strategy<XstsState<ExplState>, XstsAction, ExplPrec> strategy = StrategyUtilKt.from(heuristicSearchType, logger);
 					final AstarAbstractor<XstsState<ExplState>, XstsAction, ExplPrec> abstractor = AstarAbstractor.Companion
 							.builder(argBuilder)
-							.stopCriterion(isMultiSeq ? StopCriterions.fullExploration() : StopCriterions.firstCex())
+							.stopCriterion(heuristicSearchType == HeuristicSearchType.FULL ? StopCriterions.fullExploration() : StopCriterions.firstCex())
 							.partialOrder(analysis.getPartialOrd())
 							.analysis(analysis)
 							.strategy(strategy)
@@ -381,7 +381,7 @@ public class XstsConfigBuilder {
 					Strategy<XstsState<PredState>, XstsAction, PredPrec> strategy = StrategyUtilKt.from(heuristicSearchType, logger);
 					final AstarAbstractor<XstsState<PredState>, XstsAction, PredPrec> abstractor = AstarAbstractor.Companion
 							.builder(argBuilder)
-							.stopCriterion(isMultiSeq ? StopCriterions.fullExploration() : StopCriterions.firstCex())
+							.stopCriterion(heuristicSearchType == HeuristicSearchType.FULL ? StopCriterions.fullExploration() : StopCriterions.firstCex())
 							.partialOrder(analysis.getPartialOrd())
 							.analysis(analysis)
 							.strategy(strategy)
@@ -487,7 +487,7 @@ public class XstsConfigBuilder {
 					Strategy<XstsState<Prod2State<ExplState, PredState>>, XstsAction, Prod2Prec<ExplPrec, PredPrec>> strategy = StrategyUtilKt.from(heuristicSearchType, logger);
 					final AstarAbstractor<XstsState<Prod2State<ExplState, PredState>>, XstsAction, Prod2Prec<ExplPrec, PredPrec>> abstractor = AstarAbstractor.Companion
 							.builder(argBuilder)
-							.stopCriterion(isMultiSeq ? StopCriterions.fullExploration() : StopCriterions.firstCex())
+							.stopCriterion(heuristicSearchType == HeuristicSearchType.FULL ? StopCriterions.fullExploration() : StopCriterions.firstCex())
 							.partialOrder(analysis.getPartialOrd())
 							.analysis(analysis)
 							.strategy(strategy)

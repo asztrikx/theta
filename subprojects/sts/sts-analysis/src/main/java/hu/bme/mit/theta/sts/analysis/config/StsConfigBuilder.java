@@ -230,7 +230,7 @@ public final class StsConfigBuilder {
 					Strategy<ExplState, StsAction, ExplPrec> strategy = StrategyUtilKt.from(heuristicSearchType, logger);
 					final AstarAbstractor<ExplState, StsAction, ExplPrec> abstractor = AstarAbstractor.Companion
 							.builder(argBuilder)
-							.stopCriterion(isMultiSeq ? StopCriterions.fullExploration() : StopCriterions.firstCex())
+							.stopCriterion(heuristicSearchType == HeuristicSearchType.FULL ? StopCriterions.fullExploration() : StopCriterions.firstCex())
 							.partialOrder(analysis.getPartialOrd())
 							.analysis(analysis)
 							.strategy(strategy)
@@ -313,7 +313,7 @@ public final class StsConfigBuilder {
 					Strategy<PredState, StsAction, PredPrec> strategy = StrategyUtilKt.from(heuristicSearchType, logger);
 					final AstarAbstractor<PredState, StsAction, PredPrec> abstractor = AstarAbstractor.Companion
 							.builder(argBuilder)
-							.stopCriterion(isMultiSeq ? StopCriterions.fullExploration() : StopCriterions.firstCex())
+							.stopCriterion(heuristicSearchType == HeuristicSearchType.FULL ? StopCriterions.fullExploration() : StopCriterions.firstCex())
 							.partialOrder(analysis.getPartialOrd())
 							.analysis(analysis)
 							.strategy(strategy)

@@ -404,7 +404,7 @@ public class CfaConfigBuilder {
 					final AstarAbstractor<CfaState<ExplState>, CfaAction, CfaPrec<ExplPrec>> abstractor = AstarAbstractor.Companion
 							.builder(argBuilder)
 							.projection(projection) //
-							.stopCriterion(isMultiSeq ? StopCriterions.fullExploration() : StopCriterions.firstCex())
+							.stopCriterion(heuristicSearchType == HeuristicSearchType.FULL ? StopCriterions.fullExploration() : StopCriterions.firstCex())
 							.partialOrder(analysis.getPartialOrd())
 							.analysis(analysis)
 							.strategy(strategy)
@@ -530,7 +530,7 @@ public class CfaConfigBuilder {
 					final AstarAbstractor<CfaState<PredState>, CfaAction, CfaPrec<PredPrec>> abstractor = AstarAbstractor.Companion
 							.builder(argBuilder)
 							.projection(projection) //
-							.stopCriterion(isMultiSeq ? StopCriterions.fullExploration() : StopCriterions.firstCex())
+							.stopCriterion(heuristicSearchType == HeuristicSearchType.FULL ? StopCriterions.fullExploration() : StopCriterions.firstCex())
 							.partialOrder(analysis.getPartialOrd())
 							.analysis(analysis)
 							.strategy(strategy)

@@ -498,7 +498,7 @@ public class XcfaConfigBuilder {
 				return AstarAbstractor.Companion
 						.builder(argBuilder)
 						.projection(projection) //
-						.stopCriterion(isMultiSeq ? StopCriterions.fullExploration() : StopCriterions.firstCex())
+						.stopCriterion(heuristicSearchType == HeuristicSearchType.FULL ? StopCriterions.fullExploration() : StopCriterions.firstCex())
 						.partialOrder(algorithm.getPartialOrder(domainAnalysis.getPartialOrd()))
 						.analysis(analysis)
 						.strategy(strategy)
