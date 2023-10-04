@@ -8,10 +8,8 @@ import hu.bme.mit.theta.common.logging.Logger
 import hu.bme.mit.theta.common.visualization.Graph
 
 class ArgFileVisualizer<S: State, A: Action>(
-	enabled: Boolean,
 	private val arg: ARG<S, A>,
-	logger: Logger,
-) : FileVisualizer(enabled, logger) {
+) : FileVisualizer() {
 	override fun visualize(state: String, index: Int) {
 		super.visualizeBase(getTitle(state, index), getGraph(index))
 	}
