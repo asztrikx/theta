@@ -32,8 +32,10 @@ abstract class FileVisualizer {
 
 		val visualizationCount = testPath.listDirectoryEntries().size
 		val visualizationId = visualizationCount + 1
+		// Filesystem will order 10 after 1 sooner than 2
+		val visualizationIdText = "$visualizationId".padStart(5, '0')
 		// '∣' != '|' (for Windows)
-		val filename = testPath.resolve("$visualizationId∣ $title.svg").toString()
+		val filename = testPath.resolve("$visualizationIdText∣ $title.svg").toString()
 
 		DI.logger.infoLine("|  |  Starting file visualization")
 		GraphvizWriter.getInstance().writeFileAutoConvert(graph, filename)
