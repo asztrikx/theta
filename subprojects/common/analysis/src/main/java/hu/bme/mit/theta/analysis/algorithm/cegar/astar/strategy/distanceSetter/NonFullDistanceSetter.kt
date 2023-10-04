@@ -11,8 +11,7 @@ class NonFullDistanceSetter<S: State, A: Action>: DistanceSetter<S, A> {
 			// [search.reachedBoundeds] are expected to be ordered by depth
 			check(zipWithNext { a, b -> search.minDepths[a]!! <= search.minDepths[b]!! }.all { it })
 			filter { it.argNode.isTarget }.forEach { it.distance = Distance.ZERO }
-			forEach { search.astarArg.propagateUpDistanceFromKnownDistance(it, startNodes.toSet(), search.parents) }
-			clear()
+			forEach { search.astarArg.propagateUpDistanceFromBoundedDistance(it, startNodes.toSet(), search.parents) }
 		}
 
 		search.astarArg.apply {
@@ -21,7 +20,9 @@ class NonFullDistanceSetter<S: State, A: Action>: DistanceSetter<S, A> {
 			} else {
 				propagateUpDistanceFromInfiniteDistance()
 			}
-			checkShortestDistance()
+			//checkShortestDistance()
 		}
+
+		search.reachedBoundeds.clear()
 	}
 }

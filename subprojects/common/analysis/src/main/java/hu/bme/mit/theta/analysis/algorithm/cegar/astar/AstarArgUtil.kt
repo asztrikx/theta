@@ -295,8 +295,9 @@ fun <S: State, A: Action> AstarArg<S, A>.setDistanceFromAllTargets(targets: Coll
 	// [checkShortestDistance] also would do this no need to call
 }
 
-fun <S: State, A: Action> AstarArg<S, A>.checkShortestDistance() {
-	arg.targetNodes().walkReverseSubtree skip@ { argNode, distance ->
+// TODO this only works for targets
+fun <S: State, A: Action> AstarArg<S, A>.checkShortestDistance(boundeds: Collection<AstarNode<S, A>>) {
+	boundeds.map { it.argNode }.walkReverseSubtree skip@ { argNode, distance ->
 		val astarNode = argNode.astarNode
 
 		// An ancestor can be a target because targets are expanded
