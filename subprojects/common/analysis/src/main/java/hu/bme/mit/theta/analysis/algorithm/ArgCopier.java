@@ -9,6 +9,7 @@ import hu.bme.mit.theta.common.container.factory.HashContainerFactory;
 import java.util.Map;
 import java.util.function.BiConsumer;
 
+// TODO in kotlin in ArgXYZUtil?
 /**
  * copies ARG and their ArgNode shallowly (keeping action and state)
  */
@@ -43,6 +44,7 @@ public class ArgCopier {
 
         // walk through ARG and copy nodes
         // ARG is a tree without visiting covering edges
+        // TODO use ArgWalkUtil?
         while (!waitlist.isEmpty()) {
             Visit<S, A> visit = waitlist.remove();
             ArgNode<S, A> argNode = visit.original;

@@ -114,13 +114,6 @@ class AstarArg<S: State, A: Action>(
 		treeParentAstarNodeProvider.argNode.coveringNode.getOrNull()?.let { treeParentNodeCoveringNodeProvider ->
 			// The chain can only contain 1 covering edge because they are compressed in an ARG.
 
-			// TODO check this
-			// Even if we checked provider node before setting it whether it is covered, later it still can be covered if it's not yet expanded.
-			// There is no guarantee that covering node has been expanded or has distance, we can only know it for the covered node
-			//	 The only case when this can happen is when covered node is a target otherwise
-			//	 we continue the search in covering node which would make it expanded would also receive a distance.
-			//	 That case is handled by expanded target when found.
-
 			// Visualization optimization: set parent's provider to the covering node
 			treeParentAstarNode.providerAstarNode = provider[treeParentNodeCoveringNodeProvider]
 			treeParentAstarNodeProvider = treeParentAstarNode.providerAstarNode!!

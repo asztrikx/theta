@@ -3,7 +3,7 @@ package hu.bme.mit.theta.analysis.algorithm.cegar.astar
 import hu.bme.mit.theta.analysis.Action
 import hu.bme.mit.theta.analysis.State
 import hu.bme.mit.theta.analysis.algorithm.cegar.abstractor.StopCriterion
-import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarAbstractor.HeuristicSearchType
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.strategy.HeuristicSearchType
 import hu.bme.mit.theta.analysis.waitlist.PriorityWaitlist
 
 /**
@@ -110,7 +110,7 @@ class AstarSearch<S: State, A: Action>(
 			// proof: current [weightSupremumValue] > weightSupremumValue' = depth + distance > depth + heuristic = priority of a node in queue
 			if ((weightSupremumValue ?: Int.MAX_VALUE) > depth + astarNode.distance.value) {
 				// TODO Note for future: if target gets distance immediately then this won't be true <== is not target !!!!!!!!!!!!!!!!!!!!!
-				check(AstarAbstractor.heuristicSearchType != HeuristicSearchType.FULL)
+				check(DI.heuristicSearchType != HeuristicSearchType.FULL)
 
 				weightSupremumValue = depth + astarNode.distance.value
 				weightSupremumAstarNode = astarNode
@@ -120,7 +120,7 @@ class AstarSearch<S: State, A: Action>(
 
 		// If we can't reach a depth greater than [weightSupremumValue] then other target is not reachable.
 		if (weightSupremumValue != null) {
-			check(AstarAbstractor.heuristicSearchType !== HeuristicSearchType.FULL)
+			check(DI.heuristicSearchType !== HeuristicSearchType.FULL)
 			reachedBoundeds += weightSupremumAstarNode!!
 		}
 

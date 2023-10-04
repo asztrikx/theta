@@ -1,7 +1,7 @@
 package hu.bme.mit.theta.analysis.algorithm.cegar.astar
 
 class Distance private constructor(
-	val type: Type,
+	private val type: Type,
 	value: Int,
 ) : Comparable<Distance> {
 	val value = value
