@@ -22,6 +22,7 @@ import org.junit.runners.Parameterized;
 
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 
@@ -43,11 +44,11 @@ public class StsTest {
 	public boolean isSafe;
 
 	@Parameterized.Parameter(value = 4)
-	public HeuristicSearchType[] excludedAstarHeuristics;
+	public HeuristicSearchType heuristicSearchType;
 
 	@Parameterized.Parameters(name = "{index}: {0}, {1}, {2}, {3}, {4}")
 	public static Collection<Object[]> data() {
-		return Arrays.asList(new Object[][]{
+		var testcases = new Object[][] {
 				{ "src/test/resources/hw1_false.aag", PRED_CART, SEQ_ITP, false, null },
 				
 				{ "src/test/resources/hw2_true.aag", PRED_CART, SEQ_ITP, true, null },
@@ -77,7 +78,20 @@ public class StsTest {
 				{ "src/test/resources/simple2.2.system", EXPL, SEQ_ITP, false, null },
 
 				{ "src/test/resources/simple3.system", EXPL, SEQ_ITP, false, null },
-		});
+		};
+
+		Collection<Object[]> testcasesWithHeuristics = new ArrayList<>();
+		for (Object[] testcase : testcases) {
+			var excludedAstarHeuristics = (HeuristicSearchType[]) testcase[6];
+			for (var astarHeuristic : HeuristicSearchType.values()) {
+				if (excludedAstarHeuristics == null || Arrays.asList(excludedAstarHeuristics).contains(astarHeuristic)) {
+					var testcaseWithHeuristic = testcase.clone();
+					testcaseWithHeuristic[6] = astarHeuristic;
+					testcasesWithHeuristics.add(testcaseWithHeuristic);
+				}
+			}
+		}
+		return testcasesWithHeuristics;
 	}
 
 	@Test
@@ -91,24 +105,13 @@ public class StsTest {
 			sts = Utils.singleElementOf(spec.getAllSts());
 		}
 
-		var allHeuristics = new HeuristicSearchType[] {
-			HeuristicSearchType.DECREASING,
-			HeuristicSearchType.SEMI_ONDEMAND,
-			HeuristicSearchType.FULL,
-		};
-		for (var astarHeuristic : allHeuristics) {
-			if (excludedAstarHeuristics != null && Arrays.asList(excludedAstarHeuristics).contains(astarHeuristic)) {
-				continue;
-			}
-
-			StsConfig<? extends State, ? extends Action, ? extends Prec> config
-					= new StsConfigBuilder(domain, refinement, Z3SolverFactory.getInstance())
-					.logger(new ConsoleLogger(Logger.Level.VERBOSE))
-					.search(StsConfigBuilder.Search.ASTAR)
-					.heuristicSearchType(astarHeuristic)
-					.build(sts);
-			Assert.assertEquals(isSafe, config.check().isSafe());
-		}
+		StsConfig<? extends State, ? extends Action, ? extends Prec> config
+				= new StsConfigBuilder(domain, refinement, Z3SolverFactory.getInstance())
+				.logger(new ConsoleLogger(Logger.Level.VERBOSE))
+				.search(StsConfigBuilder.Search.ASTAR)
+				.heuristicSearchType(heuristicSearchType)
+				.build(sts);
+		Assert.assertEquals(isSafe, config.check().isSafe());
 	}
 
 }

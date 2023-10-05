@@ -33,6 +33,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.SequenceInputStream;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 
@@ -54,11 +55,11 @@ public class XstsTest {
 	public XstsConfigBuilder.Domain domain;
 
 	@Parameterized.Parameter(value = 4)
-	public HeuristicSearchType[] excludedAstarHeuristics;
+	public HeuristicSearchType heuristicSearchType;
 
 	@Parameterized.Parameters(name = "{index}: {0}, {1}, {2}, {3}, {4}")
 	public static Collection<Object[]> data() {
-		return Arrays.asList(new Object[][] {
+		var testcases = new Object[][] {
 
 				{ "src/test/resources/model/trafficlight.xsts", "src/test/resources/property/green_and_red.prop", true, XstsConfigBuilder.Domain.EXPL, null },
 
@@ -231,7 +232,20 @@ public class XstsTest {
 				{ "src/test/resources/model/if1.xsts", "src/test/resources/property/if1.prop", true, XstsConfigBuilder.Domain.PRED_CART, null },
 
 				{ "src/test/resources/model/if2.xsts", "src/test/resources/property/if2.prop", false, XstsConfigBuilder.Domain.EXPL_PRED_COMBINED, new HeuristicSearchType[]{HeuristicSearchType.FULL} },
-		});
+		};
+
+		Collection<Object[]> testcasesWithHeuristics = new ArrayList<>();
+		for (Object[] testcase : testcases) {
+			var excludedAstarHeuristics = (HeuristicSearchType[]) testcase[6];
+			for (var astarHeuristic : HeuristicSearchType.values()) {
+				if (excludedAstarHeuristics == null || Arrays.asList(excludedAstarHeuristics).contains(astarHeuristic)) {
+					var testcaseWithHeuristic = testcase.clone();
+					testcaseWithHeuristic[6] = astarHeuristic;
+					testcasesWithHeuristics.add(testcaseWithHeuristic);
+				}
+			}
+		}
+		return testcasesWithHeuristics;
 	}
 
 	@Test
@@ -243,28 +257,17 @@ public class XstsTest {
 		try (InputStream inputStream = new SequenceInputStream(new FileInputStream(filePath), new FileInputStream(propPath))) {
 			xsts = XstsDslManager.createXsts(inputStream);
 		}
-		
-		var allHeuristics = new HeuristicSearchType[]{
-			HeuristicSearchType.DECREASING,
-			HeuristicSearchType.SEMI_ONDEMAND,
-			HeuristicSearchType.FULL,
-		};
-		for (var astarHeuristic : allHeuristics) {
-			if (excludedAstarHeuristics != null && Arrays.asList(excludedAstarHeuristics).contains(astarHeuristic)) {
-				continue;
-			}
-			
-			final XstsConfig<?, ?, ?> configuration = new XstsConfigBuilder(domain, XstsConfigBuilder.Refinement.SEQ_ITP, Z3SolverFactory.getInstance()).initPrec(XstsConfigBuilder.InitPrec.CTRL).optimizeStmts(XstsConfigBuilder.OptimizeStmts.ON).predSplit(XstsConfigBuilder.PredSplit.CONJUNCTS).maxEnum(250).autoExpl(XstsConfigBuilder.AutoExpl.NEWOPERANDS)
-					//.logger(new ConsoleLogger(Level.VERBOSE))
-					.search(XstsConfigBuilder.Search.ASTAR)
-					.heuristicSearchType(astarHeuristic)
-					.build(xsts);
-			final SafetyResult<?, ?> status = configuration.check();
-			if (safe) {
-				assertTrue(status.isSafe());
-			} else {
-				assertTrue(status.isUnsafe());
-			}
+
+		final XstsConfig<?, ?, ?> configuration = new XstsConfigBuilder(domain, XstsConfigBuilder.Refinement.SEQ_ITP, Z3SolverFactory.getInstance()).initPrec(XstsConfigBuilder.InitPrec.CTRL).optimizeStmts(XstsConfigBuilder.OptimizeStmts.ON).predSplit(XstsConfigBuilder.PredSplit.CONJUNCTS).maxEnum(250).autoExpl(XstsConfigBuilder.AutoExpl.NEWOPERANDS)
+				//.logger(new ConsoleLogger(Level.VERBOSE))
+				.search(XstsConfigBuilder.Search.ASTAR)
+				.heuristicSearchType(heuristicSearchType)
+				.build(xsts);
+		final SafetyResult<?, ?> status = configuration.check();
+		if (safe) {
+			assertTrue(status.isSafe());
+		} else {
+			assertTrue(status.isUnsafe());
 		}
 	}
 

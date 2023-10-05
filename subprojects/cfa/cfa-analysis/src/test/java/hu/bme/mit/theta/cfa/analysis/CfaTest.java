@@ -39,6 +39,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
 import java.io.FileInputStream;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 
@@ -71,11 +72,11 @@ public class CfaTest {
 	public String solver;
 
 	@Parameterized.Parameter(value = 6)
-	public HeuristicSearchType[] excludedAstarHeuristics;
+	public HeuristicSearchType heuristicSearchType;
 
 	@Parameterized.Parameters(name = "{index}: {0}, {1}, {2}, {3}, {4}, {5}, {6}")
 	public static Collection<Object[]> data() {
-		return Arrays.asList(new Object[][] {
+		var testcases = new Object[][] {
 
 				{ "src/test/resources/arithmetic-bool00.cfa", PRED_CART, SEQ_ITP, false, 15, "Z3", null },
 
@@ -151,7 +152,20 @@ public class CfaTest {
 
 				{ "src/test/resources/locking.cfa", PRED_CART, SEQ_ITP, true, 0, "Z3", null },
 
-		});
+		};
+
+		Collection<Object[]> testcasesWithHeuristics = new ArrayList<>();
+		for (Object[] testcase : testcases) {
+			var excludedAstarHeuristics = (HeuristicSearchType[]) testcase[6];
+			for (var astarHeuristic : HeuristicSearchType.values()) {
+				if (excludedAstarHeuristics == null || Arrays.asList(excludedAstarHeuristics).contains(astarHeuristic)) {
+					var testcaseWithHeuristic = testcase.clone();
+					testcaseWithHeuristic[6] = astarHeuristic;
+					testcasesWithHeuristics.add(testcaseWithHeuristic);
+				}
+			}
+		}
+		return testcasesWithHeuristics;
 	}
 
 	@Test
@@ -171,31 +185,20 @@ public class CfaTest {
 		}
 
 		try {
-			var allHeuristics = new HeuristicSearchType[] {
-				HeuristicSearchType.DECREASING,
-				HeuristicSearchType.SEMI_ONDEMAND,
-				HeuristicSearchType.FULL,
-			};
-			for (var astarHeuristic : allHeuristics) {
-				if (excludedAstarHeuristics != null && Arrays.asList(excludedAstarHeuristics).contains(astarHeuristic)) {
-					continue;
-				}
-
-				CFA cfa = CfaDslManager.createCfa(new FileInputStream(filePath));
-				CfaConfig<? extends State, ? extends Action, ? extends Prec> config
-						= new CfaConfigBuilder(domain, refinement, solverFactory)
-						//.logger(new ConsoleLogger(Logger.Level.VERBOSE))
-						.search(CfaConfigBuilder.Search.ASTAR)
-						.heuristicSearchType(astarHeuristic)
-						.build(cfa, cfa.getErrorLoc().get());
-				SafetyResult<? extends State, ? extends Action> result = config.check();
-				Assert.assertEquals(isSafe, result.isSafe());
-				if (result.isUnsafe()) {
-					Trace<CfaState<ExplState>, CfaAction> trace = CfaTraceConcretizer.concretize(
-							(Trace<CfaState<?>, CfaAction>) result.asUnsafe().getTrace(),
-							solverFactory);
-					Assert.assertEquals(cexLength, trace.length());
-				}
+			CFA cfa = CfaDslManager.createCfa(new FileInputStream(filePath));
+			CfaConfig<? extends State, ? extends Action, ? extends Prec> config
+					= new CfaConfigBuilder(domain, refinement, solverFactory)
+					//.logger(new ConsoleLogger(Logger.Level.VERBOSE))
+					.search(CfaConfigBuilder.Search.ASTAR)
+					.heuristicSearchType(heuristicSearchType)
+					.build(cfa, cfa.getErrorLoc().get());
+			SafetyResult<? extends State, ? extends Action> result = config.check();
+			Assert.assertEquals(isSafe, result.isSafe());
+			if (result.isUnsafe()) {
+				Trace<CfaState<ExplState>, CfaAction> trace = CfaTraceConcretizer.concretize(
+						(Trace<CfaState<?>, CfaAction>) result.asUnsafe().getTrace(),
+						solverFactory);
+				Assert.assertEquals(cexLength, trace.length());
 			}
 		}
 		finally {
