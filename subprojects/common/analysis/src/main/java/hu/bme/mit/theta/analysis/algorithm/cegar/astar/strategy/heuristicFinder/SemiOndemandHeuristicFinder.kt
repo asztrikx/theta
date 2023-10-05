@@ -25,6 +25,7 @@ class SemiOndemandHeuristicFinder<S: State, A: Action, P: Prec>(
 		// get the heuristic with findDistance in parent arg
 		val (_, prec) = cegarHistoryStorage.find(astarArg.provider!!)
 		astarAbstractor.findDistanceForAny(listOf(providerAstarNode), AstarDistanceKnowable(), "${providerAstarNode.argNode}", prec)
+		astarNode.heuristic = providerAstarNode.distance
 
 		// Visualize current (redundant)
 		astarFileVisualizer.visualize("resumed ${astarNode.argNode}", cegarHistoryStorage.indexOf(astarArg))
