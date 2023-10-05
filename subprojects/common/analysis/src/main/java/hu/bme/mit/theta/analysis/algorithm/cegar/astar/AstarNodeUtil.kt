@@ -132,6 +132,7 @@ fun <S: State, A: Action, P: Prec> AstarNode<S, A>.createChildren(prec: P, searc
 
     // [createChildren] can be already called on this node through a different edge
     while(!argNode.isExpanded) {
+        check(astarNode.distance.isKnown)
         astarNode.close(astarArg.reachedSet[astarNode], search)?.let {}
         if (argNode.coveringNode() != null) {
             argNode = argNode.coveringNode()!!
@@ -144,7 +145,11 @@ fun <S: State, A: Action, P: Prec> AstarNode<S, A>.createChildren(prec: P, searc
             continue
         }
         argBuilder.expand(argNode, prec).forEach {
-            astarArg.createSuccAstarNode(it, argBuilder, prec)
+            val succAstarNode = astarArg.createSuccAstarNode(it, argBuilder, prec)
+            // optimization
+            if (succAstarNode.argNode.isTarget) {
+                succAstarNode.distance = Distance.ZERO
+            }
         }
     }
 }
