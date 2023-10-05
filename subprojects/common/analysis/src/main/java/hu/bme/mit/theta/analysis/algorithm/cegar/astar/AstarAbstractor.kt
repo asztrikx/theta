@@ -147,12 +147,19 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 				}
 			}
 
-			// go over recreated and remained nodes
-			for (succArgNode in argNode.succNodes()) {
-				val succAstarNode = astarArg[succArgNode]
-
+			// optimization
+			var succAstarNodes = argNode.succNodes().map { astarArg[it] }
+			if (succAstarNodes.any { it.argNode.isTarget }) {
+				succAstarNodes = succAstarNodes.filter { it.argNode.isTarget }
+				check(succAstarNodes.all { !it.distance.isKnown })
+			}
+			// Determine heuristic for all children before [AstarSearch.addToWaitlist]
+			// as it can cover into a succAstarNode which may not have heuristic causing compareTo to fail.
+			for (succAstarNode in succAstarNodes) {
 				heuristicFinder(succAstarNode, this)
-				astarNode.checkConsistency(succAstarNode)
+				astarNode.checkConsistency(succAstarNode) // TODO move this to heuristicFinder or somewhere else
+			}
+			for (succAstarNode in succAstarNodes) {
 				search.addToWaitlist(succAstarNode, astarNode, depth + 1)
 			}
 		}
