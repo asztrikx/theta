@@ -47,8 +47,6 @@ fun <S: State, A: Action> AstarNode<S, A>.close(
         }
         check(!(argNode.isTarget && !candidate.isTarget))
 
-        check(astarCandidate.heuristic == heuristic) // TODO this is created to be hit, test this, for provider node children exists should have failed earlier
-
         if (heuristic <= astarCandidate.heuristic) {
             argNode.cover(candidate)
             search ?: return null
