@@ -37,6 +37,7 @@ abstract class HeuristicFinder<S: State, A: Action, P: Prec> {
 		}
 
 		findHeuristicFromPrevious(astarNode, astarAbstractor)
+
 		check(astarNode.heuristic.isKnown)
 	}
 
