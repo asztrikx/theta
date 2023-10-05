@@ -7,15 +7,15 @@ class Distance private constructor(
 	val value = value
 		get(): Int {
 			// TODO if we auto set infinite for inf heuristic then propagateUpDistanceFromInfiniteDistance's 5) logic have to be rechecked
-			check(type === Type.FINITE)
+			check(type == Type.FINITE)
 			return field
 		}
 
 	val isFinite: Boolean
-		get() = type === Type.FINITE
+		get() = type == Type.FINITE
 
 	val isInfinite: Boolean
-		get() = type === Type.INFINITE
+		get() = type == Type.INFINITE
 
 	val isKnown: Boolean
 		get() = isFinite || isInfinite

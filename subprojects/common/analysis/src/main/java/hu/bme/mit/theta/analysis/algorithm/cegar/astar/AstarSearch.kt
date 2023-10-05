@@ -71,7 +71,7 @@ class AstarSearch<S: State, A: Action>(
 			minDepths[astarNode] = depth
 			// TODO document early exit, only need to set [parents]
 			if (!argNode.isTarget) {
-				if (astarNode.heuristic == Distance.ZERO) {
+				if (astarNode.heuristic === Distance.ZERO) {
 					// [AstarWaitlistComparator] depends on knowing whether a node is coverable if the heuristic is zero
 					astarNode.close(astarArg.reachedSet[astarNode], this)?.let {}
 				}
