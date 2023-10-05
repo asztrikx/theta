@@ -358,8 +358,8 @@ fun <S: State, A: Action, P: Prec> AstarArg<S, A>.createIterationReplacement(
 		astarNode.reset()
 		astarNodeCopyHandler(astarNode, astarAbstractor)
 	}
-	check(arg.nodes.count() == astarArgCopy.astarNodes.values.size.toLong())
-	check(arg.initNodes.count() == astarArgCopy.astarInitNodes.size.toLong())
+	check(arg.nodes().size == astarArgCopy.astarNodes.values.size)
+	check(arg.initNodes().size == astarArgCopy.astarInitNodes.size)
 	return astarArgCopy
 }
 
