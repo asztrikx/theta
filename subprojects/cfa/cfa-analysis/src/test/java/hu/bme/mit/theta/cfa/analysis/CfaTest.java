@@ -188,17 +188,17 @@ public class CfaTest {
 		try {
 			CFA cfa = CfaDslManager.createCfa(new FileInputStream(filePath));
 			CfaConfig<? extends State, ? extends Action, ? extends Prec> config
-					= new CfaConfigBuilder(domain, refinement, solverFactory)
-					//.logger(new ConsoleLogger(Logger.Level.VERBOSE))
-					.search(CfaConfigBuilder.Search.ASTAR)
-					.heuristicSearchType(heuristicSearchType)
-					.build(cfa, cfa.getErrorLoc().get());
+				= new CfaConfigBuilder(domain, refinement, solverFactory)
+				//.logger(new ConsoleLogger(Logger.Level.VERBOSE))
+				.search(CfaConfigBuilder.Search.ASTAR)
+				.heuristicSearchType(heuristicSearchType)
+				.build(cfa, cfa.getErrorLoc().get());
 			SafetyResult<? extends State, ? extends Action> result = config.check();
 			Assert.assertEquals(isSafe, result.isSafe());
 			if (result.isUnsafe()) {
 				Trace<CfaState<ExplState>, CfaAction> trace = CfaTraceConcretizer.concretize(
-						(Trace<CfaState<?>, CfaAction>) result.asUnsafe().getTrace(),
-						solverFactory);
+					(Trace<CfaState<?>, CfaAction>) result.asUnsafe().getTrace(),
+					solverFactory);
 				Assert.assertEquals(cexLength, trace.length());
 			}
 		}
