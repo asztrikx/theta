@@ -236,11 +236,12 @@ public class XstsTest {
 
 		Collection<Object[]> testcasesWithHeuristics = new ArrayList<>();
 		for (Object[] testcase : testcases) {
-			var excludedAstarHeuristics = (HeuristicSearchType[]) testcase[6];
+			var index = 4;
+			var excludedAstarHeuristics = (HeuristicSearchType[]) testcase[index];
 			for (var astarHeuristic : HeuristicSearchType.values()) {
-				if (excludedAstarHeuristics == null || Arrays.asList(excludedAstarHeuristics).contains(astarHeuristic)) {
+				if (excludedAstarHeuristics == null || !Arrays.asList(excludedAstarHeuristics).contains(astarHeuristic)) {
 					var testcaseWithHeuristic = testcase.clone();
-					testcaseWithHeuristic[6] = astarHeuristic;
+					testcaseWithHeuristic[index] = astarHeuristic;
 					testcasesWithHeuristics.add(testcaseWithHeuristic);
 				}
 			}
