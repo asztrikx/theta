@@ -113,11 +113,15 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 		var astarNode = astarNode
 		var argNode = astarNode.argNode
 
-		astarNode.close(astarArg.reachedSet[astarNode], search)?.let {
-			astarNode.checkConsistency(astarArg[argNode.coveringNode()!!])
-			astarNode = it
-			argNode = astarNode.argNode
-			astarNode.checkConsistency(astarArg[argNode.coveringNode()!!])
+		// This will hit every time in the first iteration
+		if (astarNode.heuristic != Distance.ZERO) {
+			// TODO document this: https://photos.app.goo.gl/wguQ7K9opyLqTUPa7
+			astarNode.close(astarArg.reachedSet[astarNode], search)?.let {
+				astarNode.checkConsistency(astarArg[argNode.coveringNode()!!])
+				astarNode = it
+				argNode = astarNode.argNode
+				astarNode.checkConsistency(astarArg[argNode.coveringNode()!!])
+			}
 		}
 		if (argNode.isCovered) {
 			val coveringAstarNode = astarArg[argNode.coveringNode()!!]

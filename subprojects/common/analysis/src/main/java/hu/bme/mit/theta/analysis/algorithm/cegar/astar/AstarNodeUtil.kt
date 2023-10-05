@@ -34,11 +34,6 @@ fun <S: State, A: Action> AstarNode<S, A>.close(
         return null
     }
 
-    if (heuristic == Distance.ZERO) {
-        // TODO document this: https://photos.app.goo.gl/wguQ7K9opyLqTUPa7
-        return null
-    }
-
     var candidates = candidates
     if (argNode.isTarget) {
         // optimization (leq uses smt solver): target node can only be covered with a target node
