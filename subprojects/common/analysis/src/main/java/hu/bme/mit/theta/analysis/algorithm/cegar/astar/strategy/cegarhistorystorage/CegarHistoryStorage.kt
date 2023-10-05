@@ -20,8 +20,4 @@ interface CegarHistoryStorage<S: State, A: Action, P: Prec> {
 	fun find(astarArg: AstarArg<S, A>): Pair<AstarArg<S, A>, P>
 
 	fun setLast(astarArg: AstarArg<S, A>, prec: P)
-
-	operator fun plusAssign(cegarHistory: Pair<AstarArg<S, A>, P>) {
-		this.add(cegarHistory.first, cegarHistory.second)
-	}
 }
