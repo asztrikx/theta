@@ -158,7 +158,7 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 		}
 	}
 
-	var previousAstarArg: AstarArg<S, A>? = null
+	private var previousAstarArg: AstarArg<S, A>? = null
 	// TODO document: arg must be the same reference in every call
 	override fun check(arg: ARG<S, A>, prec: P): AbstractorResult {
 		require(arg.targetNodes().isEmpty())
