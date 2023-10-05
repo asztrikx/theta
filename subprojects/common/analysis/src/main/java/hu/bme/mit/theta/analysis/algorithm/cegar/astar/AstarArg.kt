@@ -106,7 +106,7 @@ class AstarArg<S: State, A: Action>(
 		// Make sure [treeParentAstarNodeProvider] has children
 		if (DI.heuristicSearchType == HeuristicSearchType.SEMI_ONDEMAND) {
 			// Recursive call
-			astarNode.providerAstarNode!!.createChildren(prec, null, argBuilder)
+			treeParentAstarNodeProvider.createChildren(prec, null, argBuilder)
 		}
 
 		// [treeParentAstarNodeProvider] can be covered.
