@@ -23,6 +23,19 @@ fun <S: State, A: Action> AstarNode<S, A>.checkConsistency(child: AstarNode<S, A
     check(heuristicDistanceValue.value <= edgeWeight)
 }
 
+/**
+ * Checks property: heuristic <= distance
+ */
+fun <S: State, A: Action> AstarNode<S, A>.checkAdmissibility() {
+    check(!(heuristic.isInfinite && !distance.isInfinite))
+    check(distance.isKnown)
+    check(heuristic.isKnown)
+    if (!heuristic.isInfinite && !distance.isInfinite) {
+        check(heuristic.value <= distance.value)
+    }
+}
+
+// TODO why do astarArg.reachedSet[astarNode] inside the function?
 fun <S: State, A: Action> AstarNode<S, A>.close(
     candidates: Collection<AstarNode<S, A>>,
     search: AstarSearch<S, A>?
@@ -156,4 +169,3 @@ fun <S: State, A: Action, P: Prec> AstarNode<S, A>.createChildren(prec: P, searc
         }
     }
 }
-

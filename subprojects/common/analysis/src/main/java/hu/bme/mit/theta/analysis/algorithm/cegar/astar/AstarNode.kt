@@ -23,11 +23,12 @@ class AstarNode<S: State, A: Action>(
 		}
 		// Do not call with unknown distance, use reset().
 		set(value) {
-			checkAdmissibility(value)
 			if (argNode.isTarget) {
 				require(value === Distance.ZERO)
 			}
 			_distance = value
+			// Distance needs to be already set for this
+			checkAdmissibility()
 		}
 
 	private var _heuristic = Distance.UNKNOWN
@@ -70,17 +71,6 @@ class AstarNode<S: State, A: Action>(
 	} else {
 		require(heuristic.isFinite)
 		heuristic + depth
-	}
-
-	// Checks property: Heuristic <= Distance
-	// Should be called with known distance.
-	private fun checkAdmissibility(distance: Distance) {
-		check(!(heuristic.isInfinite && !distance.isInfinite))
-		check(distance.isKnown)
-		check(heuristic.isKnown)
-		if (!heuristic.isInfinite && !distance.isInfinite) {
-			check(heuristic.value <= distance.value)
-		}
 	}
 
 	fun reset() {
