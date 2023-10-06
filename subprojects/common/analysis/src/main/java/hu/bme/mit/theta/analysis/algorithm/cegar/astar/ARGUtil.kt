@@ -58,10 +58,11 @@ fun <S: State, A: Action> Collection<ArgNode<S, A>>.walk(
 				continue
 			}
 			if (newVisit.distance == distance) {
+				require(newVisit.distance == distance)
+
 				// Covering edge has zero weight which would break BFS if we did not push it to a correct place.
 				// The front is always a correct place.
 				queue.addFirst(newVisit)
-				doneSet += newVisit.argNode // TODO describe proof
 			} else {
 				require(newVisit.distance == distance + 1)
 
