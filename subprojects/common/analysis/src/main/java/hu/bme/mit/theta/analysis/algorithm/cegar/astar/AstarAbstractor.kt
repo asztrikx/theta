@@ -124,10 +124,8 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 		if (astarNode.heuristic != Distance.ZERO) {
 			// TODO document this: https://photos.app.goo.gl/wguQ7K9opyLqTUPa7
 			astarNode.close(astarArg.reachedSet[astarNode], search)?.let {
-				astarNode.checkConsistency(astarArg[argNode.coveringNode()!!])
 				astarNode = it
 				argNode = astarNode.argNode
-				astarNode.checkConsistency(astarArg[argNode.coveringNode()!!])
 			}
 		}
 		if (argNode.isCovered) {
@@ -143,7 +141,6 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 				check(coveringAstarNode.heuristic.isKnown)
 			}
 			heuristicFinder(coveringAstarNode, this)
-			astarNode.checkConsistency(coveringAstarNode)
 			// Covering edge has 0 weight therefore depth doesn't increase
 			search.addToWaitlist(coveringAstarNode, astarNode, depth)
 		} else if (argNode.isFeasible) {
@@ -159,8 +156,7 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 			// Determine heuristic for all children before [AstarSearch.addToWaitlist]
 			// as it can cover into a succAstarNode which may not have heuristic causing compareTo to fail.
 			for (succAstarNode in succAstarNodes) {
-				heuristicFinder(succAstarNode, this)
-				astarNode.checkConsistency(succAstarNode) // TODO move this to heuristicFinder or somewhere else
+				heuristicFinder(succAstarNode, this) // TODO move to add*All*ToWaitlist
 			}
 			for (succAstarNode in succAstarNodes) {
 				search.addToWaitlist(succAstarNode, astarNode, depth + 1)

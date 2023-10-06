@@ -49,6 +49,7 @@ fun <S: State, A: Action> AstarNode<S, A>.close(
 
         if (heuristic <= astarCandidate.heuristic) {
             argNode.cover(candidate)
+            checkConsistency(astarCandidate)
             search ?: return null
             return handleCloseRewire(search)
         }
@@ -75,6 +76,8 @@ fun <S: State, A: Action> AstarNode<S, A>.handleCloseRewire(search: AstarSearch<
         // Because argNode is covered it can only reach coveringNode with the same distance as it's new parent
         // therefore we can safely remove it
         search.parents.remove(this)
+
+        parentAstarNode.checkConsistency(astarArg[argNode.coveringNode()!!])
 
         // Update to new parent if we this node is the current parent
         // as coveringAstarNode may already have a better parent or already in doneSet

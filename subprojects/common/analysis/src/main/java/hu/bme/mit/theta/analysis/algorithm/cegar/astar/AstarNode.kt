@@ -48,11 +48,19 @@ class AstarNode<S: State, A: Action>(
 				}
 			}
 
+			_heuristic = value
+
 			// Requirement for heuristic consistency
 			if (argNode.isTarget) {
 				check(value === Distance.ZERO)
 			}
-			_heuristic = value
+			val checkConsistency: ArgNode<S, A>.() -> Unit = {
+				// Null when copying AstarArg
+				astarArg.astarNodes[this]?.checkConsistency(this@AstarNode)
+			}
+			// Heuristic needs to be already set for these
+			argNode.parent()?.let { it.checkConsistency() }
+			argNode.coveredNodes().forEach { it.checkConsistency() }
 		}
 
 	// Get g(n) = h(n) + depth
