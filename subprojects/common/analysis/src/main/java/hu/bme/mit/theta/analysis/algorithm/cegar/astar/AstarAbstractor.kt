@@ -168,6 +168,7 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 	// TODO document: arg must be the same reference in every call
 	override fun check(arg: ARG<S, A>, prec: P): AbstractorResult {
 		require(arg.targetNodes().isEmpty())
+		previousAstarArg?.let { require(it.arg == arg)}
 
 		val astarArg = if (cegarHistoryStorage.size == 0) {
 			AstarArg(arg, partialOrd, projection, null)
