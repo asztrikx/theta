@@ -85,7 +85,11 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 		if (startAstarNodes.any { it.argNode.isTarget }) {
 			startAstarNodes
 				.filter { it.argNode.isTarget }
-				.forEach { it.distance = Distance.ZERO }
+				.forEach {
+					// Set heuristic for [AstarNode.checkAdmissibility]
+					it.heuristic = Distance.ZERO
+					it.distance = Distance.ZERO
+				}
 		} else {
 			// expanded targets' children may not have heuristic
 			startAstarNodes.forEach { heuristicFinder(it, this@AstarAbstractor) }
