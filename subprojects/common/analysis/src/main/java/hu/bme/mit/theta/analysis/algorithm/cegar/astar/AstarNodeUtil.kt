@@ -85,7 +85,9 @@ fun <S: State, A: Action> AstarNode<S, A>.handleCloseRewire(search: AstarSearch<
     // Heuristic consistency doesn't break as `c` has >= heuristic than `b`
     val parentAstarNode = search.parents[this]
     val parentArgNode = parentAstarNode?.argNode
-    val coveredAstarNode = if (parentArgNode != null && parentArgNode.isCovered && parentArgNode.coveringNode()!! === argNode.coveringNode()!!) {
+    val coveredAstarNode = if (parentArgNode != null && parentArgNode.isCovered) {
+        check(parentArgNode.coveringNode()!! === argNode.coveringNode()!!)
+
         // Because argNode is covered it can only reach coveringNode with the same distance as it's new parent
         // therefore we can safely remove it
         search.parents.remove(this)
