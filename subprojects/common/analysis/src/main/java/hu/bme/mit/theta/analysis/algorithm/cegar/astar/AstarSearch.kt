@@ -66,7 +66,7 @@ class AstarSearch<S: State, A: Action>(
 			return
 		}
 
-		if (!minDepths.containsKey(astarNode) || minDepths[astarNode]!! > depth) {
+		if (astarNode !in minDepths || minDepths[astarNode]!! > depth) {
 			parents[astarNode] = parentAstarNode
 			minDepths[astarNode] = depth
 			// TODO document early exit, only need to set [parents]
