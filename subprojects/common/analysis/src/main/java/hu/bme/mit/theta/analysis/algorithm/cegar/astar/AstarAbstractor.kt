@@ -52,6 +52,9 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 	val distanceSetter = strategy.distanceSetter
 	val astarNodeCopyHandler = strategy.astarNodeCopyHandler
 	val astarFileVisualizer = strategy.astarFileVisualizer
+	init {
+		astarFileVisualizer.enabled = true
+	}
 
 	/**
 	 * Determines the closest target to any of the node or determines that no node can reach target.
