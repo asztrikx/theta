@@ -145,6 +145,7 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 			search.addToWaitlist(coveringAstarNode, astarNode, depth)
 		} else if (argNode.isFeasible) {
 			if (!argNode.isExpanded) {
+				// There can be leftover nodes => newArgNodes != succNodes
 				val newArgNodes = argBuilder.expand(argNode, prec)
 				for (newArgNode in newArgNodes) {
 					astarArg.createSuccAstarNode(newArgNode, argBuilder, prec)
