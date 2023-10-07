@@ -168,6 +168,8 @@ fun <S: State, A: Action, P: Prec> AstarNode<S, A>.createChildren(prec: P, searc
             val succAstarNode = astarArg.createSuccAstarNode(it, argBuilder, prec)
             // optimization
             if (succAstarNode.argNode.isTarget) {
+                // Heuristic has to be set (first) otherwise admissibility check fails
+                succAstarNode.heuristic = Distance.ZERO
                 succAstarNode.distance = Distance.ZERO
             }
         }
