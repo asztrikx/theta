@@ -156,7 +156,7 @@ public final class AstarArgVisualizer<S extends State, A extends Action> {
 			AstarNode<S1, A1> astarNodeChild = astarArg.get(edge.getTarget());
 			if(astarNodeChild != null){
 				traverse(graph, astarNodeChild, traversed, astarArg);
-				createEdge(graph, node, astarNodeChild, SUCC_EDGE_STYLE, actionToString.apply(edge.getAction()));
+				createEdge(graph, node, astarNodeChild, SUCC_EDGE_STYLE, ""); //actionToString.apply(edge.getAction())
 			}
 		}
 

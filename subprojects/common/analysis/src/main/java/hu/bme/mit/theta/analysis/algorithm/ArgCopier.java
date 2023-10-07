@@ -73,7 +73,7 @@ public class ArgCopier {
         //  - final
         //  - already set
         argCopy.initialized = arg.initialized;
-        argCopy.nextId = arg.nextId;
+        argCopy.nextId = arg.getNodes().map(ArgNode::getId).max(Integer::compareTo).orElse(0);
 
         return argCopy;
     }
