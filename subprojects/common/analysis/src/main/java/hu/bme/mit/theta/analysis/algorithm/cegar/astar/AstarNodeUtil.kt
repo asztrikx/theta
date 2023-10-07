@@ -54,18 +54,21 @@ fun <S: State, A: Action, P: Prec> AstarNode<S, A>.close(
     }
 
     for (astarCandidate in candidates) {
+        // optimization: Check before calling mayCover which uses Leq
+        if (heuristic > astarCandidate.heuristic) {
+            continue
+        }
+
         val candidate = astarCandidate.argNode
         if (!candidate.mayCover(argNode)) {
             continue
         }
         check(!(argNode.isTarget && !candidate.isTarget))
 
-        if (heuristic <= astarCandidate.heuristic) {
-            argNode.cover(candidate)
-            checkConsistency(astarCandidate)
-            search ?: return null
-            return handleCloseRewire(search)
-        }
+        argNode.cover(candidate)
+        checkConsistency(astarCandidate)
+        search ?: return null
+        return handleCloseRewire(search)
     }
     return null
 }
