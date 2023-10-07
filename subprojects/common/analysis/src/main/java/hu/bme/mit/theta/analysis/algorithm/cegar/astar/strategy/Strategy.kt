@@ -16,7 +16,7 @@ class Strategy<S: State, A: Action, P: Prec>(
     heuristicSearchType: HeuristicSearchType,
     val cegarHistoryStorage: CegarHistoryStorage<S, A, P>,
     val heuristicFinder: HeuristicFinder<S, A, P>,
-    val distanceSetter: DistanceSetter<S, A>,
+    val distanceSetter: DistanceSetter<S, A, P>,
     val astarNodeCopyHandler: AstarNodeCopyHandler<S, A, P>,
     val astarFileVisualizer: AstarFileVisualizer<S, A, P>
 ) {

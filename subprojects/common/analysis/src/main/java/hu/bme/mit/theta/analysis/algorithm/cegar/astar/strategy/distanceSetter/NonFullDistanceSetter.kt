@@ -1,11 +1,12 @@
 package hu.bme.mit.theta.analysis.algorithm.cegar.astar.strategy.distanceSetter
 
 import hu.bme.mit.theta.analysis.Action
+import hu.bme.mit.theta.analysis.Prec
 import hu.bme.mit.theta.analysis.State
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.*
 
-class NonFullDistanceSetter<S: State, A: Action>: DistanceSetter<S, A> {
-	override operator fun invoke(search: AstarSearch<S, A>) {
+class NonFullDistanceSetter<S: State, A: Action, P: Prec>: DistanceSetter<S, A, P> {
+	override operator fun invoke(search: AstarSearch<S, A, P>) {
 		val startNodes = search.startAstarNodes.map { it.argNode }
 		search.reachedFinites.apply {
 			// [search.reachedFinites] are expected to be ordered by depth

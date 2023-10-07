@@ -1,17 +1,21 @@
 package hu.bme.mit.theta.analysis.algorithm.cegar.astar
 
 import hu.bme.mit.theta.analysis.Action
+import hu.bme.mit.theta.analysis.Prec
 import hu.bme.mit.theta.analysis.State
 import hu.bme.mit.theta.analysis.algorithm.cegar.abstractor.StopCriterion
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.strategy.HeuristicSearchType
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.strategy.heuristicFinder.HeuristicFinder
 import hu.bme.mit.theta.analysis.waitlist.PriorityWaitlist
 
 /**
  * TODO document early exit
  */
-class AstarSearch<S: State, A: Action>(
+class AstarSearch<S: State, A: Action, P: Prec>(
 	val startAstarNodes: Collection<AstarNode<S, A>>,
 	private val stopCriterion: StopCriterion<S, A>,
+	private val heuristicFinder: HeuristicFinder<S, A, P>,
+	private val astarAbstractor: AstarAbstractor<S, A, P>,
 ) {
 	// We could already have started to explore a subgraph therefore do not use global doneSet variable
 	private val doneSet = hashSetOf<AstarNode<S, A>>()
@@ -46,7 +50,7 @@ class AstarSearch<S: State, A: Action>(
 
 	fun addToWaitlist(astarNode: AstarNode<S, A>, parentAstarNode: AstarNode<S, A>?, depth: Int) {
 		val argNode = astarNode.argNode
-		check(astarNode.heuristic.isKnown)
+		heuristicFinder(astarNode, astarAbstractor)
 
 		if (argNode.isTarget) {
 			reachedFinites += astarNode

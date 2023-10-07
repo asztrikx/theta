@@ -95,7 +95,7 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 			startAstarNodes.forEach { heuristicFinder(it, this@AstarAbstractor) }
 			startAstarNodes = startAstarNodes.filter { !it.heuristic.isInfinite }
 
-			val search = AstarSearch(startAstarNodes, stopCriterion)
+			val search = AstarSearch(startAstarNodes, stopCriterion, heuristicFinder, this)
 			while (true) {
 				val (astarNode, depth) = search.removeFromWaitlist() ?: break
 				visitNode(search, astarNode, depth, astarArg, prec)
@@ -111,7 +111,7 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 	}
 
 	private fun visitNode(
-		search: AstarSearch<S, A>,
+		search: AstarSearch<S, A, P>,
 		astarNode: AstarNode<S, A>,
 		depth: Int,
 		astarArg: AstarArg<S, A>,
@@ -140,7 +140,7 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 			if (DI.heuristicSearchType == HeuristicSearchType.DECREASING) {
 				check(coveringAstarNode.heuristic.isKnown)
 			}
-			heuristicFinder(coveringAstarNode, this)
+
 			// Covering edge has 0 weight therefore depth doesn't increase
 			search.addToWaitlist(coveringAstarNode, astarNode, depth)
 		} else if (argNode.isFeasible) {
@@ -154,11 +154,6 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 
 			// TODO optimization: do not call findHeuristic on all nodes if one of them is a target and we can stop
 			val succAstarNodes = argNode.succNodes().map { astarArg[it] }
-			// Determine heuristic for all children before [AstarSearch.addToWaitlist]
-			// as it can cover into a succAstarNode which may not have heuristic causing compareTo to fail.
-			for (succAstarNode in succAstarNodes) {
-				heuristicFinder(succAstarNode, this) // TODO move to add*All*ToWaitlist
-			}
 			for (succAstarNode in succAstarNodes) {
 				search.addToWaitlist(succAstarNode, astarNode, depth + 1)
 			}

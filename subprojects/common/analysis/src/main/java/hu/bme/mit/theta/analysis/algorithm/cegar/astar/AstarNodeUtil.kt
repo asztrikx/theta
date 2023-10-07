@@ -36,9 +36,9 @@ fun <S: State, A: Action> AstarNode<S, A>.checkAdmissibility() {
 }
 
 // TODO why do astarArg.reachedSet[astarNode] inside the function?
-fun <S: State, A: Action> AstarNode<S, A>.close(
+fun <S: State, A: Action, P: Prec> AstarNode<S, A>.close(
     candidates: Collection<AstarNode<S, A>>,
-    search: AstarSearch<S, A>?
+    search: AstarSearch<S, A, P>?
 ): AstarNode<S, A>? {
     if ((argNode.isExpanded || !argNode.isLeaf) || argNode.isCovered) {
         // isLeaf: After prune node may have children but not fully expanded.
@@ -74,7 +74,7 @@ fun <S: State, A: Action> AstarNode<S, A>.close(
  * @return The actual AstarNode which is covered after [AstarNode.close].
  * The AstarNode reference should be replaced with the return value.
  */
-fun <S: State, A: Action> AstarNode<S, A>.handleCloseRewire(search: AstarSearch<S, A>): AstarNode<S, A> {
+fun <S: State, A: Action, P: Prec> AstarNode<S, A>.handleCloseRewire(search: AstarSearch<S, A, P>): AstarNode<S, A> {
     // If astarNode's parent is also covered then covering edges have been redirected. (see ArgNode::cover)
     // We have to update parents map according to that.
     //  1) a - - -> b (argNode,coveredAstarNode)
@@ -113,7 +113,7 @@ fun <S: State, A: Action> AstarNode<S, A>.handleCloseRewire(search: AstarSearch<
  *
  * [heuristicFinder] is not called during this.
  */
-fun <S: State, A: Action, P: Prec> AstarNode<S, A>.createChildren(prec: P, search: AstarSearch<S, A>?, argBuilder: ArgBuilder<S, A, P>) {
+fun <S: State, A: Action, P: Prec> AstarNode<S, A>.createChildren(prec: P, search: AstarSearch<S, A, P>?, argBuilder: ArgBuilder<S, A, P>) {
     require(DI.heuristicSearchType == HeuristicSearchType.SEMI_ONDEMAND)
     // we could call expand on found target nodes after each search however
     // - the intention would not be as clear as calling it before [createSuccAstarNode]
