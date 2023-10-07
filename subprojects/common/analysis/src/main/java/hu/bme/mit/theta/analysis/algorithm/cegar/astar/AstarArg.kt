@@ -45,7 +45,7 @@ class AstarArg<S: State, A: Action>(
 		astarNodes = astarNodesNew
 	}
 
-	fun <P: Prec> createSuccAstarNode(argNode: ArgNode<S, A>, argBuilder: ArgBuilder<S, A, P>, prec: P): AstarNode<S, A> {
+	fun <P: Prec> createSuccAstarNode(argNode: ArgNode<S, A>, argBuilder: ArgBuilder<S, A, P>, prec: P?): AstarNode<S, A> {
 		val providerAstarNode = argNode.getProviderAstarNode(argBuilder, prec)
 		val astarNode = AstarNode(argNode, providerAstarNode, this)
 		reachedSet.add(astarNode)
@@ -53,9 +53,9 @@ class AstarArg<S: State, A: Action>(
 		return astarNode
 	}
 
-	private fun <P: Prec> ArgNode<S, A>.getProviderAstarNode(argBuilder: ArgBuilder<S, A, P>, prec: P): AstarNode<S, A>? {
+	private fun <P: Prec> ArgNode<S, A>.getProviderAstarNode(argBuilder: ArgBuilder<S, A, P>, prec: P?): AstarNode<S, A>? {
 		val providerArg = provider ?: return null
-		var providerCandidates = this.getProviderCandidates(argBuilder, prec) ?: return null
+		var providerCandidates = this.getProviderCandidates(argBuilder, prec!!) ?: return null
 
 		providerCandidates = providerCandidates.filter { partialOrd.isLeq(state, it.state) }
 

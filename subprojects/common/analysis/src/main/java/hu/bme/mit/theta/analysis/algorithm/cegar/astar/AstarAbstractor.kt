@@ -140,7 +140,12 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 				// There can be leftover nodes => newArgNodes != succNodes
 				val newArgNodes = argBuilder.expand(argNode, prec)
 				for (newArgNode in newArgNodes) {
-					astarArg.createSuccAstarNode(newArgNode, argBuilder, prec)
+					val previousPrec = if(cegarHistoryStorage.size >= 2) {
+						cegarHistoryStorage[cegarHistoryStorage.indexOf(astarArg) - 1].second
+					} else  {
+						null
+					}
+					astarArg.createSuccAstarNode(newArgNode, argBuilder, previousPrec)
 				}
 			}
 
