@@ -63,7 +63,6 @@ fun <S: State, A: Action, P: Prec> AstarNode<S, A>.close(
         if (!candidate.mayCover(argNode)) {
             continue
         }
-        check(!(argNode.isTarget && !candidate.isTarget))
 
         argNode.cover(candidate)
         checkConsistency(astarCandidate)
