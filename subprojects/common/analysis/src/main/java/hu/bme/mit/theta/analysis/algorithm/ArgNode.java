@@ -47,6 +47,7 @@ public final class ArgNode<S extends State, A extends Action> {
 	final Collection<ArgNode<S, A>> coveredNodes;
 
 	boolean expanded; // Set by ArgBuilder
+	boolean leftover;
 
 	ArgNode(final ARG<S, A> arg, final S state, final int id, final int depth, final boolean target) {
 		this.arg = arg;
@@ -59,6 +60,7 @@ public final class ArgNode<S extends State, A extends Action> {
 		coveringNode = Optional.empty();
 		coveredNodes = Containers.createSet();
 		expanded = false;
+		leftover = false;
 	}
 
 	void copyFrom(final ArgNode<S, A> subject) {
@@ -68,6 +70,7 @@ public final class ArgNode<S extends State, A extends Action> {
 		//  - managed by ARG
 		id = subject.id;
 		expanded = subject.expanded;
+		leftover = subject.leftover;
 	}
 
 	////
@@ -217,6 +220,10 @@ public final class ArgNode<S extends State, A extends Action> {
 			assert coveringNode.isEmpty();
 		}
 		return expanded;
+	}
+
+	public boolean isLeftover(){
+		return leftover;
 	}
 
 	/**
