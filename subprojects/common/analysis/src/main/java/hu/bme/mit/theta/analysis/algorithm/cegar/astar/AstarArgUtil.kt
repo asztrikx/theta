@@ -171,8 +171,8 @@ fun <S: State, A: Action> AstarArg<S, A>.propagateDownDistanceFromInfiniteDistan
 				check(astarNode.heuristic.isInfinite)
 			}
 
+			// Some covered nodes may already have distance
 			conditionalNodes += argNode.coveredNodes()
-			check(argNode.coveredNodes().all { it.astarNode.distance.isUnknown })
 
 			astarNode.distance = Distance.INFINITE
 			return@walkSubtree false
