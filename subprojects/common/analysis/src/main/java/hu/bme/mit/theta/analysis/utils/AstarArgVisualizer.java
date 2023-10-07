@@ -144,8 +144,12 @@ public final class AstarArgVisualizer<S extends State, A extends Action> {
 				String.format("Provider: %s", getAstarNodeDetailsText(astarNode.getProviderAstarNode()))
 		);
 
+		Color lineColor = Color.BLACK;
+		if (astarNode.getArgNode().isLeftover()) {
+			lineColor = Color.GREEN;
+		}
 		final NodeAttributes nAttributes = NodeAttributes.builder().label(label)
-				.alignment(LEFT).shape(RECTANGLE).font(FONT).fillColor(FILL_COLOR).lineColor(LINE_COLOR)
+				.alignment(LEFT).shape(RECTANGLE).font(FONT).fillColor(FILL_COLOR).lineColor(lineColor)
 				.lineStyle(getLineStyle(astarNode)).peripheries(peripheries).build();
 
 		graph.addNode(nodeId, nAttributes);

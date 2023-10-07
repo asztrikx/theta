@@ -169,6 +169,7 @@ public final class ARG<S extends State, A extends Action> {
 		node.descendants().forEach(ArgNode::clearCoveredNodes);
 		// TODO this can break things
 		nextId = getNodes().map(ArgNode::getId).max(Integer::compareTo).orElse(-1) + 1;
+		getNodes().forEach(n -> n.leftover = true);
 	}
 
 	/**
