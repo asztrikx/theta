@@ -60,7 +60,7 @@ class AstarArg<S: State, A: Action>(
 		providerCandidates = providerCandidates.filter { partialOrd.isLeq(state, it.state) }
 
 		val providerNode = if (providerCandidates.any { providerArg[it].distance.isKnown }) {
-			// TODO when can this happen (see git history maybe it has been deleted)
+			// TODO when can this happen (see git history maybe it has been deleted) // e.g. provider is target&init
 
 			providerCandidates
 				.filter { providerArg[it].distance.isKnown }
@@ -104,6 +104,7 @@ class AstarArg<S: State, A: Action>(
 		}
 
 		// Make sure [treeParentAstarNodeProvider] has children
+		// TODO pattern
 		if (DI.heuristicSearchType == HeuristicSearchType.SEMI_ONDEMAND) {
 			// Recursive call
 			treeParentAstarNodeProvider.createChildren(prec, null, argBuilder)
@@ -128,6 +129,7 @@ class AstarArg<S: State, A: Action>(
 			check(treeParentAstarNodeProvider.argNode.isExpanded)
 		}
 
+		// TODO small proof: why covered's parents aren't good (probably doesn't have that children >=) https://photos.app.goo.gl/tn1T91rQdVdbZxTH9
 		return if (treeParentAstarNodeProvider.argNode.isExpanded) {
 			treeParentAstarNodeProvider.argNode.succNodes()
 		} else {

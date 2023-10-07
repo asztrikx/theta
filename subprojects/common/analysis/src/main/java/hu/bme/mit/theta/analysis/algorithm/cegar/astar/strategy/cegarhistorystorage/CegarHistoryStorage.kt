@@ -6,6 +6,7 @@ import hu.bme.mit.theta.analysis.State
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarArg
 
 interface CegarHistoryStorage<S: State, A: Action, P: Prec> {
+	// TODO size vs index, previous doesn't have all the items can't iterate from 0..<size
 	val size: Int
 
 	fun add(astarArg: AstarArg<S, A>, prec: P): Boolean

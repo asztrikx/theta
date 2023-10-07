@@ -9,6 +9,7 @@ import hu.bme.mit.theta.analysis.algorithm.ArgNode
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.strategy.astarNodeCopyHandler.AstarNodeCopyHandler
 import kotlin.jvm.optionals.getOrNull
 
+// TODO make this receive the whole list which checked to be in order, also update documentation
 /**
  * Propagate finite distance up from a node ([from]) until any node in a set ([until]) is reached.
  * **If all target in an ARG is known the [setDistanceFromAllTargets] should be used for setting all distances**

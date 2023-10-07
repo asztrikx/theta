@@ -41,6 +41,7 @@ abstract class HeuristicFinder<S: State, A: Action, P: Prec> {
 		check(astarNode.heuristic.isKnown)
 	}
 
+	// TODO naming
 	protected abstract fun findHeuristicFromPrevious(
 		astarNode: AstarNode<S, A>,
 		astarAbstractor: AstarAbstractor<S, A, P>,

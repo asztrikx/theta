@@ -174,4 +174,6 @@ fun <S: State, A: Action, P: Prec> AstarNode<S, A>.createChildren(prec: P, searc
             }
         }
     }
+
+    // TODO visualize here
 }
