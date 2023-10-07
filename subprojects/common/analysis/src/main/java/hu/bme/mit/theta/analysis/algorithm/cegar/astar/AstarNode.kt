@@ -56,8 +56,13 @@ class AstarNode<S: State, A: Action>(
 				check(value === Distance.ZERO)
 			}
 			val checkConsistency: ArgNode<S, A>.() -> Unit = {
-				// Null when copying AstarArg
-				astarArg.astarNodes[this]?.checkConsistency(this@AstarNode)
+				// Null when copying AstarArg // TODO check this whether this can be avoided by changing copying, same for below
+				astarArg.astarNodes[this]?.let {
+					// When starting leftovers from init nodes we can either reach a node first through normal or cover edge
+					if (it.heuristic.isKnown) {
+						it.checkConsistency(this@AstarNode)
+					}
+				}
 			}
 			// Heuristic needs to be already set for these
 			argNode.parent()?.let { it.checkConsistency() }
