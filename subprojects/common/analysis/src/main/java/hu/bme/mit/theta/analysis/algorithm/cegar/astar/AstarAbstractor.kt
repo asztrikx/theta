@@ -47,12 +47,12 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 	private val partialOrd: PartialOrd<S>,
 	private val strategy: Strategy<S, A, P>,
 ): Abstractor<S, A, P> {
-	val cegarHistoryStorage = strategy.cegarHistoryStorage
-	val heuristicFinder = strategy.heuristicFinder
-	val distanceSetter = strategy.distanceSetter
-	val astarNodeCopyHandler = strategy.astarNodeCopyHandler
-	val astarFileVisualizer = strategy.astarFileVisualizer
-	val logger = DI.logger
+	private val cegarHistoryStorage = strategy.cegarHistoryStorage
+	private val heuristicFinder = strategy.heuristicFinder
+	private val distanceSetter = strategy.distanceSetter
+	private val astarNodeCopyHandler = strategy.astarNodeCopyHandler
+	private val astarFileVisualizer = strategy.astarFileVisualizer
+	private val logger = DI.logger
 	init {
 		astarFileVisualizer.enabled = true
 	}
