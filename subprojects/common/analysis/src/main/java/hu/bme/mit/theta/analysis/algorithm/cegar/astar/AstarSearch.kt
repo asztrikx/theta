@@ -96,7 +96,10 @@ class AstarSearch<S: State, A: Action, P: Prec>(
 			if (astarNode.argNode.isTarget) {
 				reachedFinites += astarNode
 				// TODO rephrase: do not return Target as it is a useless target under a target
-				continue
+				// TODO pattern
+				if (DI.heuristicSearchType != HeuristicSearchType.FULL) {
+					continue
+				}
 			}
 
 			if (!astarNode.distance.isFinite) {

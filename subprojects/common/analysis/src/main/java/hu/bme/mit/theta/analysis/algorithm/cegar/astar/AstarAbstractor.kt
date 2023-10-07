@@ -83,27 +83,21 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 		logger.substepLine("|  |  Building ARG...")
 		astarFileVisualizer.visualize("start $visualizerState", cegarHistoryStorage.indexOf(astarArg))
 
-		if (startAstarNodes.any { it.argNode.isTarget }) {
-			// We need to handle this case separately otherwise we would only set the first target's distance if [FirstCex]
-			startAstarNodes
-				.filter { it.argNode.isTarget }
-				.forEach {
-					// Set heuristic for [AstarNode.checkAdmissibility]
-					it.heuristic = Distance.ZERO
-					it.distance = Distance.ZERO
-				}
-		} else {
-			// expanded targets' children may not have heuristic
-			startAstarNodes.forEach { heuristicFinder(it, this@AstarAbstractor) }
-			startAstarNodes = startAstarNodes.filter { !it.heuristic.isInfinite }
-
-			val search = AstarSearch(startAstarNodes, stopCriterion, heuristicFinder, this)
-			while (true) {
-				val (astarNode, depth) = search.removeFromWaitlist() ?: break
-				visitNode(search, astarNode, depth, astarArg, prec)
-			}
-			distanceSetter(search)
+		val search = AstarSearch(startAstarNodes, stopCriterion, heuristicFinder, this)
+		while (true) {
+			val (astarNode, depth) = search.removeFromWaitlist() ?: break
+			visitNode(search, astarNode, depth, astarArg, prec)
 		}
+
+		// (if [FirstCex]) We need to handle this case separately otherwise we would only set the first target's distance
+		startAstarNodes.filter { it.argNode.isTarget }.forEach {
+			if (it !in search.reachedFinites) {
+				search.reachedFinites += it
+			}
+		}
+
+		distanceSetter(search)
+
 		check(startAstarNodes.any { it.distance.isFinite } || startAstarNodes.all { it.distance.isInfinite })
 
 		astarFileVisualizer.visualize("end $visualizerState", cegarHistoryStorage.indexOf(astarArg))
