@@ -75,7 +75,7 @@ class AstarSearch<S: State, A: Action, P: Prec>(
 	fun removeFromWaitlist(): Edge<S, A>? {
 		while (!waitlist.isEmpty) {
 			val peek = waitlist.peek()
-			if (peek.end.getWeight(peek.depthFromAStartNode) >= (weightSupremumValue ?: Int.MAX_VALUE)) {
+			if (peek.end.getWeight(peek.depth) >= (weightSupremumValue ?: Int.MAX_VALUE)) {
 				reachedFinites += weightSupremumAstarNode!!
 				weightSupremumValue = null
 				weightSupremumAstarNode = null
@@ -127,9 +127,9 @@ class AstarSearch<S: State, A: Action, P: Prec>(
 	// Pair would create .first and .second properties which would be hard to read
 	data class Edge<S: State, A: Action>(
 		val end: AstarNode<S, A>,
-		val depthFromAStartNode: Int
+		val depth: Int
 	) {
 		val weight
-			get() = end.getWeight(depthFromAStartNode)
+			get() = end.getWeight(depth)
 	}
 }
