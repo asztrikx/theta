@@ -83,6 +83,7 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 		astarFileVisualizer.visualize("start $visualizerState", cegarHistoryStorage.indexOf(astarArg))
 
 		if (startAstarNodes.any { it.argNode.isTarget }) {
+			// We need to handle this case separately otherwise we would only set the first target's distance if [FirstCex]
 			startAstarNodes
 				.filter { it.argNode.isTarget }
 				.forEach {
@@ -120,13 +121,9 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 		var astarNode = astarNode
 		var argNode = astarNode.argNode
 
-		// This will hit every time in the first iteration
-		if (astarNode.heuristic != Distance.ZERO) {
-			// TODO document this: https://photos.app.goo.gl/wguQ7K9opyLqTUPa7
-			astarNode.close(astarArg.reachedSet[astarNode], search)?.let {
-				astarNode = it
-				argNode = astarNode.argNode
-			}
+		astarNode.close(astarArg.reachedSet[astarNode], search)?.let {
+			astarNode = it
+			argNode = astarNode.argNode
 		}
 		if (argNode.isCovered) {
 			val coveringAstarNode = astarArg[argNode.coveringNode()!!]

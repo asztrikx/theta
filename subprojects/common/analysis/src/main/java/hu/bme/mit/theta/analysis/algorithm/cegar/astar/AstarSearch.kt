@@ -49,12 +49,7 @@ class AstarSearch<S: State, A: Action, P: Prec>(
 	var reachedFinites = mutableListOf<AstarNode<S, A>>()
 
 	fun addToWaitlist(astarNode: AstarNode<S, A>, parentAstarNode: AstarNode<S, A>?, depth: Int) {
-		val argNode = astarNode.argNode
 		heuristicFinder(astarNode, astarAbstractor)
-
-		if (argNode.isTarget) {
-			reachedFinites += astarNode
-		}
 
 		if (astarNode.heuristic.isInfinite) {
 			return
@@ -73,23 +68,15 @@ class AstarSearch<S: State, A: Action, P: Prec>(
 		if (astarNode !in minDepths || minDepths[astarNode]!! > depth) {
 			parents[astarNode] = parentAstarNode
 			minDepths[astarNode] = depth
-			// TODO document early exit, only need to set [parents]
-			if (!argNode.isTarget) {
-				if (astarNode.heuristic === Distance.ZERO) {
-					// [AstarWaitlistComparator] depends on knowing whether a node is coverable if the heuristic is zero
-					astarNode.close(astarArg.reachedSet[astarNode], this)?.let {}
-				}
-				waitlist.add(Edge(astarNode, depth))
-			}
+			waitlist.add(Edge(astarNode, depth))
 		}
 	}
 
 	fun removeFromWaitlist(): Edge<S, A>? {
-		if (stopCriterion.canStop(astarArg.arg, reachedFinites.map { it.argNode })) {
-			return null
-		}
-
 		while (!waitlist.isEmpty) {
+			if (stopCriterion.canStop(astarArg.arg, reachedFinites.map { it.argNode })) {
+				return null
+			}
 			val edge = waitlist.remove()
 			val (astarNode, depth) = edge
 
@@ -98,7 +85,13 @@ class AstarSearch<S: State, A: Action, P: Prec>(
 			}
 			doneSet += astarNode
 
-			if (astarNode.getWeight(depth).value >= (weightSupremumValue ?: Int.MAX_VALUE)) {
+			if (astarNode.argNode.isTarget) {
+				reachedFinites += astarNode
+				// TODO rephrase: do not return Target as it is a useless target under a target
+				continue
+			}
+
+			if (astarNode.getWeight(depth) >= (weightSupremumValue ?: Int.MAX_VALUE)) {
 				reachedFinites += weightSupremumAstarNode!!
 				weightSupremumValue = null
 				weightSupremumAstarNode = null
@@ -131,11 +124,11 @@ class AstarSearch<S: State, A: Action, P: Prec>(
 	}
 
 	// Pair would create .first and .second properties which would be hard to read
-	class Edge<S: State, A: Action>(
+	data class Edge<S: State, A: Action>(
 		val end: AstarNode<S, A>,
 		val depthFromAStartNode: Int
 	) {
-		operator fun component1() = end
-		operator fun component2() = depthFromAStartNode
+		val weight
+			get() = end.getWeight(depthFromAStartNode)
 	}
 }
