@@ -88,6 +88,11 @@ public final class PriorityWaitlist<T> implements Waitlist<T> {
 		items.clear();
 	}
 
+	// TODO can this also be an override?
+	public T peek() {
+		return items.peek();
+	}
+
 	@Override
 	public String toString() {
 		return Utils.lispStringBuilder(getClass().getSimpleName()).add(items.comparator()).addAll(items).toString();

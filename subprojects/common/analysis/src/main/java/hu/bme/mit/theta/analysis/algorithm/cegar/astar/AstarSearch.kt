@@ -74,9 +74,17 @@ class AstarSearch<S: State, A: Action, P: Prec>(
 
 	fun removeFromWaitlist(): Edge<S, A>? {
 		while (!waitlist.isEmpty) {
+			val peek = waitlist.peek()
+			if (peek.end.getWeight(peek.depthFromAStartNode) >= (weightSupremumValue ?: Int.MAX_VALUE)) {
+				reachedFinites += weightSupremumAstarNode!!
+				weightSupremumValue = null
+				weightSupremumAstarNode = null
+			}
+
 			if (stopCriterion.canStop(astarArg.arg, reachedFinites.map { it.argNode })) {
 				return null
 			}
+
 			val edge = waitlist.remove()
 			val (astarNode, depth) = edge
 
@@ -89,13 +97,6 @@ class AstarSearch<S: State, A: Action, P: Prec>(
 				reachedFinites += astarNode
 				// TODO rephrase: do not return Target as it is a useless target under a target
 				continue
-			}
-
-			if (astarNode.getWeight(depth) >= (weightSupremumValue ?: Int.MAX_VALUE)) {
-				reachedFinites += weightSupremumAstarNode!!
-				weightSupremumValue = null
-				weightSupremumAstarNode = null
-				return edge
 			}
 
 			if (!astarNode.distance.isFinite) {
