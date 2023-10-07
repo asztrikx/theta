@@ -12,8 +12,6 @@ class AstarWaitlistComparator<S: State, A: Action> : Comparator<Edge<S, A>> {
 		Monotonicity
 		Indirect proof
 		- target selection
-
-		dokumentálás: cserébe 0-ásakat nem coverelhetjük: okoz e ez gondot (ha target a kövi nem, ha más heurisztikájú akkor csak +1 csúcs és a kövit biztosan lehet coverelni, ha több 0-ás van egymás után akkor árthat csak)
 		*/
 		val weight1 = edge1.weight
 		val weight2 = edge2.weight
