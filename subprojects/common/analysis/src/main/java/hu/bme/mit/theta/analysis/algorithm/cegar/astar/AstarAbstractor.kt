@@ -52,6 +52,7 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 	val distanceSetter = strategy.distanceSetter
 	val astarNodeCopyHandler = strategy.astarNodeCopyHandler
 	val astarFileVisualizer = strategy.astarFileVisualizer
+	val logger = DI.logger
 	init {
 		astarFileVisualizer.enabled = true
 	}
@@ -72,14 +73,14 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 		val arg = astarArg.arg
 
 		if (startAstarNodes.any { it.distance.isFinite }) {
-			DI.logger.infoLine("|  |  Skipping AstarArg: startAstarNodes already have a distance")
+			logger.infoLine("|  |  Skipping AstarArg: startAstarNodes already have a distance")
 			return
 		}
 
-		DI.logger.detailLine("|  |  Precision: $prec")
-		DI.logger.infoLine("|  |  Starting ARG: ${arg.nodes.count()} nodes, ${arg.incompleteNodes.count()} incomplete, ${arg.unsafeNodes.count()} unsafe")
-		DI.logger.substepLine("|  |  Starting AstarArg: ${astarFileVisualizer.getTitle("", cegarHistoryStorage.indexOf(astarArg))}")
-		DI.logger.substepLine("|  |  Building ARG...")
+		logger.detailLine("|  |  Precision: $prec")
+		logger.infoLine("|  |  Starting ARG: ${arg.nodes.count()} nodes, ${arg.incompleteNodes.count()} incomplete, ${arg.unsafeNodes.count()} unsafe")
+		logger.substepLine("|  |  Starting AstarArg: ${astarFileVisualizer.getTitle("", cegarHistoryStorage.indexOf(astarArg))}")
+		logger.substepLine("|  |  Building ARG...")
 		astarFileVisualizer.visualize("start $visualizerState", cegarHistoryStorage.indexOf(astarArg))
 
 		if (startAstarNodes.any { it.argNode.isTarget }) {
@@ -106,9 +107,9 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 		check(startAstarNodes.any { it.distance.isFinite } || startAstarNodes.all { it.distance.isInfinite })
 
 		astarFileVisualizer.visualize("end $visualizerState", cegarHistoryStorage.indexOf(astarArg))
-		DI.logger.substepLine("done")
-		DI.logger.infoLine("|  |  Finished ARG: ${arg.nodes.count()} nodes, ${arg.incompleteNodes.count()} incomplete, ${arg.unsafeNodes.count()} unsafe")
-		DI.logger.infoLine("|  |  Finished AstarArg: ${astarFileVisualizer.getTitle("", cegarHistoryStorage.indexOf(astarArg))}")
+		logger.substepLine("done")
+		logger.infoLine("|  |  Finished ARG: ${arg.nodes.count()} nodes, ${arg.incompleteNodes.count()} incomplete, ${arg.unsafeNodes.count()} unsafe")
+		logger.infoLine("|  |  Finished AstarArg: ${astarFileVisualizer.getTitle("", cegarHistoryStorage.indexOf(astarArg))}")
 	}
 
 	private fun visitNode(
@@ -174,12 +175,12 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 
 		// initialize: prune can keep initialized state
 		if (!arg.isInitialized) {
-			DI.logger.substep("|  |  (Re)initializing ARG...")
+			logger.substep("|  |  (Re)initializing ARG...")
 			argBuilder.init(arg, prec).forEach {
 				astarArg.createSuccAstarNode(it, argBuilder, prec)
 				// TODO later (currently there is only one init node): check if they can't cover each other as it is used // check if it even used anywhere
 			}
-			DI.logger.substepLine("done")
+			logger.substepLine("done")
 		}
 
 		findDistanceForAny(astarArg.astarInitNodes.values, initialStopCriterion, "init", prec)
