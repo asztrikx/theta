@@ -57,6 +57,7 @@ fun <S: State, A: Action> Collection<ArgNode<S, A>>.walk(
 			if (newVisit.argNode in doneSet) {
 				continue
 			}
+			// TODO we could also skip if a cover edge have already reached a node (needs a separate doneSet)
 			if (newVisit.distance == distance) {
 				require(newVisit.distance == distance)
 
