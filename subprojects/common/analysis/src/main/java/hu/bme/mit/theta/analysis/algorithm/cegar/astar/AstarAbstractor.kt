@@ -31,6 +31,7 @@ import hu.bme.mit.theta.analysis.algorithm.cegar.abstractor.StopCriterions.FullE
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.strategy.HeuristicSearchType
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.strategy.Strategy
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.strategy.cegarhistorystorage.CegarHistoryStoragePrevious
+import hu.bme.mit.theta.analysis.prod2.Prod2Analysis
 import hu.bme.mit.theta.analysis.prod2.prod2explpred.Prod2ExplPredAnalysis
 import hu.bme.mit.theta.common.Utils
 import java.util.function.Function
@@ -215,7 +216,7 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 		private lateinit var strategy: Strategy<S, A, P>
 
 		fun analysis(analysis: Analysis<*, *, *>) = apply {
-			DI.analysisBadLeq = analysis is Prod2ExplPredAnalysis
+			DI.analysisBadLeq = analysis is Prod2ExplPredAnalysis || analysis is Prod2Analysis<*, *, *, *, *>
 			analysisSet = true
 		}
 

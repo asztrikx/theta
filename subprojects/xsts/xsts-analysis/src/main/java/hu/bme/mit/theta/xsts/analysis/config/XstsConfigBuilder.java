@@ -489,7 +489,7 @@ public class XstsConfigBuilder {
 							.builder(argBuilder)
 							.stopCriterion(heuristicSearchType == HeuristicSearchType.FULL ? StopCriterions.fullExploration() : StopCriterions.firstCex())
 							.partialOrder(analysis.getPartialOrd())
-							.analysis(analysis)
+							.analysis(prod2Analysis) // purposefully no [analysis]
 							.strategy(strategy)
 							.build();
 					checker = CegarChecker.create(abstractor, refiner, logger);
