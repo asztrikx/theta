@@ -129,11 +129,31 @@ public final class LispStringBuilder {
 		final StringJoiner sj = new StringJoiner(SPACE);
 		for (final Object headObj : headObjs) {
 			for (final String line : lines(headObj.toString())) {
-				final String trimmedLine = line.trim().replaceAll("( )+", SPACE);
+				final String trimmedLine = replaceMultipleSpaces(line.trim());
 				sj.add(trimmedLine);
 			}
 		}
 		return sj.toString();
+	}
+
+	public static String replaceMultipleSpaces(String input) {
+		// Regex throws exception when tries to compile it in large cases
+		StringBuilder stringBuilder = new StringBuilder();
+		boolean previousCharWasSpace = false;
+
+		for (char c : input.toCharArray()) {
+			if (c == ' ') {
+				if (!previousCharWasSpace) {
+					stringBuilder.append(c);
+				}
+				previousCharWasSpace = true;
+			} else {
+				stringBuilder.append(c);
+				previousCharWasSpace = false;
+			}
+		}
+
+		return stringBuilder.toString();
 	}
 
 	private String createAligned(final int indent) {
