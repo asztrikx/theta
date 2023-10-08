@@ -29,7 +29,10 @@ fun <S: State, A: Action> AstarNode<S, A>.checkConsistency(child: AstarNode<S, A
 fun <S: State, A: Action> AstarNode<S, A>.checkAdmissibility() {
     check(!(heuristic.isInfinite && !distance.isInfinite))
     check(distance.isKnown)
-    check(heuristic.isKnown)
+    if (!heuristic.isKnown) {
+        // Leftover node may not have heuristic
+        return
+    }
     if (!heuristic.isInfinite && !distance.isInfinite) {
         check(heuristic.value <= distance.value)
     }
