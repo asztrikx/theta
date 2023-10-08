@@ -28,7 +28,7 @@ class Visit<S: State, A: Action>(
  * @param skip is called on all nodes visited which determines whether to skip processing the neighbours of a node.
  * This also should be used to receive and process the visited nodes with the parameters: node, shortest distance from any start node.
  */
-fun <S: State, A: Action> Collection<ArgNode<S, A>>.walk(
+inline fun <S: State, A: Action> Collection<ArgNode<S, A>>.walk(
 	skip: Skip<S, A>,
 	newVisitsFunc: NewVisits<S, A>,
 ): Parents<S, A> {
@@ -76,7 +76,7 @@ fun <S: State, A: Action> Collection<ArgNode<S, A>>.walk(
 	return parents
 }
 
-fun <S: State, A: Action> Collection<ArgNode<S, A>>.walk(
+inline fun <S: State, A: Action> Collection<ArgNode<S, A>>.walk(
 	newVisitsFunc: NewVisits<S, A>
 ) = walk({_, _ -> false}, newVisitsFunc)
 
@@ -87,7 +87,7 @@ fun <S: State, A: Action> Collection<ArgNode<S, A>>.walk(
  *
  * @receiver start nodes
  */
-fun <S: State, A: Action> Collection<ArgNode<S, A>>.walkSubtree(skip: Skip<S, A>): Parents<S, A> {
+inline fun <S: State, A: Action> Collection<ArgNode<S, A>>.walkSubtree(skip: Skip<S, A>): Parents<S, A> {
 	return walk(skip) newVisits@ { (argNode, distance) ->
 		argNode.coveringNode.getOrNull()?.let {
 			return@newVisits listOf(Visit(it, distance))
@@ -105,7 +105,7 @@ fun <S: State, A: Action> Collection<ArgNode<S, A>>.walkSubtree(skip: Skip<S, A>
 /**
  * Calls [walk] with a newVisitFunc that only visits parent and covered nodes.
  */
-fun <S: State, A: Action> Collection<ArgNode<S, A>>.walkReverseSubtree(skip: Skip<S, A>): Parents<S, A> {
+inline fun <S: State, A: Action> Collection<ArgNode<S, A>>.walkReverseSubtree(skip: Skip<S, A>): Parents<S, A> {
 	return walk(skip) newVisits@ { (argNode, distance) ->
 		// Currently capacity can't be given in kotlin: argNode.coveredNodes().size + 1
 		val newVisits = mutableListOf<Visit<S, A>>()
@@ -121,7 +121,7 @@ fun <S: State, A: Action> Collection<ArgNode<S, A>>.walkReverseSubtree(skip: Ski
 /**
  * Visits parents defined by [parents] until it returns null or [skip] returns true.
  */
-fun <S: State, A: Action> ArgNode<S, A>.walkUpParents(
+inline fun <S: State, A: Action> ArgNode<S, A>.walkUpParents(
 	startDistance: Int,
 	parents: ArgNode<S, A>.() -> ArgNode<S, A>?,
 	skip: Skip<S, A>,
