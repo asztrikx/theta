@@ -12,17 +12,23 @@ class AstarWaitlistComparator<S: State, A: Action> : Comparator<Edge<S, A>> {
 		Monotonicity
 		Indirect proof
 		- target selection
+		this handles the case where we visit a node with a distance
 		*/
 		val weight1 = edge1.weight
 		val weight2 = edge2.weight
 		val comparator =
-			if (abs(weight1 - weight2) in 0..1) {
+			if (weight1 == weight2) {
+				predicateOrderedComparator(
+					{ it.end.reachesTarget },
+					{ it.end.heuristic.value in 0..1 },
+				)
+			} else if (abs(weight1 - weight2) == 1) {
 				val smaller = minOf(weight1, weight2)
 				val larger = smaller + 1
 				predicateOrderedComparator(
-					{ it.weight == smaller && it.end.argNode.isTarget },
+					{ it.weight == smaller && it.end.reachesTarget },
 					{ it.weight == smaller && it.end.heuristic.value in 0..1 },
-					{ it.weight == larger && it.end.argNode.isTarget },
+					{ it.weight == larger && it.end.reachesTarget },
 					{ it.weight == smaller },
 					{ it.weight == larger },
 				)

@@ -73,9 +73,11 @@ class AstarNode<S: State, A: Action>(
 	// Depth is dependent on the search (can start from any node) therefore it is not stored here
 	fun getWeight(depth: Int) = if (heuristic.isInfinite) {
 		heuristic.value
+	} else if (distance.isKnown) {
+		depth + distance.value
 	} else {
 		require(heuristic.isFinite)
-		heuristic.value + depth
+		depth + heuristic.value
 	}
 
 	fun reset() {

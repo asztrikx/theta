@@ -177,3 +177,7 @@ fun <S: State, A: Action, P: Prec> AstarNode<S, A>.createChildren(prec: P, searc
 
     // TODO visualize here
 }
+
+val <S: State, A: Action> AstarNode<S, A>.reachesTarget
+    // Distance is an exact heuristic => we also can reach a target with this weight
+    get() = argNode.isTarget || distance.isFinite

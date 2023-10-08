@@ -9,8 +9,8 @@ class NonFullDistanceSetter<S: State, A: Action, P: Prec>: DistanceSetter<S, A, 
 	override operator fun invoke(search: AstarSearch<S, A, P>) {
 		val startNodes = search.startAstarNodes.map { it.argNode }
 		search.reachedFinites.apply {
-			// [search.reachedFinites] are expected to be ordered by depth
-			check(zipWithNext { a, b -> search.minDepths[a]!! <= search.minDepths[b]!! }.all { it })
+			// [search.reachedFinites] are expected to be ordered by distance
+			check(map { search.distanceUntilTarget(it) }.zipWithNext { a, b -> a <= b }.all { it })
 			filter { it.argNode.isTarget }.forEach { it.distance = Distance.ZERO }
 			forEach { search.astarArg.propagateUpDistanceFromFiniteDistance(it, startNodes.toSet(), search.parents) }
 		}
