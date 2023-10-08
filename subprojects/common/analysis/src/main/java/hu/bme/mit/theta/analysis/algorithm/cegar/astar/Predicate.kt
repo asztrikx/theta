@@ -11,7 +11,7 @@ infix fun <T> Predicate<T>.and(other: Predicate<T>): Predicate<T> = {
  * if an item matches a preceding predicate in the ordered predicate list [preds]
  * then it will be positioned earlier.
  */
-fun <T> predicateOrderedComparator(vararg preds: Predicate<T>): Comparator<T> = Comparator { t1, t2 ->
+fun <T> predicateOrderedComparator(vararg preds: Predicate<T>) = Comparator<T> { t1, t2 ->
 	for (pred in preds) {
 		if (!pred(t1) && !pred(t2)) {
 			continue
