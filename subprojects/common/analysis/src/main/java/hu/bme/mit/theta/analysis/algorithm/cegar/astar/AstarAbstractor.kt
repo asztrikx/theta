@@ -100,6 +100,7 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 		distanceSetter(search)
 
 		check(startAstarNodes.any { it.distance.isFinite } || startAstarNodes.all { it.distance.isInfinite })
+		check(arg.targetNodes().map { astarArg[it] }.all { it.distance.isKnown })
 
 		astarFileVisualizer.visualize("end $visualizerState", cegarHistoryStorage.indexOf(astarArg))
 		logger.substepLine("done")

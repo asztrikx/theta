@@ -39,10 +39,12 @@ class DecreasingAstarNodeCopyHandler<S: State, A: Action, P: Prec>(
         if (coveredNode !in this || coveringNode !in this) {
             return
         }
-
         val astarCoveredNode = this[coveredNode]
         val astarCoveringNode = this[coveringNode]
+
+        // We call findHeuristic as soon as [AstarNode] is created
         check(astarCoveredNode.heuristic.isKnown && astarCoveringNode.heuristic.isKnown)
+
         if (astarCoveredNode.heuristic > astarCoveringNode.heuristic) {
             coveredNode.unsetCoveringNode()
         }

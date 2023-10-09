@@ -32,7 +32,8 @@ fun <S: State, A: Action> AstarArg<S, A>.propagateUpDistanceFromFiniteDistance(
 		// We expand targets therefore we can have a target ancestor.
 		// This function should have been called on that target by this point even in full expand or n-cex => it should have distance.
 		if (argNode.isTarget && from.argNode !== argNode) {
-			check(astarNode.distance.isKnown)
+			//check(astarNode.distance.isKnown) // TODO not sure
+			return@walkUpParents true
 		}
 
 		if (astarNode.distance.isFinite) {
@@ -40,7 +41,6 @@ fun <S: State, A: Action> AstarArg<S, A>.propagateUpDistanceFromFiniteDistance(
 				// We start from a known distance
 				false
 			} else {
-				// Multiple targets can be visited during a check => we should not overwrite shorter distances from those targets
 				check(astarNode.distance.value <= distance)
 				true
 			}
@@ -100,7 +100,7 @@ private fun <S: State, A: Action> AstarArg<S, A>.propagateUpDistanceFromConditio
 			val astarNode = node.astarNode
 
 			if (node.isTarget) {
-				check(astarNode.distance.isKnown)
+				//check(astarNode.distance.isKnown) // TODO not sure
 				return@walkUpParents true
 			} else if (astarNode.distance.isKnown) {
 				check(astarNode.distance.isFinite)
@@ -291,8 +291,6 @@ fun <S: State, A: Action> AstarArg<S, A>.setDistanceFromAllTargets(targets: Coll
 		.filter { !it.distance.isKnown }
 		.forEach { it.distance = Distance.INFINITE }
 
-	check(astarNodes.values.all { it.distance.isKnown })
-
 	// [checkShortestDistance] also would do this no need to call
 }
 
@@ -344,13 +342,10 @@ fun <S: State, A: Action, P: Prec> AstarArg<S, A>.createIterationReplacement(
 		// Heuristic has to be set first otherwise admissibility check fails
 		if (astarNode.heuristic.isKnown) {
 			astarNodeCopy.heuristic = astarNode.heuristic
-
-			// If it has a distance then is must also have a heuristic
-			if (astarNode.distance.isKnown) {
-				astarNodeCopy.distance = astarNode.distance
-			}
-		} else {
-			check(astarNode.distance.isUnknown)
+		}
+		// If it was a covered leftover node it can have distance without having a heuristic
+		if (astarNode.distance.isKnown) {
+			astarNodeCopy.distance = astarNode.distance
 		}
 		astarArgCopy.put(astarNodeCopy)
 		astarArgCopy.reachedSet.add(astarNodeCopy)

@@ -10,11 +10,9 @@ import hu.bme.mit.theta.analysis.algorithm.cegar.astar.strategy.heuristicFinder.
 fun <S: State, A: Action> AstarNode<S, A>.checkConsistency(child: AstarNode<S, A>) {
     val parent = this
     require(parent.heuristic.isKnown && child.heuristic.isKnown)
-
-    if (parent.heuristic.isInfinite && child.heuristic.isInfinite) {
-        return
-    }
+    // Never true "inf - c <= 0..1" // Can't do "inf - inf"
     check(!parent.heuristic.isInfinite)
+    // Always holds "c - inf <= 0..1"
     if (child.heuristic.isInfinite) {
         return
     }
@@ -27,17 +25,7 @@ fun <S: State, A: Action> AstarNode<S, A>.checkConsistency(child: AstarNode<S, A
 /**
  * Checks property: heuristic <= distance
  */
-fun <S: State, A: Action> AstarNode<S, A>.checkAdmissibility() {
-    check(!(heuristic.isInfinite && !distance.isInfinite))
-    check(distance.isKnown)
-    if (!heuristic.isKnown) {
-        // Leftover node may not have heuristic
-        return
-    }
-    if (!heuristic.isInfinite && !distance.isInfinite) {
-        check(heuristic.value <= distance.value)
-    }
-}
+fun <S: State, A: Action> AstarNode<S, A>.checkAdmissibility() = check(heuristic <= distance)
 
 // TODO why do astarArg.reachedSet[astarNode] inside the function?
 fun <S: State, A: Action, P: Prec> AstarNode<S, A>.close(
@@ -84,9 +72,11 @@ fun <S: State, A: Action, P: Prec> AstarNode<S, A>.close(
         if (heuristic > astarCandidate.heuristic) {
             continue
         }
+        // This should hold because of previous check and because of infinite filtering in [AstarSearch]
+        checkConsistency(astarCandidate)
 
         argNode.cover(candidate)
-        checkConsistency(astarCandidate)
+
         search ?: return null
         return handleCloseRewire(search)
     }
@@ -95,12 +85,12 @@ fun <S: State, A: Action, P: Prec> AstarNode<S, A>.close(
 
 /**
  * @return The actual AstarNode which is covered after [AstarNode.close].
- * The AstarNode reference should be replaced with the return value.
+ * The AstarNode reference should be replaced with the return value so that [AstarSearch] will set that as parent.
  */
 fun <S: State, A: Action, P: Prec> AstarNode<S, A>.handleCloseRewire(search: AstarSearch<S, A, P>): AstarNode<S, A> {
     // If astarNode's parent is also covered then covering edges have been redirected. (see ArgNode::cover)
     // We have to update parents map according to that.
-    //  1) a - - -> b (argNode,coveredAstarNode)
+    //  1) a - - -> b (argNode)
     //  2) a - - -> b - - -> c (coveringNode)
     //  3) a        b - - -> c
     //	   |                 ^
@@ -115,6 +105,8 @@ fun <S: State, A: Action, P: Prec> AstarNode<S, A>.handleCloseRewire(search: Ast
         // therefore we can safely remove it
         search.parents.remove(this)
 
+        // Both heuristics known (see caller)
+        // Parent can't be infinite (see caller)
         parentAstarNode.checkConsistency(astarArg[argNode.coveringNode()!!])
 
         // Update to new parent if we this node is the current parent
@@ -179,7 +171,6 @@ fun <S: State, A: Action, P: Prec> AstarNode<S, A>.createChildren(
 
     // [createChildren] can be already called on this node through a different edge
     while(!argNode.isExpanded) {
-        check(astarNode.distance.isKnown)
         astarNode.close(astarArg.reachedSet[astarNode], search, heuristicFinder, abstractor)?.let {}
         if (argNode.coveringNode() != null) {
             argNode = argNode.coveringNode()!!

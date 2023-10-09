@@ -27,8 +27,14 @@ class AstarNode<S: State, A: Action>(
 				require(value === Distance.ZERO)
 			}
 			_distance = value
-			// Distance needs to be already set for this
-			checkAdmissibility()
+
+			check(!(heuristic.isInfinite && !distance.isInfinite))
+
+			// Leftover node may not have heuristic
+			if (heuristic.isKnown) {
+				// Distance needs to be already set for this
+				checkAdmissibility()
+			}
 		}
 
 	private var _heuristic = Distance.UNKNOWN
@@ -59,7 +65,9 @@ class AstarNode<S: State, A: Action>(
 				// Null when copying AstarArg // TODO check this whether this can be avoided by changing copying, same for below
 				astarArg.astarNodes[this]?.let {
 					// When starting leftovers from init nodes we can either reach a node first through normal or cover edge
-					if (it.heuristic.isKnown) {
+					if (it.heuristic.isKnown && !it.heuristic.isInfinite) { // TODO can parent heuristic be infinite?
+						// Both heuristic is known
+						// Parent's heuristic is not infinite
 						it.checkConsistency(this@AstarNode)
 					}
 				}
