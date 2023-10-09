@@ -52,6 +52,7 @@ fun <S: State, A: Action, P: Prec> AstarNode<S, A>.close(
         // isCovered: If node already has covering node, close cloud still choose another one, therefore avoid.
         return null
     }
+    require(heuristic.isKnown)
 
     var candidates = candidates
     if (argNode.isTarget) {
@@ -63,8 +64,8 @@ fun <S: State, A: Action, P: Prec> AstarNode<S, A>.close(
         // TODO pattern
         if (DI.heuristicSearchType !== HeuristicSearchType.SEMI_ONDEMAND) {
             // optimization: Check heuristic before calling mayCover which uses Leq
-            if (!heuristic.isKnown) {
-                heuristicFinder(this, abstractor)
+            if (!astarCandidate.heuristic.isKnown) {
+                heuristicFinder(astarCandidate, abstractor)
             }
             if (heuristic > astarCandidate.heuristic) {
                 continue
@@ -76,9 +77,9 @@ fun <S: State, A: Action, P: Prec> AstarNode<S, A>.close(
             continue
         }
 
-        if (!heuristic.isKnown) {
+        if (!astarCandidate.heuristic.isKnown) {
             // TODO document: leftovers dont have heuristic, but we would want to cover into it, but it can break consistency
-            heuristicFinder(this, abstractor)
+            heuristicFinder(astarCandidate, abstractor)
         }
         if (heuristic > astarCandidate.heuristic) {
             continue
