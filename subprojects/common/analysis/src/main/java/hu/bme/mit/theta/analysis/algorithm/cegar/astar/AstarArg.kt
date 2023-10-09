@@ -8,6 +8,7 @@ import hu.bme.mit.theta.analysis.algorithm.ARG
 import hu.bme.mit.theta.analysis.algorithm.ArgBuilder
 import hu.bme.mit.theta.analysis.algorithm.ArgNode
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.strategy.HeuristicSearchType
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.strategy.heuristicFinder.HeuristicFinder
 import hu.bme.mit.theta.analysis.reachedset.Partition
 import kotlin.jvm.optionals.getOrNull
 
@@ -45,17 +46,28 @@ class AstarArg<S: State, A: Action>(
 		astarNodes = astarNodesNew
 	}
 
-	fun <P: Prec> createSuccAstarNode(argNode: ArgNode<S, A>, argBuilder: ArgBuilder<S, A, P>, prec: P?): AstarNode<S, A> {
-		val providerAstarNode = argNode.getProviderAstarNode(argBuilder, prec)
+	fun <P: Prec> createSuccAstarNode(
+		argNode: ArgNode<S, A>,
+		argBuilder: ArgBuilder<S, A, P>,
+		prec: P?,
+		heuristicFinder: HeuristicFinder<S, A, P>,
+		abstractor: AstarAbstractor<S, A, P>,
+	): AstarNode<S, A> {
+		val providerAstarNode = argNode.getProviderAstarNode(argBuilder, prec, heuristicFinder, abstractor)
 		val astarNode = AstarNode(argNode, providerAstarNode, this)
 		reachedSet.add(astarNode)
 		put(astarNode)
 		return astarNode
 	}
 
-	private fun <P: Prec> ArgNode<S, A>.getProviderAstarNode(argBuilder: ArgBuilder<S, A, P>, prec: P?): AstarNode<S, A>? {
+	private fun <P: Prec> ArgNode<S, A>.getProviderAstarNode(
+		argBuilder: ArgBuilder<S, A, P>,
+		prec: P?,
+		heuristicFinder: HeuristicFinder<S, A, P>,
+		abstractor: AstarAbstractor<S, A, P>,
+	): AstarNode<S, A>? {
 		val providerArg = provider ?: return null
-		var providerCandidates = this.getProviderCandidates(argBuilder, prec!!) ?: return null
+		var providerCandidates = this.getProviderCandidates(argBuilder, prec!!, heuristicFinder, abstractor) ?: return null
 
 		providerCandidates = providerCandidates.filter { partialOrd.isLeq(state, it.state) }
 
@@ -91,7 +103,12 @@ class AstarArg<S: State, A: Action>(
 		return providerArg[providerNode]
 	}
 
-	private fun <P: Prec> ArgNode<S, A>.getProviderCandidates(argBuilder: ArgBuilder<S, A, P>, prec: P): Collection<ArgNode<S, A>>? {
+	private fun <P: Prec> ArgNode<S, A>.getProviderCandidates(
+		argBuilder: ArgBuilder<S, A, P>,
+		prec: P,
+		heuristicFinder: HeuristicFinder<S, A, P>,
+		abstractor: AstarAbstractor<S, A, P>,
+	): Collection<ArgNode<S, A>>? {
 		val provider = provider!!
 		val treeParentAstarNode = parent()?.astarNode ?: run {
 			require(isInit)
@@ -107,7 +124,7 @@ class AstarArg<S: State, A: Action>(
 		// TODO pattern
 		if (DI.heuristicSearchType == HeuristicSearchType.SEMI_ONDEMAND) {
 			// Recursive call
-			treeParentAstarNodeProvider.createChildren(prec, null, argBuilder)
+			treeParentAstarNodeProvider.createChildren(prec, null, argBuilder, heuristicFinder, abstractor)
 		}
 
 		// [treeParentAstarNodeProvider] can be covered.

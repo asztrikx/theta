@@ -117,7 +117,7 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 		var astarNode = astarNode
 		var argNode = astarNode.argNode
 
-		astarNode.close(astarArg.reachedSet[astarNode], search)?.let {
+		astarNode.close(astarArg.reachedSet[astarNode], search, heuristicFinder, this)?.let {
 			astarNode = it
 			argNode = astarNode.argNode
 		}
@@ -147,7 +147,7 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 					} else  {
 						null
 					}
-					astarArg.createSuccAstarNode(newArgNode, argBuilder, previousPrec)
+					astarArg.createSuccAstarNode(newArgNode, argBuilder, previousPrec, heuristicFinder, this)
 				}
 			}
 
@@ -178,7 +178,7 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 		if (!arg.isInitialized) {
 			logger.substep("|  |  (Re)initializing ARG...")
 			argBuilder.init(arg, prec).forEach {
-				astarArg.createSuccAstarNode(it, argBuilder, prec)
+				astarArg.createSuccAstarNode(it, argBuilder, prec, heuristicFinder, this)
 				// TODO later (currently there is only one init node): check if they can't cover each other as it is used // check if it even used anywhere
 			}
 			logger.substepLine("done")

@@ -5,6 +5,7 @@ import hu.bme.mit.theta.analysis.Prec
 import hu.bme.mit.theta.analysis.State
 import hu.bme.mit.theta.analysis.algorithm.ArgBuilder
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.strategy.HeuristicSearchType
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.strategy.heuristicFinder.HeuristicFinder
 
 fun <S: State, A: Action> AstarNode<S, A>.checkConsistency(child: AstarNode<S, A>) {
     val parent = this
@@ -41,7 +42,9 @@ fun <S: State, A: Action> AstarNode<S, A>.checkAdmissibility() {
 // TODO why do astarArg.reachedSet[astarNode] inside the function?
 fun <S: State, A: Action, P: Prec> AstarNode<S, A>.close(
     candidates: Collection<AstarNode<S, A>>,
-    search: AstarSearch<S, A, P>?
+    search: AstarSearch<S, A, P>?,
+    heuristicFinder: HeuristicFinder<S, A, P>,
+    abstractor: AstarAbstractor<S, A, P>,
 ): AstarNode<S, A>? {
     if ((argNode.isExpanded || !argNode.isLeaf) || argNode.isCovered) {
         // isLeaf: After prune node may have children but not fully expanded.
@@ -57,13 +60,27 @@ fun <S: State, A: Action, P: Prec> AstarNode<S, A>.close(
     }
 
     for (astarCandidate in candidates) {
-        // optimization: Check before calling mayCover which uses Leq
-        if (heuristic > astarCandidate.heuristic) {
-            continue
+        // TODO pattern
+        if (DI.heuristicSearchType !== HeuristicSearchType.SEMI_ONDEMAND) {
+            // optimization: Check heuristic before calling mayCover which uses Leq
+            if (!heuristic.isKnown) {
+                heuristicFinder(this, abstractor)
+            }
+            if (heuristic > astarCandidate.heuristic) {
+                continue
+            }
         }
 
         val candidate = astarCandidate.argNode
         if (!candidate.mayCover(argNode)) {
+            continue
+        }
+
+        if (!heuristic.isKnown) {
+            // TODO document: leftovers dont have heuristic, but we would want to cover into it, but it can break consistency
+            heuristicFinder(this, abstractor)
+        }
+        if (heuristic > astarCandidate.heuristic) {
             continue
         }
 
@@ -118,7 +135,13 @@ fun <S: State, A: Action, P: Prec> AstarNode<S, A>.handleCloseRewire(search: Ast
  *
  * [heuristicFinder] is not called during this.
  */
-fun <S: State, A: Action, P: Prec> AstarNode<S, A>.createChildren(prec: P, search: AstarSearch<S, A, P>?, argBuilder: ArgBuilder<S, A, P>) {
+fun <S: State, A: Action, P: Prec> AstarNode<S, A>.createChildren(
+    prec: P,
+    search: AstarSearch<S, A, P>?,
+    argBuilder: ArgBuilder<S, A, P>,
+    heuristicFinder: HeuristicFinder<S, A, P>,
+    abstractor: AstarAbstractor<S, A, P>,
+) {
     require(DI.heuristicSearchType == HeuristicSearchType.SEMI_ONDEMAND)
     // we could call expand on found target nodes after each search however
     // - the intention would not be as clear as calling it before [createSuccAstarNode]
@@ -156,7 +179,7 @@ fun <S: State, A: Action, P: Prec> AstarNode<S, A>.createChildren(prec: P, searc
     // [createChildren] can be already called on this node through a different edge
     while(!argNode.isExpanded) {
         check(astarNode.distance.isKnown)
-        astarNode.close(astarArg.reachedSet[astarNode], search)?.let {}
+        astarNode.close(astarArg.reachedSet[astarNode], search, heuristicFinder, abstractor)?.let {}
         if (argNode.coveringNode() != null) {
             argNode = argNode.coveringNode()!!
 
@@ -168,7 +191,7 @@ fun <S: State, A: Action, P: Prec> AstarNode<S, A>.createChildren(prec: P, searc
             continue
         }
         argBuilder.expand(argNode, prec).forEach {
-            val succAstarNode = astarArg.createSuccAstarNode(it, argBuilder, prec)
+            val succAstarNode = astarArg.createSuccAstarNode(it, argBuilder, prec, heuristicFinder, abstractor)
             // optimization
             if (succAstarNode.argNode.isTarget) {
                 // Heuristic has to be set (first) otherwise admissibility check fails
