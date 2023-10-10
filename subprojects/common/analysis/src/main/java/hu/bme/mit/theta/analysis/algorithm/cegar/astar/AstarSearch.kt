@@ -133,5 +133,7 @@ class AstarSearch<S: State, A: Action, P: Prec>(
 	) {
 		val weight
 			get() = end.getWeight(depth)
+
+		override fun toString() = "${end.argNode} G($depth) + H(${end.getWeight(depth)}) = F($weight)"
 	}
 }

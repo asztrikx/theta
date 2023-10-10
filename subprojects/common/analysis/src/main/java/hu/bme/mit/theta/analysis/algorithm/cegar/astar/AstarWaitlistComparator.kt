@@ -37,6 +37,6 @@ class AstarWaitlistComparator<S: State, A: Action> : Comparator<Edge<S, A>> {
 					it.weight
 				}
 			}
-		return comparator.compare(edge1, edge2)
+		return comparator.compare(edge1, edge2) // TODO then compareBy { it.depth }
 	}
 }
