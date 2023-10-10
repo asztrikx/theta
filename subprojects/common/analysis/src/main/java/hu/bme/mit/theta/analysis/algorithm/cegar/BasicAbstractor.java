@@ -109,7 +109,6 @@ public final class BasicAbstractor<S extends State, A extends Action, P extends 
 				close(node, reachedSet.get(node));
 				if (!node.isSubsumed() && !node.isTarget()) {
 					if (!node.isExpanded()) {
-						assert node.isLeaf(); // TODO this should fail and we are adding less newNodes than we should be
 						newNodes = argBuilder.expand(node, prec);
 						reachedSet.addAll(newNodes);
 					} else {
