@@ -164,16 +164,16 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 		}
 	}
 
-	private var previousAstarArg: AstarArg<S, A>? = null
+	private var nextAstarArg: AstarArg<S, A>? = null
 	// TODO document: arg must be the same reference in every call
 	override fun check(arg: ARG<S, A>, prec: P): AbstractorResult {
 		require(arg.targetNodes().isEmpty())
-		previousAstarArg?.let { require(it.arg == arg)}
+		nextAstarArg?.let { require(it.arg == arg)}
 
 		val astarArg = if (cegarHistoryStorage.size == 0) {
 			AstarArg(arg, partialOrd, projection, null)
 		} else {
-			previousAstarArg!!.apply {
+			nextAstarArg!!.apply {
 				pruneApply()
 			}
 		}
@@ -194,7 +194,7 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 		val astarArgCopy = astarArg.createIterationReplacement(partialOrd, projection, astarNodeCopyHandler, this)
 		cegarHistoryStorage.setLast(astarArgCopy, prec)
 
-		previousAstarArg = astarArg
+		nextAstarArg = astarArg
 
 		return if (arg.isSafe) {
 			// Arg may not be complete (== fully expanded) as INFINITE heuristic can avoid expanding some nodes.
