@@ -31,6 +31,8 @@ import hu.bme.mit.theta.analysis.algorithm.cegar.abstractor.StopCriterions.FullE
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.strategy.HeuristicSearchType
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.strategy.Strategy
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.strategy.cegarhistorystorage.CegarHistoryStoragePrevious
+import hu.bme.mit.theta.analysis.algorithm.runtimecheck.AbstractArg
+import hu.bme.mit.theta.analysis.algorithm.runtimecheck.ArgCexCheckHandler
 import hu.bme.mit.theta.analysis.prod2.Prod2Analysis
 import hu.bme.mit.theta.analysis.prod2.prod2explpred.Prod2ExplPredAnalysis
 import hu.bme.mit.theta.common.Utils
@@ -78,6 +80,7 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 			return
 		}
 
+		ArgCexCheckHandler.instance.setCurrentArg<P>(AbstractArg(arg, prec))
 		logger.detailLine("|  |  Precision: $prec")
 		logger.infoLine("|  |  Starting ARG: ${arg.nodes.count()} nodes, ${arg.incompleteNodes.count()} incomplete, ${arg.unsafeNodes.count()} unsafe")
 		logger.substepLine("|  |  Starting AstarArg: ${astarFileVisualizer.getTitle("", cegarHistoryStorage.indexOf(astarArg))}")
@@ -88,6 +91,7 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 		while (true) {
 			val (astarNode, depth) = search.removeFromWaitlist() ?: break
 			visitNode(search, astarNode, depth, astarArg, prec)
+			ArgCexCheckHandler.instance.setCurrentArg<P>(AbstractArg(arg, prec))
 		}
 
 		// (if [FirstCex]) We need to handle this case separately otherwise we would only set the first target's distance
