@@ -85,10 +85,6 @@ public final class ARG<S extends State, A extends Action> {
 		return getInitNodes().flatMap(ArgNode::unexcludedDescendants).filter(ArgNode::isCovered);
 	}
 
-	public Stream<ArgNode<S, A>> getTargetNodes() {
-		return getInitNodes().flatMap(ArgNode::unexcludedDescendants).filter(ArgNode::isTarget);
-	}
-
 	////
 
 	/**

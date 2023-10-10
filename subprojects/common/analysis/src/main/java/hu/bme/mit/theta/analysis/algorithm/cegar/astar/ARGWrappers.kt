@@ -13,5 +13,4 @@ fun <S: State, A: Action> ARG<S, A>.unsafeNodes(): MutableList<ArgNode<S, A>> = 
 fun <S: State, A: Action> ARG<S, A>.incompleteNodes(): MutableList<ArgNode<S, A>> = incompleteNodes.toList()
 fun <S: State, A: Action> ARG<S, A>.expandedLeafNodes(): MutableList<ArgNode<S, A>> = expandedLeafNodes.toList()
 fun <S: State, A: Action> ARG<S, A>.coveredNodes(): MutableList<ArgNode<S, A>> = coveredNodes.toList()
-fun <S: State, A: Action> ARG<S, A>.targetNodes(): MutableList<ArgNode<S, A>> = targetNodes.toList()
 fun <S: State, A: Action> ARG<S, A>.cexs(): MutableList<ArgTrace<S, A>> = cexs.toList()

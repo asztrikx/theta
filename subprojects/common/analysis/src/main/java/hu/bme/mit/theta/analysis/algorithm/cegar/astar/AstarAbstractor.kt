@@ -109,7 +109,7 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 		distanceSetter(search)
 
 		check(startAstarNodes.any { it.distance.isFinite } || startAstarNodes.all { it.distance.isInfinite })
-		check(arg.targetNodes().map { astarArg[it] }.all { it.distance.isKnown })
+		check(arg.unsafeNodes().map { astarArg[it] }.all { it.distance.isKnown })
 
 		astarFileVisualizer.visualize("end $visualizerState", cegarHistoryStorage.indexOf(astarArg))
 		logger.substepLine("done")
@@ -172,7 +172,7 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 	private var nextAstarArg: AstarArg<S, A>? = null
 	// TODO document: arg must be the same reference in every call
 	override fun check(arg: ARG<S, A>, prec: P): AbstractorResult {
-		require(arg.targetNodes().isEmpty())
+		require(arg.unsafeNodes().isEmpty())
 		nextAstarArg?.let { require(it.arg == arg)}
 
 		val astarArg = if (cegarHistoryStorage.size == 0) {
