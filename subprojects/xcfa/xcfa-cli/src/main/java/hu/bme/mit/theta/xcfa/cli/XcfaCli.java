@@ -24,7 +24,7 @@ import hu.bme.mit.theta.analysis.LTS;
 import hu.bme.mit.theta.analysis.TransFunc;
 import hu.bme.mit.theta.analysis.algorithm.SafetyResult;
 import hu.bme.mit.theta.analysis.algorithm.bmc.IterativeBmcChecker;
-import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarAbstractor;
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.strategy.HeuristicSearchType;
 import hu.bme.mit.theta.analysis.algorithm.runtimecheck.ArgCexCheckHandler;
 import hu.bme.mit.theta.common.exception.NotSolvableException;
 import hu.bme.mit.theta.analysis.expl.ExplPrec;
@@ -151,8 +151,8 @@ public class XcfaCli {
 	@Parameter(names = "--search", description = "Search strategy")
 	XcfaConfigBuilder.Search search = XcfaConfigBuilder.Search.ERR;
 
-	@Parameter(names = "--heuristicSearchType", required = true)
-	AstarAbstractor.HeuristicSearchType heuristicSearchType;
+	@Parameter(names = "--heuristicSearchType", required = true) // TODO remove required when benchmark is done
+	HeuristicSearchType heuristicSearchType;
 
 	@Parameter(names = "--predsplit", description = "Predicate splitting (for predicate abstraction)")
 	XcfaConfigBuilder.PredSplit predSplit = XcfaConfigBuilder.PredSplit.WHOLE;

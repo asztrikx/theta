@@ -7,7 +7,8 @@ import com.google.common.base.Stopwatch;
 import hu.bme.mit.theta.analysis.Trace;
 import hu.bme.mit.theta.analysis.algorithm.SafetyResult;
 import hu.bme.mit.theta.analysis.algorithm.cegar.CegarStatistics;
-import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarAbstractor;
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.strategy.HeuristicSearchType;
+import hu.bme.mit.theta.analysis.algorithm.runtimecheck.ArgCexCheckHandler;
 import hu.bme.mit.theta.analysis.expr.refinement.PruneStrategy;
 import hu.bme.mit.theta.analysis.utils.ArgVisualizer;
 import hu.bme.mit.theta.analysis.utils.TraceVisualizer;
@@ -53,7 +54,7 @@ public class XstsCli {
 	Search search = Search.BFS;
 
 	@Parameter(names = "--heuristicSearchType", required = true)
-	AstarAbstractor.HeuristicSearchType heuristicSearchType;
+	HeuristicSearchType heuristicSearchType; // TODO remove required when benchmark is done
 
 	@Parameter(names = {"--predsplit"}, description = "Predicate splitting")
 	PredSplit predSplit = PredSplit.WHOLE;
@@ -105,6 +106,9 @@ public class XstsCli {
 
 	@Parameter(names = {"--visualize"}, description = "Write proof or counterexample to file in dot format")
 	String dotfile = null;
+
+	@Parameter(names = "--no-stuck-check")
+	boolean noStuckCheck = false;
 
 	private Logger logger;
 
@@ -203,6 +207,13 @@ public class XstsCli {
 	}
 
 	private XstsConfig<?, ?, ?> buildConfiguration(final XSTS xsts) throws Exception {
+		// set up stopping analysis if it is stuck on same ARGs and precisions
+		if (noStuckCheck) {
+			ArgCexCheckHandler.instance.setArgCexCheck(false, false);
+		} else {
+			ArgCexCheckHandler.instance.setArgCexCheck(true, refinement.equals(Refinement.MULTI_SEQ));
+		}
+
 		try {
 			return new XstsConfigBuilder(domain, refinement, Z3SolverFactory.getInstance())
 					.maxEnum(maxEnum).autoExpl(autoExpl).initPrec(initPrec).pruneStrategy(pruneStrategy)
