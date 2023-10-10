@@ -21,6 +21,7 @@ import hu.bme.mit.theta.analysis.algorithm.ArgEdge;
 import hu.bme.mit.theta.analysis.algorithm.ArgNode;
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarArg;
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarNode;
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarSearch;
 import hu.bme.mit.theta.common.container.Containers;
 import hu.bme.mit.theta.common.visualization.EdgeAttributes;
 import hu.bme.mit.theta.common.visualization.Graph;
@@ -92,7 +93,11 @@ public final class AstarArgVisualizer<S extends State, A extends Action> {
 		return LazyHolderStructureOnly.INSTANCE;
 	}
 
-	public <S1 extends S, A1 extends A>  Graph visualize(final AstarArg<S1, A1> astarArg, Collection<ArgNode<S1, A1>> startNodes) {
+	public <S1 extends S, A1 extends A> Graph visualize(
+		final AstarArg<S1, A1> astarArg,
+		Collection<ArgNode<S1, A1>> startNodes,
+		@Nullable AstarSearch<S1, A1, ?> search
+	) {
 		final Graph graph = new Graph(ARG_ID, ARG_LABEL);
 
 		final Set<ArgNode<S1, A1>> traversed = Containers.createSet();
@@ -101,7 +106,7 @@ public final class AstarArgVisualizer<S extends State, A extends Action> {
 			// we might be visualizing a "back" state from a child just expanded => there could be children which don't have yet AstarNodes
 			AstarNode<S1, A1> astarStartNode = astarArg.get(startNode);
 			if(astarStartNode != null) {
-				traverse(graph, astarStartNode, traversed, astarArg);
+				traverse(graph, astarStartNode, traversed, astarArg, search);
 
 				final NodeAttributes nAttributes = NodeAttributes.builder().label("").fillColor(FILL_COLOR)
 						.lineColor(FILL_COLOR).lineStyle(getLineStyle(astarStartNode)).peripheries(1).build();
@@ -124,10 +129,11 @@ public final class AstarArgVisualizer<S extends State, A extends Action> {
 	}
 
 	private <S1 extends S, A1 extends A> void traverse(
-			final Graph graph,
-			final AstarNode<S1, A1> astarNode,
-			final Set<ArgNode<S1, A1>> traversed,
-			AstarArg<S1, A1> astarArg
+		final Graph graph,
+		final AstarNode<S1, A1> astarNode,
+		final Set<ArgNode<S1, A1>> traversed,
+		AstarArg<S1, A1> astarArg,
+		@Nullable AstarSearch<S1, A1, ?> search
 	) {
 		final ArgNode<S1, A1> node = astarNode.getArgNode();
 		if (traversed.contains(node)) {
@@ -138,8 +144,9 @@ public final class AstarArgVisualizer<S extends State, A extends Action> {
 		final int peripheries = node.isTarget() ? 2 : 1;
 
 		// node format: information about node and it's parent (if exists)
-		String label = String.format("%s\\l%s\\l%s",
+		String label = String.format("%s\\l%s\\l%s\\l%s",
 				stateToString.apply(node.getState()),
+				String.format("Search:   %s", getSearchAstarNodeDetailsText(astarNode, search)),
 				String.format("Current:  %s", getAstarNodeDetailsText(astarNode)),
 				String.format("Provider: %s", getAstarNodeDetailsText(astarNode.getProviderAstarNode()))
 		);
@@ -159,7 +166,7 @@ public final class AstarArgVisualizer<S extends State, A extends Action> {
 			// In that case a visualization will be made of that graph, but those children not have AstarNode because of the latter.
 			AstarNode<S1, A1> astarNodeChild = astarArg.get(edge.getTarget());
 			if(astarNodeChild != null){
-				traverse(graph, astarNodeChild, traversed, astarArg);
+				traverse(graph, astarNodeChild, traversed, astarArg, search);
 				createEdge(graph, node, astarNodeChild, SUCC_EDGE_STYLE, ""); //actionToString.apply(edge.getAction())
 			}
 		}
@@ -168,7 +175,7 @@ public final class AstarArgVisualizer<S extends State, A extends Action> {
 			// we might be visualizing a "back" state from a child just expanded => there could be children which don't have yet AstarNodes
 			AstarNode<S1, A1> astarNodeChild = astarArg.get(node.getCoveringNode().get());
 			if(astarNodeChild != null){
-				traverse(graph, astarNodeChild, traversed, astarArg);
+				traverse(graph, astarNodeChild, traversed, astarArg, search);
 				createEdge(graph, node, astarNodeChild, COVER_EDGE_STYLE, "");
 			}
 		}
@@ -179,6 +186,13 @@ public final class AstarArgVisualizer<S extends State, A extends Action> {
 			return "-";
 		}
 		return astarNodeToString.apply(astarNode);
+	}
+
+	private <S1 extends S, A1 extends A> String getSearchAstarNodeDetailsText(AstarNode<S1, A1> astarNode, AstarSearch<S1, A1, ?> search) {
+		if (!search.contains(astarNode)) {
+			return "-";
+		}
+		return search.toString(astarNode);
 	}
 
 	private <S1 extends S, A1 extends A> void createEdge(

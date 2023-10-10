@@ -5,6 +5,7 @@ import hu.bme.mit.theta.analysis.Prec
 import hu.bme.mit.theta.analysis.State
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarAbstractor
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarNode
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarSearch
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.Distance
 
 abstract class HeuristicFinder<S: State, A: Action, P: Prec> {
@@ -20,6 +21,7 @@ abstract class HeuristicFinder<S: State, A: Action, P: Prec> {
 	operator fun invoke(
 		astarNode: AstarNode<S, A>,
 		astarAbstractor: AstarAbstractor<S, A, P>,
+		search: AstarSearch<S, A, P>?,
 	) {
 		if (astarNode.heuristic.isKnown) {
 			return
@@ -36,7 +38,7 @@ abstract class HeuristicFinder<S: State, A: Action, P: Prec> {
 			}
 		}
 
-		findHeuristicFromPrevious(astarNode, astarAbstractor)
+		findHeuristicFromPrevious(astarNode, astarAbstractor, search)
 
 		check(astarNode.heuristic.isKnown)
 	}
@@ -45,5 +47,6 @@ abstract class HeuristicFinder<S: State, A: Action, P: Prec> {
 	protected abstract fun findHeuristicFromPrevious(
 		astarNode: AstarNode<S, A>,
 		astarAbstractor: AstarAbstractor<S, A, P>,
+		search: AstarSearch<S, A, P>?,
 	)
 }

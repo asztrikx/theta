@@ -53,7 +53,7 @@ fun <S: State, A: Action, P: Prec> AstarNode<S, A>.close(
         if (DI.heuristicSearchType !== HeuristicSearchType.SEMI_ONDEMAND) {
             // optimization: Check heuristic before calling mayCover which uses Leq
             if (!astarCandidate.heuristic.isKnown) {
-                heuristicFinder(astarCandidate, abstractor)
+                heuristicFinder(astarCandidate, abstractor, search)
             }
             if (heuristic > astarCandidate.heuristic) {
                 continue
@@ -67,7 +67,7 @@ fun <S: State, A: Action, P: Prec> AstarNode<S, A>.close(
 
         if (!astarCandidate.heuristic.isKnown) {
             // TODO document: leftovers dont have heuristic, but we would want to cover into it, but it can break consistency
-            heuristicFinder(astarCandidate, abstractor)
+            heuristicFinder(astarCandidate, abstractor, search)
         }
         if (heuristic > astarCandidate.heuristic) {
             continue

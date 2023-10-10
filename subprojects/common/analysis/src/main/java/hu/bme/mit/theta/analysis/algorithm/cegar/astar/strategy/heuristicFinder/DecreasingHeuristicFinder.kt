@@ -10,6 +10,7 @@ class DecreasingHeuristicFinder<S: State, A: Action, P: Prec>: HeuristicFinder<S
 	override fun findHeuristicFromPrevious(
 		astarNode: AstarNode<S, A>,
 		astarAbstractor: AstarAbstractor<S, A, P>,
+		astarSearch: AstarSearch<S, A, P>?,
 	) {
 		val astarArg = astarNode.astarArg
 		val argNode = astarNode.argNode

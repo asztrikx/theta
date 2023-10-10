@@ -21,7 +21,10 @@ class AstarSearch<S: State, A: Action, P: Prec>(
 	private val doneSet = hashSetOf<AstarNode<S, A>>()
 
 	// Useful to know whether the current item is smaller than the one in the waitlist (if not in doneSet)
-	private val minDepths = hashMapOf<AstarNode<S, A>, Int>()
+	private val depths = hashMapOf<AstarNode<S, A>, Int>()
+
+	// Used for debugging
+	private val weights = hashMapOf<AstarNode<S, A>, Distance>()
 
 	// After we reach target we know the distance for all nodes between root and target which is visitable by parent entries
 	// This is needed because with covering edges there can be multiple in-edges
@@ -42,7 +45,7 @@ class AstarSearch<S: State, A: Action, P: Prec>(
 	var reachedFinites = mutableListOf<AstarNode<S, A>>()
 
 	fun addToWaitlist(astarNode: AstarNode<S, A>, parentAstarNode: AstarNode<S, A>?, depth: Int) {
-		heuristicFinder(astarNode, astarAbstractor)
+		heuristicFinder(astarNode, astarAbstractor, this)
 
 		if (astarNode.distance.isKnown) {
 			check(DI.heuristicSearchType === HeuristicSearchType.SEMI_ONDEMAND)
@@ -58,13 +61,14 @@ class AstarSearch<S: State, A: Action, P: Prec>(
 		}
 
 		if (astarNode in doneSet) {
-			check(minDepths[astarNode]!! <= depth)
+			check(depths[astarNode]!! <= depth)
 			return
 		}
 
-		if (astarNode !in minDepths || minDepths[astarNode]!! > depth) {
+		if (astarNode !in depths || depths[astarNode]!! > depth) {
 			parents[astarNode] = parentAstarNode
-			minDepths[astarNode] = depth
+			depths[astarNode] = depth
+			weights[astarNode] = astarNode.getWeight(depth)
 			waitlist.add(Edge(astarNode, depth))
 		}
 	}
@@ -107,10 +111,19 @@ class AstarSearch<S: State, A: Action, P: Prec>(
 
 	fun distanceUntilTarget(astarNode: AstarNode<S, A>): Int {
 		return if (astarNode.argNode.isTarget) {
-			minDepths[astarNode]!!
+			depths[astarNode]!!
 		} else {
-			minDepths[astarNode]!! + astarNode.distance.value
+			depths[astarNode]!! + astarNode.distance.value
 		}
+	}
+
+	operator fun contains(astarNode: AstarNode<S, A>) = astarNode in depths
+
+	fun toString(astarNode: AstarNode<S, A>): String {
+		val depth = depths[astarNode]!!
+		val weight = weights[astarNode]!!
+		val heuristic = astarNode.heuristic
+		return "G($depth) + H($heuristic) = F($weight)"
 	}
 
 	// Pair would create .first and .second properties which would be hard to read

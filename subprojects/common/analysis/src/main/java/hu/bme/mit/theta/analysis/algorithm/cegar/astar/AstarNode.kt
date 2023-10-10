@@ -79,13 +79,18 @@ class AstarNode<S: State, A: Action>(
 
 	// Get g(n) = h(n) + depth
 	// Depth is dependent on the search (can start from any node) therefore it is not stored here
-	fun getWeight(depth: Int) = if (heuristic.isInfinite) {
-		heuristic.value
-	} else if (distance.isKnown) {
-		depth + distance.value
+	fun getWeight(depth: Int) = if (distance.isKnown) {
+		if (distance.isInfinite) {
+			distance
+		} else {
+			distance + depth
+		}
 	} else {
-		require(heuristic.isFinite)
-		depth + heuristic.value
+		if (heuristic.isInfinite) {
+			heuristic
+		} else {
+			heuristic + depth
+		}
 	}
 
 	fun reset() {
@@ -93,5 +98,5 @@ class AstarNode<S: State, A: Action>(
 		_distance = Distance.UNKNOWN
 	}
 
-	override fun toString() = "$argNode D$distance H$heuristic"
+	override fun toString() = "$argNode D($distance) H($heuristic)"
 }

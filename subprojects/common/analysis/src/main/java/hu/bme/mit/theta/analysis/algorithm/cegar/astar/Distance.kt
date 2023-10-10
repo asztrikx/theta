@@ -40,9 +40,9 @@ class Distance private constructor(
 	override fun hashCode() = 31 * type.hashCode() + value
 
 	override fun toString() = when (type) {
-		Type.FINITE -> "(F$value)"
-		Type.INFINITE -> "(I)"
-		Type.UNKNOWN -> "(U)"
+		Type.FINITE -> "F$value"
+		Type.INFINITE -> "I"
+		Type.UNKNOWN -> "U"
 	}
 
 	enum class Type {

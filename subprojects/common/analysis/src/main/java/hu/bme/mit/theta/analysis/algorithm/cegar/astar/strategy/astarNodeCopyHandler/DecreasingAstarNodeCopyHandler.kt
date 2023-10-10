@@ -18,7 +18,7 @@ class DecreasingAstarNodeCopyHandler<S: State, A: Action, P: Prec>(
         val astarArg = astarNode.astarArg
         val argNode = astarNode.argNode
 
-        heuristicFinder(astarNode, astarAbstractor)
+        heuristicFinder(astarNode, astarAbstractor, null)
 
         argNode.coveringNode()?.let {
             astarArg.handleDecreasingCoverEdgeConsistency(argNode, it)

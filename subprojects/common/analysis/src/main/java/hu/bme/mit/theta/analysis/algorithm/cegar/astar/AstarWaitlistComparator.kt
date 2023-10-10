@@ -22,7 +22,7 @@ class AstarWaitlistComparator<S: State, A: Action> : Comparator<Edge<S, A>> {
 					{ it.end.reachesTarget },
 					{ it.end.heuristic.value in 0..1 },
 				)
-			} else if (abs(weight1 - weight2) == 1) {
+			} else if (abs((weight1 - weight2).value) == 1) {
 				val smaller = minOf(weight1, weight2)
 				val larger = smaller + 1
 				predicateOrderedComparator(
