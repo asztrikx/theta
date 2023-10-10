@@ -74,13 +74,16 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 		var startAstarNodes = startAstarNodes
 		val astarArg = startAstarNodes.first().astarArg
 		val arg = astarArg.arg
+		val initAstarNodes = arg.initNodes().map { astarArg[it] }
 
 		if (startAstarNodes.any { it.distance.isFinite }) {
 			logger.infoLine("|  |  Skipping AstarArg: startAstarNodes already have a distance")
 			return
 		}
 
-		ArgCexCheckHandler.instance.setCurrentArg<P>(AbstractArg(arg, prec))
+		if (startAstarNodes == initAstarNodes) {
+			ArgCexCheckHandler.instance.setCurrentArg<P>(AbstractArg(arg, prec))
+		}
 		logger.detailLine("|  |  Precision: $prec")
 		logger.infoLine("|  |  Starting ARG: ${arg.nodes.count()} nodes, ${arg.incompleteNodes.count()} incomplete, ${arg.unsafeNodes.count()} unsafe")
 		logger.substepLine("|  |  Starting AstarArg: ${astarFileVisualizer.getTitle("", cegarHistoryStorage.indexOf(astarArg))}")
@@ -91,7 +94,9 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 		while (true) {
 			val (astarNode, depth) = search.removeFromWaitlist() ?: break
 			visitNode(search, astarNode, depth, astarArg, prec)
-			ArgCexCheckHandler.instance.setCurrentArg<P>(AbstractArg(arg, prec))
+			if (startAstarNodes == initAstarNodes) {
+				ArgCexCheckHandler.instance.setCurrentArg<P>(AbstractArg(arg, prec))
+			}
 		}
 
 		// (if [FirstCex]) We need to handle this case separately otherwise we would only set the first target's distance
