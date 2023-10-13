@@ -108,6 +108,12 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 
 		distanceSetter(search)
 
+		if (DI.disableOptimalizations) {
+			search.reachedFinites.forEach {
+				it.createChildren(prec, search, argBuilder, heuristicFinder, this)
+			}
+		}
+
 		astarFileVisualizer.visualize("end $visualizerState", cegarHistoryStorage.indexOf(astarArg), search)
 		logger.substepLine("done")
 		logger.infoLine("|  |  Finished ARG: ${arg.nodes.count()} nodes, ${arg.incompleteNodes.count()} incomplete, ${arg.unsafeNodes.count()} unsafe")

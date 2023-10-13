@@ -34,7 +34,7 @@ class AstarSearch<S: State, A: Action, P: Prec>(
 
 	val astarArg: AstarArg<S, A> = startAstarNodes.first().astarArg
 
-	private val waitlist = PriorityWaitlist.create<Edge<S, A>>(AstarWaitlistComparator())
+	private val waitlist = PriorityWaitlist.create<Edge<S, A>>(if (DI.disableOptimalizations) OldAstarWaitlistComparator() else AstarWaitlistComparator())
 	init {
 		startAstarNodes.forEach { addToWaitlist(it, null, 0) }
 	}
@@ -76,7 +76,7 @@ class AstarSearch<S: State, A: Action, P: Prec>(
 	fun removeFromWaitlist(): Edge<S, A>? {
 		while (!waitlist.isEmpty && (
 			!stopCriterion.canStop(astarArg.arg, reachedFinites.map { it.argNode }) ||
-			waitlist.peek().end.reachesTarget
+			(waitlist.peek().end.reachesTarget && !DI.disableOptimalizations)
 		)) {
 			val edge = waitlist.remove()
 			val (astarNode, _) = edge

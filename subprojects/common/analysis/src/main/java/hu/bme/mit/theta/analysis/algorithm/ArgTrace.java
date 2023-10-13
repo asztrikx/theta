@@ -19,6 +19,7 @@ import hu.bme.mit.theta.analysis.Action;
 import hu.bme.mit.theta.analysis.State;
 import hu.bme.mit.theta.analysis.Trace;
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.ARGUtilKt;
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.DI;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -43,32 +44,56 @@ public final class ArgTrace<S extends State, A extends Action> implements Iterab
 	private final Collection<State> states;
 
 	private ArgTrace(final ArgNode<S, A> node) {
-		final List<ArgNode<S, A>> nodeList = new ArrayList<>();
-		final List<ArgEdge<S, A>> edgeList = new ArrayList<>();
+		if (DI.INSTANCE.getDisableOptimalizations()) {
+			// adding items to first index will lead to O(N^2) performance
+			final List<ArgNode<S, A>> nodeList = new ArrayList<>();
+			final List<ArgEdge<S, A>> edgeList = new ArrayList<>();
 
-		var wrapper = new Object(){ ArgNode<S, A> initNode = null; };
-		var parents = ARGUtilKt.walkReverseSubtree(List.of(node), (n, distance) -> {
-			if (n.isInit()) wrapper.initNode = n;
-			return wrapper.initNode != null;
-		});
+			ArgNode<S, A> running = node;
+			nodeList.add(running);
 
-		ArgNode<S, A> running = wrapper.initNode;
-		nodeList.add(running);
-
-		while (running != node) {
-			final var next = parents.get(running);
-			checkNotNull(next);
-			if (!running.isCovered()) {
-				final ArgEdge<S, A> inEdge = next.getInEdge().get();
+			while (running.getInEdge().isPresent()) {
+				final ArgEdge<S, A> inEdge = running.getInEdge().get();
+				running = inEdge.getSource();
 				edgeList.add(inEdge);
-				nodeList.add(next);
+				nodeList.add(running);
 			}
-			running = next;
-		}
 
-		this.nodes = Collections.unmodifiableList(nodeList);
-		this.edges = Collections.unmodifiableList(edgeList);
-		states = nodes.stream().map(ArgNode::getState).collect(Collectors.toList());
+			// create the correct order by reversing O(N)
+			Collections.reverse(nodeList);
+			Collections.reverse(edgeList);
+
+			this.nodes = Collections.unmodifiableList(nodeList);
+			this.edges = Collections.unmodifiableList(edgeList);
+			states = nodes.stream().map(ArgNode::getState).collect(Collectors.toList());
+		} else {
+			final List<ArgNode<S, A>> nodeList = new ArrayList<>();
+			final List<ArgEdge<S, A>> edgeList = new ArrayList<>();
+
+			var wrapper = new Object(){ ArgNode<S, A> initNode = null; };
+			var parents = ARGUtilKt.walkReverseSubtree(List.of(node), (n, distance) -> {
+				if (n.isInit()) wrapper.initNode = n;
+				return wrapper.initNode != null;
+			});
+
+			ArgNode<S, A> running = wrapper.initNode;
+			nodeList.add(running);
+
+			while (running != node) {
+				final var next = parents.get(running);
+				checkNotNull(next);
+				if (!running.isCovered()) {
+					final ArgEdge<S, A> inEdge = next.getInEdge().get();
+					edgeList.add(inEdge);
+					nodeList.add(next);
+				}
+				running = next;
+			}
+
+			this.nodes = Collections.unmodifiableList(nodeList);
+			this.edges = Collections.unmodifiableList(edgeList);
+			states = nodes.stream().map(ArgNode::getState).collect(Collectors.toList());
+		}
 	}
 
 	////
