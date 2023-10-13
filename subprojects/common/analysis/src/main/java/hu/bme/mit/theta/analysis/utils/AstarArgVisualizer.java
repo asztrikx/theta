@@ -161,7 +161,7 @@ public final class AstarArgVisualizer<S extends State, A extends Action> {
 
 		graph.addNode(nodeId, nAttributes);
 
-		for (final ArgEdge<S1, A1> edge : node.getOutEdges().collect(Collectors.toSet())) {
+		for (final ArgEdge<S1, A1> edge : node.getOutEdges().toList()) {
 			// We might be searching for provider node for children nodes created by expand.
 			// In that case a visualization will be made of that graph, but those children not have AstarNode because of the latter.
 			AstarNode<S1, A1> astarNodeChild = astarArg.get(edge.getTarget());
