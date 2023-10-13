@@ -117,7 +117,8 @@ class AstarArg<S: State, A: Action>(
 		var treeParentAstarNodeProvider = treeParentAstarNode.providerAstarNode ?: run {
 			// If [treeParentAstarNode] doesn't have provider then we also won't have.
 			check(DI.heuristicSearchType == HeuristicSearchType.DECREASING)
-			return provider.arg.nodes()
+			return null
+			//return provider.arg.nodes() // TODO this may break heuristic see paper page 17
 		}
 
 		// Make sure [treeParentAstarNodeProvider] has children
