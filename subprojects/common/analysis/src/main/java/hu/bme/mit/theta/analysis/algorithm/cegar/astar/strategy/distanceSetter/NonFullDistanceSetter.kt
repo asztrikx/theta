@@ -23,7 +23,5 @@ class NonFullDistanceSetter<S: State, A: Action, P: Prec>: DistanceSetter<S, A, 
 			}
 			//checkShortestDistance()
 		}
-
-		search.reachedFinites.clear()
 	}
 }
