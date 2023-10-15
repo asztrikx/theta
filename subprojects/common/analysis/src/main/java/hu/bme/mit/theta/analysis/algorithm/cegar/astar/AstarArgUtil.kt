@@ -334,6 +334,8 @@ fun <S: State, A: Action, P: Prec> AstarArg<S, A>.createIterationReplacement(
 	val astarArgCopy = AstarArg(argCopy, partialOrd, projection, provider)
 	provider = astarArgCopy
 
+	val handled = hashSetOf<AstarNode<S, A>>()
+
 	// Covering edges are created after createCopy finished
 	translation.forEach { (argNode, argNodeCopy) ->
 		val astarNode = argNode.astarNode
@@ -352,7 +354,9 @@ fun <S: State, A: Action, P: Prec> AstarArg<S, A>.createIterationReplacement(
 
 		astarNode.providerAstarNode = astarNodeCopy
 		astarNode.reset()
-		astarNodeCopyHandler(astarNode, astarAbstractor)
+		handled += astarNode
+
+		astarNodeCopyHandler(astarNode, astarAbstractor, handled)
 	}
 	check(arg.nodes().size == astarArgCopy.astarNodes.values.size)
 	check(arg.initNodes().size == astarArgCopy.astarInitNodes.size)

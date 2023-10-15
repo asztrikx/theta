@@ -11,5 +11,5 @@ open class AstarNodeCopyHandler<S: State, A: Action, P: Prec>(
     val heuristicFinder: HeuristicFinder<S, A, P>,
 ) {
     // Fully and Semi-ondemand will always give the same heuristic for covering- and covered node (=> consistent) as they are based on distance
-    open operator fun invoke(astarNode: AstarNode<S, A>, astarAbstractor: AstarAbstractor<S, A, P>) {}
+    open operator fun invoke(astarNode: AstarNode<S, A>, abstractor: AstarAbstractor<S, A, P>, handled: Set<AstarNode<S, A>>) {}
 }

@@ -10,7 +10,7 @@ import hu.bme.mit.theta.analysis.algorithm.cegar.astar.strategy.heuristicFinder.
 class DecreasingAstarNodeCopyHandler<S: State, A: Action, P: Prec>(
     heuristicFinder: HeuristicFinder<S, A, P>
 ): AstarNodeCopyHandler<S, A, P>(heuristicFinder) {
-    override fun invoke(astarNode: AstarNode<S, A>, astarAbstractor: AstarAbstractor<S, A, P>) {
+    override fun invoke(astarNode: AstarNode<S, A>, abstractor: AstarAbstractor<S, A, P>, handled: Set<AstarNode<S, A>>) {
         // Nodes in the next iteration already have covering edges which can break the consistency requirement with the decreasing heuristics.
         // Therefore, we remove those here so that we can check for consistency during search.
         // See XstsTest 48, 51 testcase fail without this.
@@ -18,14 +18,14 @@ class DecreasingAstarNodeCopyHandler<S: State, A: Action, P: Prec>(
         val astarArg = astarNode.astarArg
         val argNode = astarNode.argNode
 
-        heuristicFinder(astarNode, astarAbstractor, null)
+        heuristicFinder(astarNode, abstractor, null)
 
         argNode.coveringNode()?.let {
-            astarArg.handleDecreasingCoverEdgeConsistency(argNode, it)
+            astarArg.handleDecreasingCoverEdgeConsistency(argNode, it, handled)
         }
         // Avoid concurrent modification exception by copying stream to list
         argNode.coveredNodes().forEach { coveredNode ->
-            astarArg.handleDecreasingCoverEdgeConsistency(coveredNode, argNode)
+            astarArg.handleDecreasingCoverEdgeConsistency(coveredNode, argNode, handled)
         }
     }
 
@@ -33,19 +33,21 @@ class DecreasingAstarNodeCopyHandler<S: State, A: Action, P: Prec>(
     private fun <S: State, A: Action> AstarArg<S, A>.handleDecreasingCoverEdgeConsistency(
         coveredNode: ArgNode<S, A>,
         coveringNode: ArgNode<S, A>,
+        handled: Set<AstarNode<S, A>>,
     ) {
-        // Other astar node (covering or covered) may not exist when trying to handle consistency
-        // It will be checked from the other end of the edge later.
-        if (coveredNode !in this || coveringNode !in this) {
-            return
-        }
         val astarCoveredNode = this[coveredNode]
         val astarCoveringNode = this[coveringNode]
+
+        // Other astar node (covering or covered) may not have correct distance and heuristics when trying to handle consistency.
+        // It will be checked from the other end of the edge later.
+        if (astarCoveredNode !in handled || astarCoveringNode !in handled) {
+            return
+        }
 
         // We call findHeuristic as soon as [AstarNode] is created
         check(astarCoveredNode.heuristic.isKnown && astarCoveringNode.heuristic.isKnown)
 
-        if (astarCoveredNode.heuristic > astarCoveringNode.heuristic) {
+        if (astarCoveredNode.heuristic > astarCoveringNode.heuristic || (DI.disableOptimalizations && astarCoveredNode.heuristic != astarCoveringNode.heuristic)) {
             coveredNode.unsetCoveringNode()
         }
     }
