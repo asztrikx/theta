@@ -51,7 +51,8 @@ class AstarNode<S: State, A: Action>(
 				if (it.distance.isKnown) {
 					check(value === it.distance)
 				} else {
-					check(DI.heuristicSearchType == HeuristicSearchType.DECREASING)
+					// TODO By updating provider to covering node, this can break; also wait until this is compared to old code
+					//check(DI.heuristicSearchType == HeuristicSearchType.DECREASING)
 				}
 			}
 

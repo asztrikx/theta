@@ -71,7 +71,7 @@ class AstarArg<S: State, A: Action>(
 
 		providerCandidates = providerCandidates.filter { partialOrd.isLeq(state, it.state) }
 
-		val providerNode = if (providerCandidates.any { providerArg[it].distance.isKnown }) {
+		val providerNode = if (providerCandidates.any { providerArg[it].distance.isKnown } && !DI.disableOptimalizations) {
 			// TODO when can this happen (see git history maybe it has been deleted) // e.g. provider is target&init
 
 			providerCandidates
@@ -79,7 +79,7 @@ class AstarArg<S: State, A: Action>(
 				// Largest one is the most precise lower bound
 				.maxByOrNull { providerArg[it].distance }!!
 		} else {
-			providerCandidates.firstOrNull()
+			providerCandidates.firstOrNull() // TODO could check if covered
 		}
 
 		if (DI.heuristicSearchType == HeuristicSearchType.DECREASING) {
@@ -133,7 +133,7 @@ class AstarArg<S: State, A: Action>(
 		treeParentAstarNodeProvider.argNode.coveringNode.getOrNull()?.let { treeParentNodeCoveringNodeProvider ->
 			// The chain can only contain 1 covering edge because they are compressed in an ARG.
 
-			// Visualization optimization: set parent's provider to the covering node
+			// TODO Do not change provider to covering node as it may not have a distance while the covered has and it can fail for checks in semi ondemand is it has heuristic
 			treeParentAstarNode.providerAstarNode = provider[treeParentNodeCoveringNodeProvider]
 			treeParentAstarNodeProvider = treeParentAstarNode.providerAstarNode!!
 		}

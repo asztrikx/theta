@@ -180,6 +180,9 @@ fun <S: State, A: Action, P: Prec> AstarNode<S, A>.createChildren(
             astarNode = astarArg[argNode]
             check(argNode.isTarget)
             check(!argNode.isCovered)
+            if (DI.disableOptimalizations) {
+                astarNode.distance = Distance.ZERO
+            }
             continue
         }
         argBuilder.expand(argNode, prec).forEach {

@@ -29,7 +29,7 @@ import hu.bme.mit.theta.common.visualization.LineStyle;
 import hu.bme.mit.theta.common.visualization.NodeAttributes;
 
 import javax.annotation.Nullable;
-import java.awt.*;
+import java.awt.Color;
 import java.util.Collection;
 import java.util.Set;
 import java.util.function.Function;
