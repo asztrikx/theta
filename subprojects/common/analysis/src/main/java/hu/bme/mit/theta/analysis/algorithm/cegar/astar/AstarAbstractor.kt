@@ -99,13 +99,6 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 			}
 		}
 
-		// (if [FirstCex]) We need to handle this case separately otherwise we would only set the first target's distance
-		startAstarNodes.filter { it.argNode.isTarget }.forEach {
-			if (it !in search.reachedFinites) {
-				search.reachedFinites += it
-			}
-		}
-
 		distanceSetter(search)
 
 		if (DI.disableOptimalizations) {
@@ -178,7 +171,6 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 	private var nextAstarArg: AstarArg<S, A>? = null
 	// TODO document: arg must be the same reference in every call
 	override fun check(arg: ARG<S, A>, prec: P): AbstractorResult {
-		//require(arg.unsafeNodes().isEmpty()) // this hits however it works without failing here
 		nextAstarArg?.let { require(it.arg == arg)}
 
 		val astarArg = if (cegarHistoryStorage.size == 0) {
@@ -232,7 +224,7 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 		private lateinit var strategy: Strategy<S, A, P>
 
 		fun analysis(analysis: Analysis<*, *, *>) = apply {
-			DI.analysisBadLeq = analysis is Prod2ExplPredAnalysis || analysis is Prod2Analysis<*, *, *, *, *>
+			DI.analysisBadLeq = analysis is Prod2ExplPredAnalysis<*> || analysis is Prod2Analysis<*, *, *, *, *>
 			analysisSet = true
 		}
 

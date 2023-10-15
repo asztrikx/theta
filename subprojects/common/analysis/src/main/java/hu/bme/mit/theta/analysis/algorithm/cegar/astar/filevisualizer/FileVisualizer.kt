@@ -21,7 +21,7 @@ abstract class FileVisualizer {
 
 		// Create separate directory for each test in the current run
 		val testsCount = testsPath.listDirectoryEntries().size
-		testsPath.resolve(testsCount.toString())
+		testsPath.resolve(testsCount.toString()) // TODO pad with zero
 			.createDirectory()
 	}
 

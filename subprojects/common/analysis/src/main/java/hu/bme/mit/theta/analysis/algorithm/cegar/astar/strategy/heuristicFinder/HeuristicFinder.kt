@@ -26,6 +26,7 @@ abstract class HeuristicFinder<S: State, A: Action, P: Prec> {
 		if (astarNode.heuristic.isKnown) {
 			return
 		}
+		// TODO if target -> 0, but then they won't be expanded, which can be a problem when doing getProvider()?
 		if (astarNode.astarArg.provider == null) {
 			// Lowest lower bound that satisfies a* requirements
 			astarNode.heuristic = Distance.ZERO
