@@ -251,7 +251,7 @@ fun <S: State, A: Action> AstarArg<S, A>.propagateUpDistanceFromInfiniteDistance
 				// Must have been part of the copied infinite subgraph
 				check(
 					it.providerAstarNode != null &&
-					it.argNode.toString() == it.providerAstarNode!!.argNode.toString() &&
+					it.argNode.id == it.providerAstarNode!!.argNode.id &&
 					it.providerAstarNode!!.argNode.isExpanded
 				)
 			}
