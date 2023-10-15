@@ -229,8 +229,8 @@ public class XcfaCli {
 	@Parameter(names = "--lbe", description = "Large-block encoding level")
 	SimpleLbePass.LBELevel lbeLevel = SimpleLbePass.LBELevel.NO_LBE;
 
-	@Parameter(names = "--no-optimization", required = true)
-	boolean noOptimization = false; // TODO remove required when benchmark is done
+	@Parameter(names = "--no-optimization")
+	boolean noOptimization = false;
 
 	//////////// CONFIGURATION OPTIONS END ////////////
 

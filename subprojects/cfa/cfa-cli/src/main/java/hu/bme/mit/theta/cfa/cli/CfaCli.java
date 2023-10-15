@@ -151,8 +151,8 @@ public class CfaCli {
 	@Parameter(names = "--version", description = "Display version", help = true)
 	boolean versionInfo = false;
 
-	@Parameter(names = "--no-optimization", required = true)
-	boolean noOptimization = false; // TODO remove required when benchmark is done
+	@Parameter(names = "--no-optimization")
+	boolean noOptimization = false;
 
 	private Logger logger;
 

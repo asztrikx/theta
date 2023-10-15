@@ -111,8 +111,8 @@ public class XstsCli {
 	@Parameter(names = "--no-stuck-check")
 	boolean noStuckCheck = false;
 
-	@Parameter(names = "--no-optimization", required = true)
-	boolean noOptimization = false; // TODO remove required when benchmark is done
+	@Parameter(names = "--no-optimization")
+	boolean noOptimization = false;
 
 	private Logger logger;
 
