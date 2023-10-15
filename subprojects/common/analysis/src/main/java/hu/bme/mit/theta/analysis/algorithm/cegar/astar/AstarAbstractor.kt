@@ -36,6 +36,7 @@ import hu.bme.mit.theta.analysis.algorithm.runtimecheck.ArgCexCheckHandler
 import hu.bme.mit.theta.analysis.prod2.Prod2Analysis
 import hu.bme.mit.theta.analysis.prod2.prod2explpred.Prod2ExplPredAnalysis
 import hu.bme.mit.theta.common.Utils
+import hu.bme.mit.theta.common.logging.NullLogger
 import java.util.function.Function
 
 /**
@@ -169,7 +170,6 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 	}
 
 	private var nextAstarArg: AstarArg<S, A>? = null
-	// TODO document: arg must be the same reference in every call
 	override fun check(arg: ARG<S, A>, prec: P): AbstractorResult {
 		nextAstarArg?.let { require(it.arg == arg)}
 
@@ -182,6 +182,13 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 		}
 		cegarHistoryStorage.add(astarArg, prec)
 
+		val metrics = Metrics()
+		if (logger !is NullLogger) {
+			metrics.iteration = cegarHistoryStorage.indexOf(astarArg)
+			metrics.leftoverNodes = arg.nodes().size
+			metrics.leftoverCoverings = arg.nodes().filter { it.isCovered }.size
+		}
+
 		// initialize: prune can keep initialized state
 		if (!arg.isInitialized) {
 			logger.substep("|  |  (Re)initializing ARG...")
@@ -193,6 +200,19 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 		}
 
 		findDistanceForAny(astarArg.astarInitNodes.values, initialStopCriterion, "init", prec)
+
+		if (logger !is NullLogger) {
+			metrics.cover = arg.nodes().filter { it.isCovered }.size
+			metrics.cover -= metrics.leftoverCoverings
+			metrics.expand = arg.nodes().size + 1
+			metrics.expand -= metrics.leftoverNodes + 1
+			metrics.distance = astarArg.astarInitNodes.values.filter { it.distance.isKnown }.maxOf { it.distance }
+			metrics.targets = astarArg.astarNodes.filter { it.key.isTarget }.size
+			metrics.targetWithKnownDistance = astarArg.astarNodes.filter { it.key.isTarget && it.value.distance.isKnown }.size
+			metrics.infiniteDistances = astarArg.astarNodes.filter { it.value.distance.isInfinite }.size
+			metrics.finiteDistances = astarArg.astarNodes.filter { it.value.distance.isFinite }.size
+			logger.mainstep(metrics.toString())
+		}
 
 		val astarArgCopy = astarArg.createIterationReplacement(partialOrd, projection, astarNodeCopyHandler, this)
 		cegarHistoryStorage.setLast(astarArgCopy, prec)
