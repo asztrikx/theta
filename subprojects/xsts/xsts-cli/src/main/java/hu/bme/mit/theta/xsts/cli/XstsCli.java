@@ -7,6 +7,7 @@ import com.google.common.base.Stopwatch;
 import hu.bme.mit.theta.analysis.Trace;
 import hu.bme.mit.theta.analysis.algorithm.SafetyResult;
 import hu.bme.mit.theta.analysis.algorithm.cegar.CegarStatistics;
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.DI;
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.strategy.HeuristicSearchType;
 import hu.bme.mit.theta.analysis.algorithm.runtimecheck.ArgCexCheckHandler;
 import hu.bme.mit.theta.analysis.expr.refinement.PruneStrategy;
@@ -109,6 +110,9 @@ public class XstsCli {
 
 	@Parameter(names = "--no-stuck-check")
 	boolean noStuckCheck = false;
+
+	@Parameter(names = "--no-optimization", required = true)
+	boolean noOptimization = false; // TODO remove required when benchmark is done
 
 	private Logger logger;
 
@@ -215,6 +219,7 @@ public class XstsCli {
 		}
 
 		try {
+			DI.INSTANCE.setDisableOptimizations(noOptimization);
 			return new XstsConfigBuilder(domain, refinement, Z3SolverFactory.getInstance())
 					.maxEnum(maxEnum).autoExpl(autoExpl).initPrec(initPrec).pruneStrategy(pruneStrategy)
 					.search(search).heuristicSearchType(heuristicSearchType).predSplit(predSplit).optimizeStmts(optimizeStmts).logger(logger).build(xsts);

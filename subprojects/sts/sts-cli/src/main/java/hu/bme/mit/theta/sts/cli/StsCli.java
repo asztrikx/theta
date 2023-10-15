@@ -27,6 +27,7 @@ import com.google.common.base.Stopwatch;
 import hu.bme.mit.theta.analysis.Trace;
 import hu.bme.mit.theta.analysis.algorithm.SafetyResult;
 import hu.bme.mit.theta.analysis.algorithm.cegar.CegarStatistics;
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.DI;
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.strategy.HeuristicSearchType;
 import hu.bme.mit.theta.analysis.expr.ExprState;
 import hu.bme.mit.theta.analysis.expr.refinement.PruneStrategy;
@@ -110,6 +111,9 @@ public class StsCli {
 
 	@Parameter(names = "--version", description = "Display version", help = true)
 	boolean versionInfo = false;
+
+	@Parameter(names = "--no-optimization", required = true)
+	boolean noOptimization = false; // TODO remove required when benchmark is done
 
 	private Logger logger;
 
@@ -197,6 +201,7 @@ public class StsCli {
 
 	private StsConfig<?, ?, ?> buildConfiguration(final STS sts) throws Exception {
 		try {
+			DI.INSTANCE.setDisableOptimizations(noOptimization);
 			return new StsConfigBuilder(domain, refinement, Z3SolverFactory.getInstance())
 					.initPrec(initPrec).search(search).heuristicSearchType(heuristicSearchType)
 					.predSplit(predSplit).pruneStrategy(pruneStrategy).logger(logger).build(sts);

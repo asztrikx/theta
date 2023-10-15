@@ -24,6 +24,7 @@ import hu.bme.mit.theta.analysis.LTS;
 import hu.bme.mit.theta.analysis.TransFunc;
 import hu.bme.mit.theta.analysis.algorithm.SafetyResult;
 import hu.bme.mit.theta.analysis.algorithm.bmc.IterativeBmcChecker;
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.DI;
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.strategy.HeuristicSearchType;
 import hu.bme.mit.theta.analysis.algorithm.runtimecheck.ArgCexCheckHandler;
 import hu.bme.mit.theta.common.exception.NotSolvableException;
@@ -227,6 +228,9 @@ public class XcfaCli {
 
 	@Parameter(names = "--lbe", description = "Large-block encoding level")
 	SimpleLbePass.LBELevel lbeLevel = SimpleLbePass.LBELevel.NO_LBE;
+
+	@Parameter(names = "--no-optimization", required = true)
+	boolean noOptimization = false; // TODO remove required when benchmark is done
 
 	//////////// CONFIGURATION OPTIONS END ////////////
 
@@ -534,6 +538,7 @@ public class XcfaCli {
 				final IterativeBmcChecker<XcfaState<ExplState>, StmtAction, XcfaPrec<ExplPrec>> bmcChecker = IterativeBmcChecker.create(lts, initFunc, transFunc, XcfaState::isError, solver1, logger, -1, 25);
 				return XcfaConfig.create(bmcChecker, XcfaPrec.create(ExplPrec.empty()));
 			} else {
+				DI.INSTANCE.setDisableOptimizations(noOptimization);
 				return new XcfaConfigBuilder(domain, refinement, refinementSolverFactory, abstractionSolverFactory, algorithm)
 						.search(search).heuristicSearchType(heuristicSearchType).predSplit(predSplit).maxEnum(maxEnum).initPrec(initPrec).preCheck(preCheck)
 						.pruneStrategy(pruneStrategy).logger(new ConsoleLogger(logLevel)).autoExpl(autoExpl).build(xcfa);
