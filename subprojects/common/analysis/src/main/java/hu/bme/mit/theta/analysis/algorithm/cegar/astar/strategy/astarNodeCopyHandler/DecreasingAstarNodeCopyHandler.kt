@@ -47,7 +47,7 @@ class DecreasingAstarNodeCopyHandler<S: State, A: Action, P: Prec>(
         // We call findHeuristic as soon as [AstarNode] is created
         check(astarCoveredNode.heuristic.isKnown && astarCoveringNode.heuristic.isKnown)
 
-        if (astarCoveredNode.heuristic > astarCoveringNode.heuristic || (DI.disableOptimalizations && astarCoveredNode.heuristic != astarCoveringNode.heuristic)) {
+        if (astarCoveredNode.heuristic > astarCoveringNode.heuristic || (DI.disableOptimizations && astarCoveredNode.heuristic != astarCoveringNode.heuristic)) {
             coveredNode.unsetCoveringNode()
         }
     }

@@ -52,7 +52,7 @@ fun <S: State, A: Action, P: Prec> AstarNode<S, A>.close(
         // TODO pattern
         if (DI.heuristicSearchType !== HeuristicSearchType.SEMI_ONDEMAND) {
             // optimization: Check heuristic before calling mayCover which uses Leq
-            if (!astarCandidate.heuristic.isKnown && DI.disableOptimalizations) {
+            if (!astarCandidate.heuristic.isKnown && DI.disableOptimizations) {
                 continue
             }
             if (!astarCandidate.heuristic.isKnown) {
@@ -68,7 +68,7 @@ fun <S: State, A: Action, P: Prec> AstarNode<S, A>.close(
             continue
         }
 
-        if (!astarCandidate.heuristic.isKnown && DI.disableOptimalizations) {
+        if (!astarCandidate.heuristic.isKnown && DI.disableOptimizations) {
             continue
         }
         if (!astarCandidate.heuristic.isKnown) {
@@ -141,7 +141,7 @@ fun <S: State, A: Action, P: Prec> AstarNode<S, A>.createChildren(
     heuristicFinder: HeuristicFinder<S, A, P>,
     abstractor: AstarAbstractor<S, A, P>,
 ) {
-    require(DI.heuristicSearchType == HeuristicSearchType.SEMI_ONDEMAND || DI.disableOptimalizations)
+    require(DI.heuristicSearchType == HeuristicSearchType.SEMI_ONDEMAND || DI.disableOptimizations)
     // we could call expand on found target nodes after each search however
     // - the intention would not be as clear as calling it before [createSuccAstarNode]
     // - it could expande more nodes than we would actually need
@@ -186,7 +186,7 @@ fun <S: State, A: Action, P: Prec> AstarNode<S, A>.createChildren(
             astarNode = astarArg[argNode]
             check(argNode.isTarget)
             check(!argNode.isCovered)
-            if (DI.disableOptimalizations) {
+            if (DI.disableOptimizations) {
                 astarNode.distance = Distance.ZERO
             }
             continue
@@ -194,7 +194,7 @@ fun <S: State, A: Action, P: Prec> AstarNode<S, A>.createChildren(
         argBuilder.expand(argNode, prec).forEach {
             val succAstarNode = astarArg.createSuccAstarNode(it, argBuilder, prec, heuristicFinder, abstractor)
             // optimization
-            if (succAstarNode.argNode.isTarget && !DI.disableOptimalizations) {
+            if (succAstarNode.argNode.isTarget && !DI.disableOptimizations) {
                 // Heuristic has to be set (first) otherwise admissibility check fails
                 succAstarNode.heuristic = Distance.ZERO
                 succAstarNode.distance = Distance.ZERO

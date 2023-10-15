@@ -44,7 +44,7 @@ public final class ArgTrace<S extends State, A extends Action> implements Iterab
 	private final Collection<State> states;
 
 	private ArgTrace(final ArgNode<S, A> node) {
-		if (DI.INSTANCE.getDisableOptimalizations()) {
+		if (DI.INSTANCE.getDisableOptimizations()) {
 			// adding items to first index will lead to O(N^2) performance
 			final List<ArgNode<S, A>> nodeList = new ArrayList<>();
 			final List<ArgEdge<S, A>> edgeList = new ArrayList<>();

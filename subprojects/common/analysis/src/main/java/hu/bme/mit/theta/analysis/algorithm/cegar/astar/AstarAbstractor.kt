@@ -101,7 +101,7 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 
 		distanceSetter(search)
 
-		if (DI.disableOptimalizations) {
+		if (DI.disableOptimizations) {
 			search.reachedFinites.forEach {
 				it.createChildren(prec, search, argBuilder, heuristicFinder, this)
 			}

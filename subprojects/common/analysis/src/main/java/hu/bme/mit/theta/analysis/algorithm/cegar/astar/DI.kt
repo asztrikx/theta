@@ -8,5 +8,5 @@ object DI {
     lateinit var heuristicSearchType: HeuristicSearchType
     /*lateinit*/ var analysisBadLeq = false
     lateinit var logger: Logger
-    var disableOptimalizations = true
+    var disableOptimizations = true
 }
