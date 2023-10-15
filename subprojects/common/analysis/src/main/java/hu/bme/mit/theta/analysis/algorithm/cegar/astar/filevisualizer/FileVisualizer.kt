@@ -4,6 +4,7 @@ import hu.bme.mit.theta.analysis.algorithm.cegar.astar.DI
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.infoLine
 import hu.bme.mit.theta.common.visualization.Graph
 import hu.bme.mit.theta.common.visualization.writer.GraphvizWriter
+import java.io.File
 import java.nio.file.Path
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
@@ -38,6 +39,8 @@ abstract class FileVisualizer {
 		val filename = testPath.resolve("$visualizationIdText∣ $title.svg").toString()
 
 		DI.logger.infoLine("|  |  Starting file visualization")
+		// TODO make this nice
+		File(filename.dropLast(3) + "txt").appendText(GraphvizWriter.getInstance().writeString(graph) + "\n")
 		GraphvizWriter.getInstance().writeFileAutoConvert(graph, filename)
 		DI.logger.infoLine("|  |  Finished file visualization")
 	}
