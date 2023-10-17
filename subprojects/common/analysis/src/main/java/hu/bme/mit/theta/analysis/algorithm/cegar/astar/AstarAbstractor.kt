@@ -58,7 +58,7 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 	private val astarFileVisualizer = strategy.astarFileVisualizer
 	private val logger = DI.logger
 	init {
-		astarFileVisualizer.enabled = true
+		astarFileVisualizer.enabled = false
 	}
 
 	/**
