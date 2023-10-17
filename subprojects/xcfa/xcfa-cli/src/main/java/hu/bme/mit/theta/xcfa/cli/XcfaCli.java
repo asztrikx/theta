@@ -232,6 +232,9 @@ public class XcfaCli {
 	@Parameter(names = "--no-optimization")
 	boolean noOptimization = false;
 
+	@Parameter(names = "--property")
+	File property = null;
+
 	//////////// CONFIGURATION OPTIONS END ////////////
 
 	private Logger logger;
