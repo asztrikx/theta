@@ -211,7 +211,7 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 			metrics.targetWithKnownDistance = astarArg.astarNodes.filter { it.key.isTarget && it.value.distance.isKnown }.size
 			metrics.infiniteDistances = astarArg.astarNodes.filter { it.value.distance.isInfinite }.size
 			metrics.finiteDistances = astarArg.astarNodes.filter { it.value.distance.isFinite }.size
-			logger.mainstep(metrics.toString())
+			logger.mainstep(metrics.toString()) // TODO line
 		}
 
 		val astarArgCopy = astarArg.createIterationReplacement(partialOrd, projection, astarNodeCopyHandler, this)
