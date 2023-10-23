@@ -109,12 +109,10 @@ public final class BasicAbstractor<S extends State, A extends Action, P extends 
 				close(node, reachedSet.get(node));
 				if (!node.isSubsumed() && !node.isTarget()) {
 					if (!node.isExpanded()) {
-						newNodes = argBuilder.expand(node, prec);
-						reachedSet.addAll(newNodes);
-					} else {
-						newNodes = node.getSuccNodes().toList();
+						reachedSet.addAll(argBuilder.expand(node, prec));
 					}
-					waitlist.addAll(newNodes);
+					newNodes = node.getSuccNodes().toList();
+					waitlist.addAll(node.getSuccNodes().toList());
 				}
 
 				ArgCexCheckHandler.instance.setCurrentArg(new AbstractArg<S, A, P>(arg, prec));
