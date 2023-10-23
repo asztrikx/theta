@@ -11,6 +11,8 @@ class ArgFileVisualizer<S: State, A: Action>(
 	private val arg: ARG<S, A>,
 ) : FileVisualizer() {
 	override fun visualize(state: String, index: Int) {
+		// TODO code repetition: do not create graph; old code: lambda was passed so base
+		if (!enabled) return
 		super.visualizeBase(getTitle(state, index), getGraph(index))
 	}
 

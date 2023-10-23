@@ -22,6 +22,8 @@ class AstarFileVisualizer<S: State, A: Action, P: Prec>(
 	}
 
 	fun visualize(state: String, index: Int, startNodes: Collection<ArgNode<S, A>>, search: AstarSearch<S, A, P>?) {
+		// TODO code repetition: do not create graph; old code: lambda was passed so base
+		if (!enabled) return
 		super.visualizeBase(getTitle(state, index), getGraph(index, startNodes, search))
 	}
 
