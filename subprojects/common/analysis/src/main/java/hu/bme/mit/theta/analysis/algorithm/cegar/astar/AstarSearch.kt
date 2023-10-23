@@ -12,7 +12,7 @@ import hu.bme.mit.theta.analysis.waitlist.PriorityWaitlist
  * TODO document early exit
  */
 class AstarSearch<S: State, A: Action, P: Prec>(
-	val startAstarNodes: Collection<AstarNode<S, A>>,
+	val startAstarNodes: List<AstarNode<S, A>>,
 	private val stopCriterion: StopCriterion<S, A>,
 	private val heuristicFinder: HeuristicFinder<S, A, P>,
 	private val astarAbstractor: AstarAbstractor<S, A, P>,
@@ -32,7 +32,7 @@ class AstarSearch<S: State, A: Action, P: Prec>(
 	// TODO map always gives null if key is not found, value type is somewhat misleading
 	var parents = hashMapOf<AstarNode<S, A>, AstarNode<S, A>?>()
 
-	val astarArg: AstarArg<S, A> = startAstarNodes.first().astarArg
+	val astarArg = startAstarNodes.first().astarArg
 
 	private val waitlist = PriorityWaitlist.create<Edge<S, A>>(if (DI.disableOptimizations) OldAstarWaitlistComparator() else AstarWaitlistComparator())
 	init {
