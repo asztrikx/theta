@@ -9,4 +9,6 @@ object DI {
     /*lateinit*/ var analysisBadLeq = false
     lateinit var logger: Logger
     var disableOptimizations = true
+    val enableOptimizations
+        get() = !disableOptimizations
 }

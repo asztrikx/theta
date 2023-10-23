@@ -76,7 +76,7 @@ class AstarSearch<S: State, A: Action, P: Prec>(
 	fun removeFromWaitlist(): Edge<S, A>? {
 		while (!waitlist.isEmpty && (
 			!stopCriterion.canStop(astarArg.arg, reachedFinites.map { it.argNode }) ||
-			(waitlist.peek().end.reachesTarget && !DI.disableOptimizations)
+			(waitlist.peek().end.reachesTarget && DI.enableOptimizations)
 		)) {
 			val edge = waitlist.remove()
 			val (astarNode, _) = edge
