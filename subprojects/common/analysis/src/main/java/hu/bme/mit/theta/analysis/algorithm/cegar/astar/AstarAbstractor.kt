@@ -67,7 +67,7 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 	 * Kotlin can't create a reference of a function which is a member and is an extension
 	 */
 	fun findDistanceForAny(
-		startAstarNodes: Collection<AstarNode<S, A>>,
+		startAstarNodes: List<AstarNode<S, A>>,
 		stopCriterion: StopCriterion<S, A>,
 		visualizerState: String,
 		prec: P,
