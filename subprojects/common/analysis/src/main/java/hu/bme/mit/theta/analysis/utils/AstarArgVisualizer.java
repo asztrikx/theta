@@ -188,8 +188,8 @@ public final class AstarArgVisualizer<S extends State, A extends Action> {
 		return astarNodeToString.apply(astarNode);
 	}
 
-	private <S1 extends S, A1 extends A> String getSearchAstarNodeDetailsText(AstarNode<S1, A1> astarNode, AstarSearch<S1, A1, ?> search) {
-		if (!search.contains(astarNode)) {
+	private <S1 extends S, A1 extends A> String getSearchAstarNodeDetailsText(AstarNode<S1, A1> astarNode, @Nullable AstarSearch<S1, A1, ?> search) {
+		if (search == null || !search.contains(astarNode)) {
 			return "-";
 		}
 		return search.toString(astarNode);
