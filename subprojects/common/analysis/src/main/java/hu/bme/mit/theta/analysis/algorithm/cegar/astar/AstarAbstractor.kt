@@ -101,6 +101,7 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 		}
 
 		distanceSetter(search)
+		astarArg.checkDistanceProperty()
 
 		if (DI.disableOptimizations) {
 			search.reachedFinites.forEach {

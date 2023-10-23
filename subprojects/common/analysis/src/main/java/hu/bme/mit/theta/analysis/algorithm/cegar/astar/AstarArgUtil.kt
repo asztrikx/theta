@@ -70,6 +70,7 @@ fun <S: State, A: Action> AstarArg<S, A>.propagateUpDistanceFromFiniteDistance(
 		}
 		return@walkUpParents argNode in until
 	}
+	checkDistanceProperty()
 
 	propagateUpDistanceFromConditionalNodes(conditionalNodes)
 }
@@ -148,6 +149,7 @@ private fun <S: State, A: Action> AstarArg<S, A>.propagateUpDistanceFromConditio
 			return@walkUpParents false
 		}
 	}
+	checkDistanceProperty()
 }
 
 /**

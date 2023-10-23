@@ -27,6 +27,30 @@ fun <S: State, A: Action> AstarNode<S, A>.checkConsistency(child: AstarNode<S, A
  */
 fun <S: State, A: Action> AstarNode<S, A>.checkAdmissibility() = check(heuristic <= distance)
 
+fun <S: State, A: Action> AstarArg<S, A>.checkDistanceProperty() = arg.nodes().map{ this[it] }.forEach {
+    if (it.distance.isUnknown) {
+        return@forEach
+    }
+
+    if (it.argNode.parent() != null) {
+        val parentAstarNode = it.argNode.parent()!!.astarNode
+        if (it.distance.isFinite && parentAstarNode.distance.isFinite) {
+            check((parentAstarNode.distance - it.distance).value <= 1)
+        } else if (parentAstarNode.distance.isKnown) {
+            check(!(parentAstarNode.distance.isInfinite && it.distance.isFinite))
+        }
+    }
+
+    if (it.argNode.coveringNode() != null) {
+        val coveringAstarNode = it.argNode.coveringNode()!!.astarNode
+        if (it.distance.isFinite && coveringAstarNode.distance.isFinite) {
+            check(coveringAstarNode.distance - it.distance == Distance.ZERO)
+        } else if (coveringAstarNode.distance.isKnown) {
+            check(coveringAstarNode.distance.isInfinite && it.distance.isInfinite)
+        }
+    }
+}
+
 // TODO why do astarArg.reachedSet[astarNode] inside the function?
 fun <S: State, A: Action, P: Prec> AstarNode<S, A>.close(
     candidates: Collection<AstarNode<S, A>>,
