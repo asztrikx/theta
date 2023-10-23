@@ -199,7 +199,7 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 			logger.substepLine("done")
 		}
 
-		findDistanceForAny(astarArg.astarInitNodes.values, initialStopCriterion, "init", prec)
+		findDistanceForAny(astarArg.astarInitNodes.values.toList(), initialStopCriterion, "init", prec)
 
 		if (logger !is NullLogger) {
 			metrics.cover = arg.nodes().filter { it.isCovered }.size
