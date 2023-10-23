@@ -208,3 +208,30 @@ fun <S: State, A: Action, P: Prec> AstarNode<S, A>.createChildren(
 val <S: State, A: Action> AstarNode<S, A>.reachesTarget
     // Distance is an exact heuristic => we also can reach a target with this weight
     get() = argNode.isTarget || distance.isFinite
+
+fun <S: State, A: Action> AstarNode<S, A>.printSubgraph(
+    indent: Int = 0,
+    visited: MutableList<AstarNode<S, A>> = mutableListOf(),
+    isCovering: Boolean = false
+) {
+    DI.logger.mainstep(" ".repeat(indent))
+    if (isCovering) {
+        DI.logger.mainstep("-->")
+    }
+    DI.logger.mainstep(this.toString())
+
+    if (this in visited) {
+        DI.logger.mainstepLine(" LOOP")
+        return
+    }
+    visited += this
+
+    DI.logger.mainstepLine("")
+
+    argNode.succNodes().map{ astarArg[it] }.forEach {
+        it.printSubgraph(indent + 1, visited)
+    }
+    if (argNode.isCovered()) {
+        astarArg[argNode.coveringNode()!!].printSubgraph(indent + 1, visited, true)
+    }
+}
