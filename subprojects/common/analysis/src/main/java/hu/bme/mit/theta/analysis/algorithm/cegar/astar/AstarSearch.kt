@@ -96,7 +96,7 @@ class AstarSearch<S: State, A: Action, P: Prec>(
 					// Only happens when searching in an older [ARG]
 
 					// Target case:
-					// TODO rephrase: do not return Target as it is a useless target under a target
+					// TODO rephrase: do not expand target as it is probably useless for the refiner to target under a target (which subgraph will be cut)
 
 					continue
 				}
