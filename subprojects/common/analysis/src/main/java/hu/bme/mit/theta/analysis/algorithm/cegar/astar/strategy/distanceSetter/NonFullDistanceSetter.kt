@@ -14,7 +14,8 @@ class NonFullDistanceSetter<S: State, A: Action, P: Prec>: DistanceSetter<S, A, 
 		reachedFinites.filter { it.argNode.isTarget }.forEach { it.distance = Distance.ZERO }
 		reachedFinites.forEach { astarArg.propagateUpDistanceFromFiniteDistance(it, startNodes.toSet(), parents) }
 
-		if (startAstarNodes.none { it.distance.isFinite }) {
+		if (reachedFinites.isEmpty()) {
+			// [search] stopped because there isn't any node (which could reach a target) to process
 			astarArg.propagateDownDistanceFromInfiniteDistance(startNodes)
 		} else {
 			astarArg.propagateUpDistanceFromInfiniteDistance()
