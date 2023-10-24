@@ -20,7 +20,7 @@ class SemiOndemandHeuristicFinder<S: State, A: Action, P: Prec>(
 		val providerAstarNode = astarNode.providerAstarNode!!
 
 		// Visualize current
-		astarFileVisualizer.visualize("paused ${astarNode.argNode}", cegarHistoryStorage.indexOf(astarArg), search)
+		astarFileVisualizer.visualize("paused ${astarNode.argNode}", astarArg, search)
 		DI.logger.substepLine("|  |  Paused AstarArg: ${astarFileVisualizer.getTitle("", cegarHistoryStorage.indexOf(astarArg))}")
 
 		// get the heuristic with findDistance in parent arg
@@ -29,7 +29,7 @@ class SemiOndemandHeuristicFinder<S: State, A: Action, P: Prec>(
 		astarNode.heuristic = providerAstarNode.distance
 
 		// Visualize current (redundant)
-		astarFileVisualizer.visualize("resumed ${astarNode.argNode}", cegarHistoryStorage.indexOf(astarArg), search)
+		astarFileVisualizer.visualize("resumed ${astarNode.argNode}", astarArg, search)
 		DI.logger.substepLine("|  |  Resumed AstarArg: ${astarFileVisualizer.getTitle("", cegarHistoryStorage.indexOf(astarArg))}")
 	}
 }

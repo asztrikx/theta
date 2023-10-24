@@ -91,7 +91,6 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 		logger.substepLine("|  |  Building ARG...")
 
 		val search = AstarSearch(startAstarNodes, stopCriterion, heuristicFinder, this)
-		astarFileVisualizer.visualize("start $visualizerState", cegarHistoryStorage.indexOf(astarArg), search)
 		while (true) {
 			val (astarNode, depth) = search.removeFromWaitlist() ?: break
 			visitNode(search, astarNode, depth, astarArg, prec)
@@ -109,7 +108,7 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 			}
 		}
 
-		astarFileVisualizer.visualize("end $visualizerState", cegarHistoryStorage.indexOf(astarArg), search)
+		astarFileVisualizer.visualize("end $visualizerState", astarArg, search)
 		logger.substepLine("done")
 		logger.infoLine("|  |  Finished ARG: ${arg.nodes.count()} nodes, ${arg.incompleteNodes.count()} incomplete, ${arg.unsafeNodes.count()} unsafe")
 		logger.infoLine("|  |  Finished AstarArg: ${astarFileVisualizer.getTitle("", cegarHistoryStorage.indexOf(astarArg))}")

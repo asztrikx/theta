@@ -15,7 +15,7 @@ fun <S: State, A: Action, P: Prec> AstarFileVisualizer<S, A, P>.debugVisualize(
 ) {
     val enabled = this.enabled
     this.enabled = true
-    visualize("debug", cegarHistoryStorage.indexOf(astarArg), startNodes, search)
+    visualize("debug", astarArg, startNodes, search)
     this.enabled = enabled
 }
 

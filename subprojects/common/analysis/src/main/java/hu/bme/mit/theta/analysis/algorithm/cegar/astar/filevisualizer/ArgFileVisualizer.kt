@@ -9,14 +9,14 @@ import hu.bme.mit.theta.common.visualization.Graph
 
 class ArgFileVisualizer<S: State, A: Action>(
 	private val arg: ARG<S, A>,
-) : FileVisualizer() {
+): FileVisualizer() {
 	override fun visualize(state: String, index: Int) {
-		// TODO code repetition: do not create graph; old code: lambda was passed so base
+		// TODO code repetition: do not create graph; old code: lambda was passed to base
 		if (!enabled) return
-		super.visualizeBase(getTitle(state, index), getGraph(index))
+		super.visualizeBase(getTitle(state, index), getGraph())
 	}
 
 	fun getTitle(state: String, index: Int) = "$index $state"
 
-	fun getGraph(index: Int): Graph = ArgVisualizer.getDefault().visualize(arg)
+	private fun getGraph(): Graph = ArgVisualizer.getDefault().visualize(arg)
 }
