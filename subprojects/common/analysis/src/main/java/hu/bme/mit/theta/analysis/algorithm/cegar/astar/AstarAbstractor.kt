@@ -255,11 +255,6 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 			if (DI.heuristicSearchType == HeuristicSearchType.FULL) {
 				require(stopCriterion is FullExploration<S, A>)
 			}
-			if (DI.heuristicSearchType != HeuristicSearchType.FULL) {
-				// Currently weightSupremumXYZ is a single value not a list so it is unsupported. Also findDistanceFor**Any**
-				// If we are looking for n targets then it is possible that we reached [1,n) target
-				require(stopCriterion !is AtLeastNCexs<S, A>)
-			}
 			this.stopCriterion = stopCriterion
 		}
 
