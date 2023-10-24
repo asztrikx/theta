@@ -53,7 +53,6 @@ fun <S: State, A: Action> AstarArg<S, A>.checkDistanceProperty() = arg.nodes().m
 
 // TODO why do astarArg.reachedSet[astarNode] inside the function?
 fun <S: State, A: Action, P: Prec> AstarNode<S, A>.close(
-    candidates: Collection<AstarNode<S, A>>,
     search: AstarSearch<S, A, P>?,
     heuristicFinder: HeuristicFinder<S, A, P>,
     abstractor: AstarAbstractor<S, A, P>,
@@ -66,10 +65,11 @@ fun <S: State, A: Action, P: Prec> AstarNode<S, A>.close(
     }
     require(heuristic.isKnown)
 
-    var candidates = candidates
-    if (argNode.isTarget) {
+    val candidates = if (argNode.isTarget) {
         // optimization (leq uses smt solver): target node can only be covered with a target node
-        candidates = candidates.filter { it.argNode.isTarget }
+        astarArg.reachedSet[this].filter { it.argNode.isTarget }
+    } else {
+        astarArg.reachedSet[this]
     }
 
     for (astarCandidate in candidates) {

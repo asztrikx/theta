@@ -128,7 +128,7 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 		var astarNode = astarNode
 		var argNode = astarNode.argNode
 
-		astarNode.close(astarArg.reachedSet[astarNode], search, heuristicFinder, this)?.let {
+		astarNode.close(search, heuristicFinder, this)?.let {
 			astarNode = it
 			argNode = astarNode.argNode
 		}
