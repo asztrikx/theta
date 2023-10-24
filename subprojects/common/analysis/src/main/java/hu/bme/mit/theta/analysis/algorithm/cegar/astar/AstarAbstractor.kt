@@ -91,6 +91,7 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 		logger.substepLine("|  |  Building ARG...")
 
 		val search = AstarSearch(startAstarNodes, stopCriterion, heuristicFinder, this)
+		astarFileVisualizer.visualize("start $visualizerState", astarArg, search)
 		while (true) {
 			val (astarNode, depth) = search.removeFromWaitlist() ?: break
 			visitNode(search, astarNode, depth, astarArg, prec)
