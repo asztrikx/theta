@@ -8,9 +8,8 @@ import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarNode
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarSearch
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.Distance
 
+// Must be class: there is no such thing as protected fun in interface
 abstract class HeuristicFinder<S: State, A: Action, P: Prec> {
-	// Must be class: there is no such thing as protected fun in interface
-
 	/**
 	 * Calculates the heuristic for [astarNode].
 	 *
