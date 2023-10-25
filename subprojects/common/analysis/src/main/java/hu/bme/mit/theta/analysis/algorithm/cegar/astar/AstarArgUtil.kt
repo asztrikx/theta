@@ -19,7 +19,7 @@ import kotlin.jvm.optionals.getOrNull
  */
 fun <S: State, A: Action> AstarArg<S, A>.propagateUpDistanceFromFiniteDistance(
 	from: AstarNode<S, A>,
-	until: Set<ArgNode<S, A>>,
+	until: Collection<ArgNode<S, A>>,
 	parents: Map<AstarNode<S, A>, AstarNode<S, A>?>,
 ) {
 	require(from.distance.isFinite)
