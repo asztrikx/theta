@@ -97,53 +97,44 @@ private fun <S: State, A: Action> AstarArg<S, A>.propagateUpDistanceFromConditio
 		startNode.walkUpParents(0, { it.parent() }) { argNode, _ ->
 			val astarNode = argNode.astarNode
 
-			if (node.isTarget) {
+			if (argNode.isTarget) {
 				//check(astarNode.distance.isKnown) // TODO not sure
 				return@walkUpParents true
 			} else if (astarNode.distance.isKnown) {
 				check(astarNode.distance.isFinite)
-				if (node !== startNode) {
-					if (previousDistance!!.isInfinite) {
-						check(astarNode.distance <= Distance.INFINITE)
-					} else {
-						check(astarNode.distance <= previousDistance!! + 1)
-					}
-				}
 				return@walkUpParents true
 			}
 
-			if (node === startNode && node.isCovered) {
-				// Copy known distance
-				astarNode.distance = node.coveringNode()!!.astarNode.distance
-			} else if (node === startNode && node.isLeaf) {
-				// This must be infinite distance propagation
-				astarNode.distance = Distance.INFINITE
+			astarNode.distance = if (argNode === startNode && argNode.isCovered) {
+				argNode.coveringNode()!!.astarNode.distance
+			} else if (argNode === startNode && argNode.isLeaf) {
+				check(astarNode.distance.isUnknown)
+				Distance.INFINITE
 			} else {
 				// [argNode] === [startNode] can hold if [propagateUpDistanceFromKnownDistance]'s parents gone through a covering edge
 				// [argNode] may not be expanded whether it's the [startNode] or not.
 				check(!astarNode.argNode.isCovered)
 
-				if (!node.allSuccDistanceKnown) {
+				if (!argNode.allSuccDistanceKnown) {
 					return@walkUpParents true
 				}
 
 				// If there are more than 1 child then all children could have been part of a conditional path
 				// now processed and have distance. In this case this conditional path has to determine a distance
-				// for the node and must not stop propagating up the distance.
+				// for the argNode and must not stop propagating up the distance.
 				// This can be the case even if propagating up infinite distance.
-				val minSuccDistance = node.minSuccDistance!!
-				astarNode.distance = if (minSuccDistance.isInfinite) {
+				val minSuccDistance = argNode.minSuccDistance!!
+				if (minSuccDistance.isInfinite) {
 					Distance.INFINITE
 				} else {
 					minSuccDistance + 1
 				}
 			}
-			previousDistance = astarNode.distance
 
-			node.coveredNodes().forEach {
+			argNode.coveredNodes().forEach {
 				check(it.astarNode.distance.isUnknown)
 			}
-			queue += node.coveredNodes()
+			queue += argNode.coveredNodes()
 			return@walkUpParents false
 		}
 	}
