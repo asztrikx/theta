@@ -214,8 +214,7 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 		nextAstarArg = astarArg
 
 		return if (arg.isSafe) {
-			// Arg may not be complete (== fully expanded) as INFINITE heuristic can avoid expanding some nodes.
-			// require(arg.isComplete) { "Returning incomplete ARG as safe" };
+			require(astarArg.isAstarComplete) { "Returning incomplete ARG as safe" };
 			AbstractorResult.safe()
 		} else {
 			AbstractorResult.unsafe()

@@ -364,3 +364,5 @@ fun <S: State, A: Action, P: Prec> AstarArg<S, A>.createIterationReplacement(
 	return astarArgCopy
 }
 
+val <S: State, A: Action> AstarArg<S, A>.isAstarComplete
+	get() = arg.isInitialized && astarNodes.values.all { it.argNode.isComplete || it.heuristic == Distance.INFINITE }
