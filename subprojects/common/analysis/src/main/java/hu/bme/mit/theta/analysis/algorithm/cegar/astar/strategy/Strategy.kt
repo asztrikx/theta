@@ -23,6 +23,5 @@ class Strategy<S: State, A: Action, P: Prec>(
     init {
         DI.heuristicSearchType = heuristicSearchType
         DI.logger = logger
-        astarFileVisualizer.enabled = true
     }
 }

@@ -6,12 +6,11 @@ import hu.bme.mit.theta.analysis.Prec
 import hu.bme.mit.theta.analysis.State
 import hu.bme.mit.theta.analysis.algorithm.ArgCopier
 import hu.bme.mit.theta.analysis.algorithm.ArgNode
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.strategy.HeuristicSearchType
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.strategy.astarNodeCopyHandler.AstarNodeCopyHandler
-import kotlin.jvm.optionals.getOrNull
 
-// TODO make this receive the whole list which checked to be in order, also update documentation
 /**
- * Propagate finite distance up from a node ([from]) until any node in a set ([until]) is reached.
+ * Propagate finite distance up from a node ([from]) until any node in a collection ([until]) is reached.
  * **If all target in an ARG is known the [setDistanceFromAllTargets] should be used for setting all distances**
  *
  * @param until As we are not always searching from the root it's important to only set distances for nodes involved in the search.
@@ -22,6 +21,7 @@ fun <S: State, A: Action> AstarArg<S, A>.propagateUpDistanceFromFiniteDistance(
 	until: Collection<ArgNode<S, A>>,
 	parents: Map<AstarNode<S, A>, AstarNode<S, A>?>,
 ) {
+	require(DI.heuristicSearchType != HeuristicSearchType.FULL)
 	require(from.distance.isFinite)
 
 	val conditionalNodes = mutableListOf<ArgNode<S, A>>()
@@ -58,10 +58,10 @@ fun <S: State, A: Action> AstarArg<S, A>.propagateUpDistanceFromFiniteDistance(
 		val parentNode = parents[astarNode]?.argNode
 		val nonParentCoveredNodes = argNode.coveredNodes()
 			.filter { it !== parentNode }
-		conditionalNodes += nonParentCoveredNodes
 		check(nonParentCoveredNodes.all { it.astarNode.distance.isUnknown })
+		conditionalNodes += nonParentCoveredNodes
 
-		// Parent is a covered argNode
+		// Conditional graph parent
 		if (!argNode.isInit && argNode.parent()!! !== parentNode) {
 			// Tree parent's other children may have already reached a target with a covered argNode parent.
 			// But then tree parent's distance hasn't been set and won't be as there isn't any children left.
@@ -77,22 +77,20 @@ fun <S: State, A: Action> AstarArg<S, A>.propagateUpDistanceFromFiniteDistance(
 
 /**
  * Propagate finite distance up (also through covering edges) until we find a node with a child with unknown distance.
- * Distance value is derived from the child with minimum distance value.
+ * Distance value is derived from the child with minimum distance value if all children has a known distance.
  *
- * [nodes] may not only be from a covered node but also from non-covered nodes (with > 0 children)
+ * [nodes] may not only be from a covered node but also from non-covered nodes (non leaf)
  *
- * @param nodes nodes with distance will be filtered out
+ * Nodes with distance will be filtered out.
  */
 private fun <S: State, A: Action> AstarArg<S, A>.propagateUpDistanceFromConditionalNodes(nodes: Collection<ArgNode<S, A>>) {
-	// Filtering out is just a probably useless optimization
-	// (Filtering out in the caller can cause the following edge case of distance changing if filtering too early:)
-	// If we had checked for unknown distances in the walkup process
-	// then in the following case distance could be set in the meantime:
+	// Filtering out in the caller can cause the following edge case of distance change:
 	// parents: c's is b, b's is a
 	//      a
 	//    /  \
 	//   b- ->c
 	val queue = ArrayDeque(nodes.filter { it.astarNode.distance.isUnknown }) // TODO later: do we surely want to filter this and not throw an exception?
+	// TODO could be rewritten with [walkReverseSubtree]
 	while (queue.isNotEmpty()) {
 		val startNode = queue.removeFirst()
 
@@ -122,8 +120,9 @@ private fun <S: State, A: Action> AstarArg<S, A>.propagateUpDistanceFromConditio
 				// This must be infinite distance propagation
 				astarNode.distance = Distance.INFINITE
 			} else {
-				// [node] === [startNode] can hold if [propagateUpDistanceFromKnownDistance]'s parents gone through a covering edge
-				// node may not be expanded whether its the [startNode] or not
+				// [argNode] === [startNode] can hold if [propagateUpDistanceFromKnownDistance]'s parents gone through a covering edge
+				// [argNode] may not be expanded whether it's the [startNode] or not.
+				check(!astarNode.argNode.isCovered)
 
 				if (!node.allSuccDistanceKnown) {
 					return@walkUpParents true
@@ -149,27 +148,26 @@ private fun <S: State, A: Action> AstarArg<S, A>.propagateUpDistanceFromConditio
 			return@walkUpParents false
 		}
 	}
+
 	checkDistanceProperty()
 }
 
 /**
- * Propagate infinite distance down (also through covering edges **in both directions**). Use if startNodes's
+ * Propagate infinite distance down (also through covering edges **in both directions**).
  *
- * [nodes] may not only be from a covered node but also from non-covered nodes (with > 0 children)
- *
- * @param nodes nodes with distance will be filtered out
+ * @param nodes doesn't need to have infinite distance set
  */
 fun <S: State, A: Action> AstarArg<S, A>.propagateDownDistanceFromInfiniteDistance(nodes: Collection<ArgNode<S, A>>) {
 	val conditionalNodes = mutableListOf<ArgNode<S, A>>()
 
 	val queue = ArrayDeque(nodes)
-	while (!queue.isEmpty()) {
+	while (queue.isNotEmpty()) {
 		val node = queue.removeFirst()
 		listOf(node).walkSubtree { argNode, _ ->
 			val astarNode = argNode.astarNode
 
 			check(!astarNode.distance.isFinite)
-			// Unexpanded regions shouldn't exist unless its known it can't reach any target
+			// Unvisited regions shouldn't exist unless its known it can't reach any target
 			if (!argNode.isExpanded && !argNode.isCovered) {
 				check(astarNode.heuristic.isInfinite)
 			}
@@ -270,11 +268,12 @@ fun <S: State, A: Action> AstarArg<S, A>.propagateUpDistanceFromInfiniteDistance
 }
 
 /**
- * Set **all type of distances** from all targets. **It must only be used if all targets in an ARG is given in [targets].**
- *
- * Non-target nodes with known distances are not handled (no use case currently).
+ * Set **know distances** from all targets. **It must only be used if all targets in an ARG is given in [targetAstarNodes].**
  */
-fun <S: State, A: Action> AstarArg<S, A>.setDistanceFromAllTargets(targets: Collection<ArgNode<S, A>>) {
+fun <S: State, A: Action> AstarArg<S, A>.setDistanceFromAllTargets(targetAstarNodes: List<AstarNode<S, A>>) {
+	require(DI.heuristicSearchType == HeuristicSearchType.FULL)
+
+	val targets = targetAstarNodes.map { it.argNode }
 	check(targets.all { it.isTarget })
 
 	// Set finite distances
@@ -290,13 +289,13 @@ fun <S: State, A: Action> AstarArg<S, A>.setDistanceFromAllTargets(targets: Coll
 
 	// Set infinite distances
 	astarNodes.values
-		.filter { !it.distance.isKnown }
+		.filter { it.distance.isUnknown }
 		.forEach { it.distance = Distance.INFINITE }
 
 	// [checkShortestDistance] also would do this no need to call
 }
 
-// TODO this only works for targets
+// TODO this only works for targets, have to be fixed before usage
 fun <S: State, A: Action> AstarArg<S, A>.checkShortestDistance(finites: Collection<AstarNode<S, A>>) {
 	finites.map { it.argNode }.walkReverseSubtree skip@ { argNode, distance ->
 		val astarNode = argNode.astarNode

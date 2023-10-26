@@ -15,20 +15,15 @@ class AstarNode<S: State, A: Action>(
 ) {
 	private var _distance = Distance.UNKNOWN
 	var distance: Distance
-		get() {
-			if (argNode.isTarget) {
-				check(_distance.isUnknown || _distance.value == 0)
-			}
-			return _distance
-		}
+		get() = _distance
 		// Do not call with unknown distance, use reset().
 		set(value) {
+			_distance = value
 			if (argNode.isTarget) {
 				require(value === Distance.ZERO)
 			}
-			_distance = value
 
-			check(!(heuristic.isInfinite && !distance.isInfinite))
+			check(!(heuristic.isInfinite && !value.isInfinite))
 
 			// Leftover node may not have heuristic
 			if (heuristic.isKnown) {
@@ -40,9 +35,7 @@ class AstarNode<S: State, A: Action>(
 	private var _heuristic = Distance.UNKNOWN
 	var heuristic: Distance
 		// It is guaranteed that once it returns a known value it won't change unless reset is called (e.g. AstarIterator).
-		get() {
-			return _heuristic
-		}
+		get() = _heuristic
 		// Do not call with unknown distance, use reset().
 		set(value) {
 			require(value.isKnown)
@@ -62,6 +55,7 @@ class AstarNode<S: State, A: Action>(
 			if (argNode.isTarget) {
 				check(value === Distance.ZERO)
 			}
+			// TODO decreasing when copied can fail here
 			val checkConsistency: ArgNode<S, A>.() -> Unit = {
 				// Null when copying AstarArg // TODO check this whether this can be avoided by changing copying, same for below
 				astarArg.astarNodes[this]?.let {

@@ -10,7 +10,6 @@ import hu.bme.mit.theta.analysis.algorithm.ArgNode
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.strategy.HeuristicSearchType
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.strategy.heuristicFinder.HeuristicFinder
 import hu.bme.mit.theta.analysis.reachedset.Partition
-import kotlin.jvm.optionals.getOrNull
 
 class AstarArg<S: State, A: Action>(
 	val arg: ARG<S, A>,
@@ -29,16 +28,12 @@ class AstarArg<S: State, A: Action>(
 
 	/**
 	 * After underlying ARG is pruned we must remove AstarNodes corresponding to pruned ArgNodes.
-	 *
-	 * Calling this function could be avoided by creating another (computed) property besides [astarNodes] but
-	 * that would leave pruned nodes in [astarNodes] which is not ideal for memory usage.
 	 */
 	fun pruneApply() {
-		// Collect remained nodes
 		reachedSet.clear()
 		val astarNodesNew = hashMapOf<ArgNode<S, A>, AstarNode<S, A>>()
 		arg.nodes().forEach { argNode ->
-			val astarNode = this[argNode]
+			val astarNode = argNode.astarNode
 
 			astarNodesNew[argNode] = astarNode
 			reachedSet.add(astarNode)
@@ -81,8 +76,11 @@ class AstarArg<S: State, A: Action>(
 		} else {
 			providerCandidates.firstOrNull() // TODO could check if covered
 		}
+			providerCandidates.firstOrNull()
+		} // TODO could check if covered
 
 		if (DI.heuristicSearchType == HeuristicSearchType.DECREASING) {
+			// It is expected that at some point we will not have a provider in decreasing
 			if (isInit && providerNode == null) {
 				// Xsts test case 48, 51, 61
 				check(DI.analysisBadLeq)
@@ -115,7 +113,6 @@ class AstarArg<S: State, A: Action>(
 			return provider.astarInitNodes.keys
 		}
 		var treeParentAstarNodeProvider = treeParentAstarNode.providerAstarNode ?: run {
-			// If [treeParentAstarNode] doesn't have provider then we also won't have.
 			check(DI.heuristicSearchType == HeuristicSearchType.DECREASING)
 			return null
 			//return provider.arg.nodes() // TODO this may break heuristic see paper page 17
@@ -130,7 +127,7 @@ class AstarArg<S: State, A: Action>(
 
 		// [treeParentAstarNodeProvider] can be covered.
 		// Because a covered node's children are the covering node's children we must follow the chain.
-		treeParentAstarNodeProvider.argNode.coveringNode.getOrNull()?.let { treeParentNodeCoveringNodeProvider ->
+		treeParentAstarNodeProvider.argNode.coveringNode()?.let { treeParentNodeCoveringNodeProvider ->
 			// The chain can only contain 1 covering edge because they are compressed in an ARG.
 
 			// TODO Do not change provider to covering node as it may not have a distance while the covered has and it can fail for checks in semi ondemand is it has heuristic
@@ -156,11 +153,11 @@ class AstarArg<S: State, A: Action>(
 	}
 
 	/// ArgNode extension which depend on an AstarArg
-	// (these are only used in AstarArgUtil, but there is no double extension methods, so they have to be here)
+	// (these are only used in AstarArgUtil, but there are no double extension methods, so they have to be here)
 
 	/**
 	 * Node must not be covered.
-	 * If not excluded it returns true.
+	 * If not expanded it returns false.
 	 */
 	val ArgNode<S, A>.allSuccDistanceKnown: Boolean
 		get() {
@@ -191,7 +188,7 @@ class AstarArg<S: State, A: Action>(
 			require(!isCovered)
 			return succNodes()
 				.map { it.astarNode.distance }
-				.filter(Distance::isKnown)
+				.filter { it.isKnown }
 				.minOrNull()
 		}
 

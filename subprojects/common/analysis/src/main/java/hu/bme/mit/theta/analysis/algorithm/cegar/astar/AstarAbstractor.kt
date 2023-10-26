@@ -42,7 +42,7 @@ import java.util.function.Function
 /**
  * Astar implementation for [Abstractor], relying on an [ArgBuilder].
  *
- * @param initialStopCriterion When we are exploring an arg first time we use the StopCriterion provided in constructor
+ * @param initialStopCriterion Used when exploring an arg for the first time
  */
 class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 	private val argBuilder: ArgBuilder<S, A, P>,
@@ -171,8 +171,12 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 	}
 
 	private var nextAstarArg: AstarArg<S, A>? = null
+
+	/**
+	 * @param arg Can still contain a decreased amount of target nodes
+	 */
 	override fun check(arg: ARG<S, A>, prec: P): AbstractorResult {
-		nextAstarArg?.let { require(it.arg == arg)}
+		nextAstarArg?.let { require(it.arg === arg)}
 
 		val astarArg = if (cegarHistoryStorage.size == 0) {
 			AstarArg(arg, partialOrd, projection, null)
@@ -183,12 +187,12 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 		}
 		cegarHistoryStorage.add(astarArg, prec)
 
-		val metrics = Metrics()
-		if (logger !is NullLogger) {
-			metrics.iteration = cegarHistoryStorage.indexOf(astarArg)
-			metrics.leftoverNodes = arg.nodes().size
-			metrics.leftoverCoverings = arg.nodes().filter { it.isCovered }.size
-		}
+//		val metrics = Metrics()
+//		if (logger !is NullLogger) {
+//			metrics.iteration = cegarHistoryStorage.indexOf(astarArg)
+//			metrics.leftoverNodes = arg.nodes().size
+//			metrics.leftoverCoverings = arg.nodes().filter { it.isCovered }.size
+//		}
 
 		// initialize: prune can keep initialized state
 		if (!arg.isInitialized) {
@@ -202,18 +206,18 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 
 		findDistanceForAny(astarArg.astarInitNodes.values.toList(), initialStopCriterion, "init", prec)
 
-		if (logger !is NullLogger) {
-			metrics.cover = arg.nodes().filter { it.isCovered }.size
-			metrics.cover -= metrics.leftoverCoverings
-			metrics.expand = arg.nodes().size + 1
-			metrics.expand -= metrics.leftoverNodes + 1
-			metrics.distance = astarArg.astarInitNodes.values.filter { it.distance.isKnown }.maxOf { it.distance }
-			metrics.targets = astarArg.astarNodes.filter { it.key.isTarget }.size
-			metrics.targetWithKnownDistance = astarArg.astarNodes.filter { it.key.isTarget && it.value.distance.isKnown }.size
-			metrics.infiniteDistances = astarArg.astarNodes.filter { it.value.distance.isInfinite }.size
-			metrics.finiteDistances = astarArg.astarNodes.filter { it.value.distance.isFinite }.size
-			logger.mainstep(metrics.toString()) // TODO line
-		}
+//		if (logger !is NullLogger) {
+//			metrics.cover = arg.nodes().filter { it.isCovered }.size
+//			metrics.cover -= metrics.leftoverCoverings
+//			metrics.expand = arg.nodes().size + 1
+//			metrics.expand -= metrics.leftoverNodes + 1
+//			metrics.distance = astarArg.astarInitNodes.values.filter { it.distance.isKnown }.maxOf { it.distance }
+//			metrics.targets = astarArg.astarNodes.filter { it.key.isTarget }.size
+//			metrics.targetWithKnownDistance = astarArg.astarNodes.filter { it.key.isTarget && it.value.distance.isKnown }.size
+//			metrics.infiniteDistances = astarArg.astarNodes.filter { it.value.distance.isInfinite }.size
+//			metrics.finiteDistances = astarArg.astarNodes.filter { it.value.distance.isFinite }.size
+//			logger.mainstep(metrics.toString()) // TODO line
+//		}
 
 		val astarArgCopy = astarArg.createIterationReplacement(partialOrd, projection, astarNodeCopyHandler, this)
 		cegarHistoryStorage.setLast(astarArgCopy, prec)

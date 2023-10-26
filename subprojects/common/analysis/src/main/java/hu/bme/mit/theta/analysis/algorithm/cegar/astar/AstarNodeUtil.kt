@@ -73,16 +73,17 @@ fun <S: State, A: Action, P: Prec> AstarNode<S, A>.close(
     }
 
     for (astarCandidate in candidates) {
+        if (astarCandidate.heuristic.isUnknown && DI.disableOptimizations) {
+            continue
+        }
+
         // TODO pattern
         if (DI.heuristicSearchType !== HeuristicSearchType.SEMI_ONDEMAND) {
-            // optimization: Check heuristic before calling mayCover which uses Leq
-            if (astarCandidate.heuristic.isUnknown && DI.disableOptimizations) {
-                continue
-            }
+            // optimization: If heuristic is *quickly computable* then check consistency before calling mayCover which uses Leq
             if (astarCandidate.heuristic.isUnknown) {
                 heuristicFinder(astarCandidate, abstractor, search)
             }
-            if (heuristic > astarCandidate.heuristic) {
+            if (!(astarCandidate.heuristic >= heuristic)) {
                 continue
             }
         }
@@ -92,19 +93,16 @@ fun <S: State, A: Action, P: Prec> AstarNode<S, A>.close(
             continue
         }
 
-        if (astarCandidate.heuristic.isUnknown && DI.disableOptimizations) {
-            continue
-        }
         if (astarCandidate.heuristic.isUnknown) {
             // TODO document: leftovers dont have heuristic, but we would want to cover into it, but it can break consistency
             heuristicFinder(astarCandidate, abstractor, search)
         }
-        if (heuristic > astarCandidate.heuristic) {
+        if (!(astarCandidate.heuristic >= heuristic)) {
             continue
         }
+
         // This should hold because of previous check and because of infinite filtering in [AstarSearch]
         checkConsistency(astarCandidate)
-
         argNode.cover(candidate)
 
         search ?: return null

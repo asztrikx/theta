@@ -25,7 +25,7 @@ class DecreasingHeuristicFinder<S: State, A: Action, P: Prec>: HeuristicFinder<S
 			Distance.ZERO
 		} else {
 			Distance.finiteOf(
-				// 0 is always a known lowerbound, so it is more precise to use than negative numbers
+				// 0 is always a known lower-bound, so it is more precise to use than negative numbers (which are wrong for targets)
 				max(treeParentAstarNode.heuristic.value - 1, 0)
 			)
 		}

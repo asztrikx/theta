@@ -30,8 +30,7 @@ class AstarFileVisualizer<S: State, A: Action, P: Prec>(
 	}
 
 	fun getTitle(state: String, index: Int): String {
-		// To be consistent with Logger outputs iteration should start from 1
-		// but for avoiding confusion during debugging this will start from 0
+		// Inconsistent with Logger outputs as iterations there start from 1
 		val maxIndex = cegarHistoryStorage.size - 1
 		// '⁄' != '/' (for every OS)
 		return "$index ⁄ $maxIndex $state"

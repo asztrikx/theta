@@ -17,13 +17,12 @@ class AstarSearch<S: State, A: Action, P: Prec>(
 	private val heuristicFinder: HeuristicFinder<S, A, P>,
 	private val astarAbstractor: AstarAbstractor<S, A, P>,
 ) {
-	// We could already have started to explore a subgraph therefore do not use global doneSet variable
 	private val doneSet = hashSetOf<AstarNode<S, A>>()
 
-	// Useful to know whether the current item is smaller than the one in the waitlist (if not in doneSet)
+	// Used to know whether the current item is smaller than the one in the [finiteWaitlist] (if not in [doneSet])
 	private val depths = hashMapOf<AstarNode<S, A>, Int>()
 
-	// Used for debugging
+	// Used for debugging the search <= heuristic can change later
 	private val weights = hashMapOf<AstarNode<S, A>, Distance>()
 
 	// After we reach target we know the distance for all nodes between root and target which is visitable by parent entries
@@ -47,8 +46,9 @@ class AstarSearch<S: State, A: Action, P: Prec>(
 	fun addToWaitlist(astarNode: AstarNode<S, A>, parentAstarNode: AstarNode<S, A>?, depth: Int) {
 		heuristicFinder(astarNode, astarAbstractor, this)
 
+		// If we reach a node with a distance in an earlier iteration we can safely put it into the [finiteWaitlist]
 		if (astarNode.distance.isKnown) {
-			check(DI.heuristicSearchType === HeuristicSearchType.SEMI_ONDEMAND)
+			check(DI.heuristicSearchType == HeuristicSearchType.SEMI_ONDEMAND)
 		}
 
 		if (astarNode.heuristic.isInfinite) {
@@ -109,10 +109,11 @@ class AstarSearch<S: State, A: Action, P: Prec>(
 		return null
 	}
 
-	fun distanceUntilTarget(astarNode: AstarNode<S, A>): Int {
-		return if (astarNode.argNode.isTarget) {
+	fun distanceUntilTarget(astarNode: AstarNode<S, A>) =
+		if (astarNode.argNode.isTarget) {
 			depths[astarNode]!!
 		} else {
+			check(astarNode.distance.isFinite)
 			depths[astarNode]!! + astarNode.distance.value
 		}
 	}
@@ -126,7 +127,6 @@ class AstarSearch<S: State, A: Action, P: Prec>(
 		return "G($depth) + H($heuristic) = F($weight)"
 	}
 
-	// Pair would create .first and .second properties which would be hard to read
 	data class Edge<S: State, A: Action>(
 		val end: AstarNode<S, A>,
 		val depth: Int
@@ -134,6 +134,9 @@ class AstarSearch<S: State, A: Action, P: Prec>(
 		val weight
 			get() = end.getWeight(depth)
 
-		override fun toString() = "${end.argNode} G($depth) + H(${end.getWeight(depth)}) = F($weight)"
+		val heuristic
+			get() = end.heuristic
+
+		override fun toString() = "${end.argNode} G($depth) + H($heuristic) = F($weight)"
 	}
 }

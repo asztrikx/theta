@@ -73,6 +73,10 @@ public final class PriorityWaitlist<T> implements Waitlist<T> {
 		return items.isEmpty();
 	}
 
+	public boolean isNotEmpty() {
+		return !isEmpty();
+	}
+
 	@Override
 	public T remove() {
 		return items.remove();
