@@ -78,16 +78,11 @@ inline fun <S: State, A: Action> Collection<ArgNode<S, A>>.walk(
  */
 inline fun <S: State, A: Action> Collection<ArgNode<S, A>>.walkSubtree(skip: Skip<S, A>): Parents<S, A> {
 	return walk(skip) newVisits@ { (argNode, distance) ->
-		argNode.coveringNode.getOrNull()?.let {
-			return@newVisits listOf(Visit(it, distance))
+		return@newVisits if (argNode.isCovered) {
+			listOf(Visit(argNode.coveringNode()!!, distance))
+		} else {
+			argNode.succNodes().map { Visit(it, distance + 1) }
 		}
-
-		val succNodes = argNode.succNodes()
-		// Capacity could be given here (currently it is **NOT** given)
-		val newVisits = MutableList<Visit<S, A>>(succNodes.size) { i ->
-			Visit(succNodes[i], distance + 1)
-		}
-		return@newVisits newVisits
 	}
 }
 
