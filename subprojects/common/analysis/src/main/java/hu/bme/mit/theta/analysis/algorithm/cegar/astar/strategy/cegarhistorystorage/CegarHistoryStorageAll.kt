@@ -20,11 +20,8 @@ class CegarHistoryStorageAll<S: State, A: Action, P: Prec> : CegarHistoryStorage
 		return cegarHistories.indexOfLast { it.first === astarArg }
 	}
 
-	override fun find(astarArg: AstarArg<S, A>): Pair<AstarArg<S, A>, P> {
-		return get(indexOf(astarArg))
-	}
-
-	override fun setLast(astarArg: AstarArg<S, A>, prec: P) {
-		cegarHistories[cegarHistories.lastIndex] = Pair(astarArg, prec)
+	override fun setLast(astarArg: AstarArg<S, A>) {
+		val last = cegarHistories.last()
+		cegarHistories[cegarHistories.lastIndex] = Triple(astarArg, last.second, last.third)
 	}
 }

@@ -29,11 +29,7 @@ class CegarHistoryStoragePrevious<S: State, A: Action, P: Prec> : CegarHistorySt
 		else -> throw UnstoredAstarArgException()
 	}
 
-	override fun find(astarArg: AstarArg<S, A>): Pair<AstarArg<S, A>, P> {
-		return get(indexOf(astarArg))
-	}
-
-	override fun setLast(astarArg: AstarArg<S, A>, prec: P) {
+	override fun setLast(astarArg: AstarArg<S, A>) {
 		require(size != 0)
 		current = Pair(astarArg, prec)
 	}

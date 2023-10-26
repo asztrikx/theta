@@ -219,7 +219,7 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 //		}
 
 		val astarArgCopy = astarArg.createIterationReplacement(partialOrd, projection, astarNodeCopyHandler, this)
-		cegarHistoryStorage.setLast(astarArgCopy, prec)
+		cegarHistoryStorage.setLast(astarArgCopy)
 
 		nextAstarArg = astarArg
 
