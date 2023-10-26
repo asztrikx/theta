@@ -201,15 +201,14 @@ fun <S: State, A: Action, P: Prec> AstarNode<S, A>.createChildren(
     // [createChildren] can be already called on this node through a different edge
     val (_, prec) = cegarHistoryStorage.find(astarArg)
     while(!argNode.isExpanded) {
-        astarNode.close(astarArg.reachedSet[astarNode], search, heuristicFinder, abstractor)?.let {}
+        astarNode.close(search, heuristicFinder, abstractor)?.let {}
         if (argNode.coveringNode() != null) {
             argNode = argNode.coveringNode()!!
-
-            // TODO document: why no 0 distance set
-
             astarNode = astarArg[argNode]
             check(argNode.isTarget)
             check(!argNode.isCovered)
+
+            // TODO document: why no 0 distance set
             if (DI.disableOptimizations) {
                 astarNode.distance = Distance.ZERO
             }
@@ -230,7 +229,6 @@ fun <S: State, A: Action, P: Prec> AstarNode<S, A>.createChildren(
 }
 
 val <S: State, A: Action> AstarNode<S, A>.reachesTarget
-    // Distance is an exact heuristic => we also can reach a target with this weight
     get() = argNode.isTarget || distance.isFinite
 
 fun <S: State, A: Action> AstarNode<S, A>.printSubgraph(
