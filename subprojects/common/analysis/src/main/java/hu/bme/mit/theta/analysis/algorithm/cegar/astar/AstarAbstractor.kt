@@ -124,6 +124,16 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 		var astarNode = astarNode
 		var argNode = astarNode.argNode
 
+		if (DI.heuristicSearchType == HeuristicSearchType.DECREASING) {
+			if (argNode.isCovered) {
+				val astarCoveringNode = astarArg[argNode.coveringNode()!!]
+				if (astarCoveringNode.heuristic < astarNode.heuristic || (DI.disableOptimizations && astarCoveringNode.heuristic != astarNode.heuristic)) {
+					check(argNode.isLeftover)
+					argNode.unsetCoveringNode()
+				}
+			}
+		}
+
 		astarNode.close(search, heuristicFinder, this)?.let {
 			astarNode = it
 			argNode = astarNode.argNode
