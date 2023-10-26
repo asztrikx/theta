@@ -101,7 +101,7 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 
 		if (DI.disableOptimizations) {
 			search.reachedFinites.forEach {
-				it.createChildren(prec, search, argBuilder, heuristicFinder, this)
+				it.createChildren(search, argBuilder, heuristicFinder, this, cegarHistoryStorage)
 			}
 		}
 
