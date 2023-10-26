@@ -26,17 +26,13 @@ import hu.bme.mit.theta.analysis.algorithm.cegar.Abstractor
 import hu.bme.mit.theta.analysis.algorithm.cegar.AbstractorResult
 import hu.bme.mit.theta.analysis.algorithm.cegar.abstractor.StopCriterion
 import hu.bme.mit.theta.analysis.algorithm.cegar.abstractor.StopCriterions
-import hu.bme.mit.theta.analysis.algorithm.cegar.abstractor.StopCriterions.AtLeastNCexs
 import hu.bme.mit.theta.analysis.algorithm.cegar.abstractor.StopCriterions.FullExploration
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.strategy.HeuristicSearchType
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.strategy.Strategy
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.strategy.cegarhistorystorage.CegarHistoryStoragePrevious
-import hu.bme.mit.theta.analysis.algorithm.runtimecheck.AbstractArg
-import hu.bme.mit.theta.analysis.algorithm.runtimecheck.ArgCexCheckHandler
 import hu.bme.mit.theta.analysis.prod2.Prod2Analysis
 import hu.bme.mit.theta.analysis.prod2.prod2explpred.Prod2ExplPredAnalysis
 import hu.bme.mit.theta.common.Utils
-import hu.bme.mit.theta.common.logging.NullLogger
 import java.util.function.Function
 
 /**
