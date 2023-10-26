@@ -26,7 +26,7 @@ fun <S: State, A: Action> AstarArg<S, A>.propagateUpDistanceFromFiniteDistance(
 
 	val conditionalNodes = mutableListOf<ArgNode<S, A>>()
 
-	from.argNode.walkUpParents(from.distance.value, { parents[this@propagateUpDistanceFromFiniteDistance[this]]?.argNode }) { argNode, distance ->
+	from.argNode.walkUpParents(from.distance.value, { parents[this[it]]?.argNode }) { argNode, distance ->
 		val astarNode = argNode.astarNode
 
 		// We expand targets therefore we can have a target ancestor.
@@ -94,9 +94,8 @@ private fun <S: State, A: Action> AstarArg<S, A>.propagateUpDistanceFromConditio
 	while (queue.isNotEmpty()) {
 		val startNode = queue.removeFirst()
 
-		var previousDistance: Distance? = null
-		startNode.walkUpParents(0, { parent.getOrNull() }) { node, _ ->
-			val astarNode = node.astarNode
+		startNode.walkUpParents(0, { it.parent() }) { argNode, _ ->
+			val astarNode = argNode.astarNode
 
 			if (node.isTarget) {
 				//check(astarNode.distance.isKnown) // TODO not sure
