@@ -74,8 +74,6 @@ class AstarArg<S: State, A: Action>(
 				// Largest one is the most precise lower bound
 				.maxByOrNull { providerArg[it].distance }!!
 		} else {
-			providerCandidates.firstOrNull() // TODO could check if covered
-		}
 			providerCandidates.firstOrNull()
 		} // TODO could check if covered
 
