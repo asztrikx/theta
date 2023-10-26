@@ -68,7 +68,8 @@ class AstarArg<S: State, A: Action>(
 
 		providerCandidates = providerCandidates.filter { partialOrd.isLeq(state, it.state) }
 
-		val providerNode = if (providerCandidates.any { providerArg[it].distance.isKnown } && DI.enableOptimizations) {
+		// No reason to check lower-bound distance value as all children without a known distance have the same value
+		val providerNode = if (providerCandidates.any { provider[it].distance.isKnown } && DI.enableOptimizations) {
 			// TODO when can this happen (see git history maybe it has been deleted) // e.g. provider is target&init
 
 			providerCandidates
