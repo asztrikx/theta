@@ -29,32 +29,10 @@ fun <S: State, A: Action> AstarArg<S, A>.propagateUpDistanceFromFiniteDistance(
 	from.argNode.walkUpParents(from.distance.value, { parents[this[it]]?.argNode }) { argNode, distance ->
 		val astarNode = argNode.astarNode
 
-		// We expand targets therefore we can have a target ancestor.
-		// This function should have been called on that target by this point even in full expand or n-cex => it should have distance.
-		if (argNode.isTarget && from.argNode !== argNode) {
-			//check(astarNode.distance.isKnown) // TODO not sure
-			return@walkUpParents true
-		}
+		// In one search we don't have target as a descendant of target
+		check(!(argNode.isTarget && from.argNode !== argNode))
 
-		if (astarNode.distance.isFinite) {
-			return@walkUpParents if (from.argNode === argNode) {
-				// We start from a known distance
-				false
-			} else {
-				check(astarNode.distance.value <= distance)
-				true
-			}
-		}
-
-		check(astarNode.distance.isUnknown)
-
-		astarNode.distance = Distance.finiteOf(distance)
-
-		if (argNode !== from.argNode && !argNode.isCovered) {
-			check(distance == argNode.minKnownSuccDistance!!.value + 1)
-		}
-
-		// Save covered nodes
+		// Conditional covered nodes
 		val parentNode = parents[astarNode]?.argNode
 		val nonParentCoveredNodes = argNode.coveredNodes()
 			.filter { it !== parentNode }
@@ -65,9 +43,28 @@ fun <S: State, A: Action> AstarArg<S, A>.propagateUpDistanceFromFiniteDistance(
 		if (!argNode.isInit && argNode.parent()!! !== parentNode) {
 			// Tree parent's other children may have already reached a target with a covered argNode parent.
 			// But then tree parent's distance hasn't been set and won't be as there isn't any children left.
+			// [argNode]'s tree parent can already have distance.
 			conditionalNodes += argNode.parent()!!
-			// [argNode]'s tree parent can already have distance
 		}
+
+		// [from] node case
+		// [from] node could also have conditional nodes
+		if (astarNode.distance.isFinite) {
+			check(from.argNode == argNode)
+			return@walkUpParents false
+		}
+		check(argNode !== from.argNode)
+		check(astarNode.distance.isUnknown)
+
+		// Finite distance
+		astarNode.distance = Distance.finiteOf(distance)
+		if (!argNode.isCovered) {
+			check(argNode !== from.argNode) // might not be expanded
+			check(argNode.isExpanded)
+			check(!argNode.minKnownSuccDistance!!.isInfinite)
+			check(distance == argNode.minKnownSuccDistance!!.value + 1)
+		}
+
 		return@walkUpParents argNode in until
 	}
 	checkDistanceProperty()
