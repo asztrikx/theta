@@ -3,6 +3,7 @@ package hu.bme.mit.theta.analysis.algorithm.cegar.astar
 import hu.bme.mit.theta.analysis.Action
 import hu.bme.mit.theta.analysis.State
 import hu.bme.mit.theta.analysis.algorithm.ArgNode
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.Distance.Companion.lowerBoundOf
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.strategy.HeuristicSearchType
 
 class AstarNode<S: State, A: Action>(
@@ -20,16 +21,18 @@ class AstarNode<S: State, A: Action>(
 		set(value) {
 			_distance = value
 			if (argNode.isTarget) {
-				require(value === Distance.ZERO)
+				// distance property
+				require(value === Distance.F0)
 			}
 
-			check(!(heuristic.isInfinite && !value.isInfinite))
+			check(!(heuristic.isInfinite && value.isKnown && !value.isInfinite))
 
-			// Leftover node may not have heuristic
-			if (heuristic.isKnown) {
-				// Distance needs to be already set for this
-				checkAdmissibility()
+			// Leftover node may not have heuristic // TODO check this
+			if (heuristic.hasValue && distance.isKnown) { // TODO when does this fail
+				// admissibility
+				check(heuristic <= value)
 			}
+			// Can't set known distance as heuristic as it can break consistency
 		}
 
 	private var _heuristic = Distance.UNKNOWN
@@ -38,22 +41,20 @@ class AstarNode<S: State, A: Action>(
 		get() = _heuristic
 		// Do not call with unknown distance, use reset().
 		set(value) {
-			require(value.isKnown)
+			check(value >= _heuristic)
+			_heuristic = value
 
 			providerAstarNode?.let {
-				if (it.distance.isKnown) {
-					check(value === it.distance)
-				} else {
+				check(value >= it.distance)
+				if (it.distance.isUnknown) {
 					// TODO By updating provider to covering node, this can break; also wait until this is compared to old code
 					//check(DI.heuristicSearchType == HeuristicSearchType.DECREASING)
 				}
 			}
 
-			_heuristic = value
-
-			// Requirement for heuristic consistency
 			if (argNode.isTarget) {
-				check(value === Distance.ZERO)
+				// consistency
+				check(value === Distance.F0)
 			}
 			// TODO decreasing when copied can fail here
 			val checkConsistency: ArgNode<S, A>.() -> Unit = {
@@ -67,26 +68,26 @@ class AstarNode<S: State, A: Action>(
 					}
 				}
 			}
-			// Heuristic needs to be already set for these
-			argNode.parent()?.let { it.checkConsistency() }
-			argNode.coveredNodes().forEach { it.checkConsistency() }
+			if (value.isKnown) {
+				// Heuristic needs to be already set for these
+				argNode.parent()?.let { it.checkConsistency() }
+				argNode.coveredNodes().forEach { it.checkConsistency() }
+			}
+
+			// Infinite distance will be set by [DistanceSetter]
+			if (!argNode.isTarget && value.hasValue && !distance.isKnown && DI.heuristicSearchType == HeuristicSearchType.FULLY_ONDEMAND) {
+				distance = lowerBoundOf(value)
+			}
 		}
 
 	// Get g(n) = h(n) + depth
 	// Depth is dependent on the search (can start from any node) therefore it is not stored here
-	fun getWeight(depth: Int) = if (distance.isKnown) {
-		if (distance.isInfinite) {
-			distance
+	fun getWeight(depth: Int) =
+		if (distance.isKnown) {
+			safeAdd(distance, depth)
 		} else {
-			distance + depth
+			safeAdd(heuristic, depth)
 		}
-	} else {
-		if (heuristic.isInfinite) {
-			heuristic
-		} else {
-			heuristic + depth
-		}
-	}
 
 	fun reset() {
 		_heuristic = Distance.UNKNOWN

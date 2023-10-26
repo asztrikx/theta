@@ -10,14 +10,17 @@ import hu.bme.mit.theta.analysis.algorithm.cegar.astar.strategy.cegarhistorystor
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.strategy.distanceSetter.FullDistanceSetter
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.strategy.distanceSetter.NonFullDistanceSetter
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.filevisualizer.AstarFileVisualizer
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.strategy.distanceSetter.FullyOndemandDistanceSetter
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.strategy.heuristicFinder.DecreasingHeuristicFinder
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.strategy.heuristicFinder.FullHeuristicFinder
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.strategy.heuristicFinder.FullyOndemandHeuristicFinder
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.strategy.heuristicFinder.SemiOndemandHeuristicFinder
 import hu.bme.mit.theta.common.logging.Logger
 
 enum class HeuristicSearchType {
     FULL,
     SEMI_ONDEMAND,
+    FULLY_ONDEMAND,
     DECREASING;
 
     companion object {
@@ -28,6 +31,7 @@ enum class HeuristicSearchType {
 fun <S: State, A: Action, P: Prec> from(heuristicSearchType: HeuristicSearchType, logger: Logger): Strategy<S, A, P> = when(heuristicSearchType) {
     HeuristicSearchType.FULL -> fullStrategy(logger)
     HeuristicSearchType.SEMI_ONDEMAND -> semiOndemandStrategy(logger)
+    HeuristicSearchType.FULLY_ONDEMAND -> fullyOndemandStrategy(logger)
     HeuristicSearchType.DECREASING -> decreasingStrategy(logger)
 }
 
@@ -56,6 +60,21 @@ fun <S: State, A: Action, P: Prec> semiOndemandStrategy(logger: Logger): Strateg
         cegarHistoryStorage,
         heuristicFinder,
         NonFullDistanceSetter(),
+        AstarNodeCopyHandler(heuristicFinder),
+        astarFileVisualizer,
+    )
+}
+
+fun <S: State, A: Action, P: Prec> fullyOndemandStrategy(logger: Logger): Strategy<S, A, P> {
+    val cegarHistoryStorage = CegarHistoryStorageAll<S, A, P>()
+    val astarFileVisualizer = AstarFileVisualizer(cegarHistoryStorage)
+    val heuristicFinder = FullyOndemandHeuristicFinder(astarFileVisualizer, cegarHistoryStorage)
+    return Strategy(
+        logger,
+        HeuristicSearchType.FULLY_ONDEMAND,
+        cegarHistoryStorage,
+        heuristicFinder,
+        FullyOndemandDistanceSetter(),
         AstarNodeCopyHandler(heuristicFinder),
         astarFileVisualizer,
     )

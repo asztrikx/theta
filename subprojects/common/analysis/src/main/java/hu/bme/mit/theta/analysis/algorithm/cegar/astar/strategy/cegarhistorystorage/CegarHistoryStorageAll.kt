@@ -6,12 +6,12 @@ import hu.bme.mit.theta.analysis.State
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.AstarArg
 
 class CegarHistoryStorageAll<S: State, A: Action, P: Prec> : CegarHistoryStorage<S, A, P> {
-	private val cegarHistories = mutableListOf<Pair<AstarArg<S, A>, P>>()
+	private val cegarHistories = mutableListOf<CegarHistory<S, A, P>>()
 
 	override val size: Int
 		get() = cegarHistories.size
 
-	override fun add(astarArg: AstarArg<S, A>, prec: P) = cegarHistories.add(Pair(astarArg, prec))
+	override fun add(astarArg: AstarArg<S, A>, prec: P) = cegarHistories.add(Triple(astarArg, prec, hashMapOf()))
 
 	override operator fun get(index: Int) = cegarHistories[index]
 

@@ -23,13 +23,6 @@ fun <S: State, A: Action> AstarNode<S, A>.checkConsistency(child: AstarNode<S, A
     check(heuristicDistanceValue.value <= edgeWeight)
 }
 
-/**
- * Checks property: heuristic <= distance
- */
-fun <S: State, A: Action> AstarNode<S, A>.checkAdmissibility() = check(heuristic <= distance)
-
-
-// TODO why do astarArg.reachedSet[astarNode] inside the function?
 fun <S: State, A: Action, P: Prec> AstarNode<S, A>.close(
     search: AstarSearch<S, A, P>?,
     heuristicFinder: HeuristicFinder<S, A, P>,
@@ -50,6 +43,12 @@ fun <S: State, A: Action, P: Prec> AstarNode<S, A>.close(
         astarArg.reachedSet[this]
     }
 
+    val weightStopAfter = if (DI.heuristicSearchType == HeuristicSearchType.FULLY_ONDEMAND) {
+        heuristic.value - 1L
+    } else {
+        Long.MAX_VALUE
+    }
+
     for (astarCandidate in candidates) {
         if (astarCandidate.heuristic.isUnknown && DI.disableOptimizations) {
             continue
@@ -59,7 +58,7 @@ fun <S: State, A: Action, P: Prec> AstarNode<S, A>.close(
         if (DI.heuristicSearchType !== HeuristicSearchType.SEMI_ONDEMAND) {
             // optimization: If heuristic is *quickly computable* then check consistency before calling mayCover which uses Leq
             if (astarCandidate.heuristic.isUnknown) {
-                heuristicFinder(astarCandidate, abstractor, search)
+                heuristicFinder(astarCandidate, abstractor, search, weightStopAfter)
             }
             if (!(astarCandidate.heuristic >= heuristic)) {
                 continue
@@ -73,7 +72,7 @@ fun <S: State, A: Action, P: Prec> AstarNode<S, A>.close(
 
         if (astarCandidate.heuristic.isUnknown) {
             // TODO document: leftovers dont have heuristic, but we would want to cover into it, but it can break consistency
-            heuristicFinder(astarCandidate, abstractor, search)
+            heuristicFinder(astarCandidate, abstractor, search, weightStopAfter)
         }
         if (!(astarCandidate.heuristic >= heuristic)) {
             continue
@@ -141,7 +140,7 @@ fun <S: State, A: Action, P: Prec> AstarNode<S, A>.createChildren(
     abstractor: AstarAbstractor<S, A, P>,
     cegarHistoryStorage: CegarHistoryStorage<S, A, P>,
 ) {
-    require(DI.heuristicSearchType == HeuristicSearchType.SEMI_ONDEMAND || DI.disableOptimizations)
+    require(DI.heuristicSearchType == HeuristicSearchType.SEMI_ONDEMAND || DI.heuristicSearchType == HeuristicSearchType.FULLY_ONDEMAND || DI.disableOptimizations)
     // we could call expand on found target nodes after each search however
     // - the intention would not be as clear as calling it before [createSuccAstarNode]
     // - it could expande more nodes than we would actually need
@@ -187,7 +186,7 @@ fun <S: State, A: Action, P: Prec> AstarNode<S, A>.createChildren(
 
             // TODO document: why no 0 distance set
             if (DI.disableOptimizations) {
-                astarNode.distance = Distance.ZERO
+                astarNode.distance = Distance.F0
             }
             continue
         }
@@ -196,8 +195,8 @@ fun <S: State, A: Action, P: Prec> AstarNode<S, A>.createChildren(
             // optimization
             if (newAstarNode.argNode.isTarget && DI.enableOptimizations) {
                 // Heuristic has to be set (first) otherwise admissibility check fails
-                newAstarNode.heuristic = Distance.ZERO
-                newAstarNode.distance = Distance.ZERO
+                newAstarNode.heuristic = Distance.F0
+                newAstarNode.distance = Distance.F0
             }
         }
     }

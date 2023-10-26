@@ -26,7 +26,7 @@ fun <S: State, A: Action> AstarArg<S, A>.propagateUpDistanceFromFiniteDistance(
 
 	val conditionalNodes = mutableListOf<ArgNode<S, A>>()
 
-	from.argNode.walkUpParents(from.distance.value, { parents[this[it]]?.argNode }) { argNode, distance ->
+	from.argNode.walkUpParents(from.distance.value, { parents[it.astarNode]?.argNode }) { argNode, distance ->
 		val astarNode = argNode.astarNode
 
 		// In one search we don't have target as a descendant of target
@@ -36,7 +36,8 @@ fun <S: State, A: Action> AstarArg<S, A>.propagateUpDistanceFromFiniteDistance(
 		val parentNode = parents[astarNode]?.argNode
 		val nonParentCoveredNodes = argNode.coveredNodes()
 			.filter { it !== parentNode }
-		check(nonParentCoveredNodes.all { it.astarNode.distance.isUnknown })
+		// [from] already has a distance therefore its covered nodes are already handled
+		check(astarNode.distance.isKnown || nonParentCoveredNodes.all { it.astarNode.distance.isUnknown })
 		conditionalNodes += nonParentCoveredNodes
 
 		// Conditional graph parent
@@ -50,7 +51,9 @@ fun <S: State, A: Action> AstarArg<S, A>.propagateUpDistanceFromFiniteDistance(
 		// [from] node case
 		// [from] node could also have conditional nodes
 		if (astarNode.distance.isFinite) {
-			check(from.argNode == argNode)
+			// Distance for any node can be set if multiple target is found and they have common ancestors
+			// (if fully ondemand) Distances for any node can be set for any already visited node between pause and resume
+			check(astarNode.distance.value <= distance)
 			return@walkUpParents false
 		}
 		check(argNode !== from.argNode)
@@ -63,6 +66,26 @@ fun <S: State, A: Action> AstarArg<S, A>.propagateUpDistanceFromFiniteDistance(
 			check(argNode.isExpanded)
 			check(!argNode.minKnownSuccDistance!!.isInfinite)
 			check(distance == argNode.minKnownSuccDistance!!.value + 1)
+		}
+
+		// Children have a lower-bound distance which can be *quickly* set.
+		if (DI.heuristicSearchType == HeuristicSearchType.FULLY_ONDEMAND) {
+			argNode.succNodes()
+				// [astarNode] was in queue =>
+				// children (if exists) have AstarNode
+				.map { it.astarNode }
+				.filter { it.distance.isUnknown && it.distance < astarNode.distance - 1 }
+				.forEach { succAstarNode ->
+					succAstarNode.distance = Distance.lowerBoundOf(astarNode.distance - 1)
+				}
+
+			// If covered than either [astarNode] is
+			// - non-target: target is reachable only through covering node
+			// - target: covering node is also target
+			// => has known distance
+			if (argNode.isCovered) {
+				check(astarNode.distance.isKnown)
+			}
 		}
 
 		return@walkUpParents argNode in until
@@ -156,7 +179,7 @@ fun <S: State, A: Action> AstarArg<S, A>.propagateDownDistanceFromInfiniteDistan
 			check(!astarNode.distance.isFinite)
 			// Unvisited regions shouldn't exist unless its known it can't reach any target
 			if (!argNode.isExpanded && !argNode.isCovered) {
-				check(astarNode.heuristic.isInfinite)
+				check(astarNode.heuristic.isInfinite || astarNode.providerAstarNode!!.distance.isInfinite)
 			}
 
 			// Some covered nodes may already have distance
@@ -372,4 +395,4 @@ fun <S: State, A: Action> AstarArg<S, A>.checkDistanceProperty() = arg.nodes().m
 }
 
 val <S: State, A: Action> AstarArg<S, A>.isAstarComplete
-	get() = arg.isInitialized && astarNodes.values.all { it.argNode.isComplete || it.heuristic == Distance.INFINITE }
+	get() = arg.isInitialized && astarNodes.values.all { it.argNode.isComplete || it.heuristic.isInfinite }

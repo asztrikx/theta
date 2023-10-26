@@ -11,7 +11,8 @@ class FullHeuristicFinder<S: State, A: Action, P: Prec>: HeuristicFinder<S, A, P
 	override fun findHeuristicFromPrevious(
 		astarNode: AstarNode<S, A>,
 		astarAbstractor: AstarAbstractor<S, A, P>,
-		astarSearch: AstarSearch<S, A, P>?,
+		search: AstarSearch<S, A, P>?,
+		weightStopAfter: Long,
 	)
 		= check(false)
 }

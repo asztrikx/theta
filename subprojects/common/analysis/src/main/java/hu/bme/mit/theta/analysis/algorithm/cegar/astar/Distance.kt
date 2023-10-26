@@ -1,5 +1,7 @@
 package hu.bme.mit.theta.analysis.algorithm.cegar.astar
 
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.strategy.HeuristicSearchType
+
 class Distance private constructor(
 	private val type: Type,
 	value: Int,
@@ -7,7 +9,7 @@ class Distance private constructor(
 	val value = value
 		get(): Int {
 			// TODO if we auto set infinite for inf heuristic then propagateUpDistanceFromInfiniteDistance's 5) logic have to be rechecked
-			check(type == Type.FINITE)
+			check(hasValue)
 			return field
 		}
 
@@ -23,10 +25,11 @@ class Distance private constructor(
 	val isUnknown: Boolean
 		get() = !isKnown
 
+	val hasValue: Boolean
+		get() = isFinite || isUnknown
+
 	// Both distances should be known
 	override fun compareTo(other: Distance): Int {
-		require(isKnown)
-		require(other.isKnown)
 		return when {
 			type == Type.INFINITE && other.type == Type.INFINITE -> 0
 			type == Type.INFINITE -> 1
@@ -42,23 +45,34 @@ class Distance private constructor(
 	override fun toString() = when (type) {
 		Type.FINITE -> "F$value"
 		Type.INFINITE -> "I"
-		Type.UNKNOWN -> "U"
+		Type.LOWERBOUND -> if (DI.heuristicSearchType == HeuristicSearchType.FULLY_ONDEMAND) "L$value" else "U"
 	}
 
 	enum class Type {
 		FINITE,
 		INFINITE,
-		UNKNOWN,
+		LOWERBOUND,
 	}
 
 	companion object {
-		// static factory with caching: Distance object with same immutable content are often created
-		private val cache = HashMap<Int, Distance>(100) // random number, not measured
-		fun finiteOf(value: Int) = cache.computeIfAbsent(value) { Distance(Type.FINITE, it) }
+		// There is no need to clear cache as distances to targets will keep get longer
 
-		val ZERO = finiteOf(0)
-		val ONE = finiteOf(1)
+		// static factory with caching: Distance object with same immutable content are often created
+		private val finiteCache = HashMap<Int, Distance>(100) // random number, not measured
+		fun finiteOf(value: Int) = finiteCache.computeIfAbsent(value) { Distance(Type.FINITE, it) }
+
+		private val lowerBoundCache = HashMap<Int, Distance>(100)
+		fun lowerBoundOf(value: Int) = lowerBoundCache.computeIfAbsent(value) { Distance(Type.LOWERBOUND, it) }
+		fun lowerBoundOf(distance: Distance): Distance {
+			// Lower-bound of infinite should be infinite
+			check(distance.hasValue)
+			return lowerBoundOf(distance.value)
+		}
+
+		fun sameTypeOfNoCache(distance: Distance, value: Int) = Distance(distance.type, value)
+
+		val F0 = finiteOf(0)
 		val INFINITE = Distance(Type.INFINITE, 0)
-		val UNKNOWN = Distance(Type.UNKNOWN, 0)
+		val UNKNOWN = lowerBoundOf(0)
 	}
 }

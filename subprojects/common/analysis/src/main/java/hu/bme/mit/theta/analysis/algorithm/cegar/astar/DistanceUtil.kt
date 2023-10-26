@@ -1,9 +1,15 @@
 package hu.bme.mit.theta.analysis.algorithm.cegar.astar
 
-operator fun Distance.plus(otherValue: Int) = Distance.finiteOf(value + otherValue)
-operator fun Distance.plus(otherDistance: Distance) = Distance.finiteOf(value + otherDistance.value)
-operator fun Distance.minus(otherValue: Int) = Distance.finiteOf(value - otherValue)
-operator fun Distance.minus(otherDistance: Distance) = Distance.finiteOf(value - otherDistance.value)
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.Distance.Companion.sameTypeOfNoCache
 
-val Int.distance: Distance
-    get() = Distance.finiteOf(this)
+operator fun Distance.plus(otherValue: Int) = sameTypeOfNoCache(this, value + otherValue)
+operator fun Distance.plus(otherDistance: Distance) = sameTypeOfNoCache(this, value + otherDistance.value)
+operator fun Distance.minus(otherValue: Int) = sameTypeOfNoCache(this, value - otherValue)
+operator fun Distance.minus(otherDistance: Distance) = sameTypeOfNoCache(this, value - otherDistance.value)
+
+fun safeAdd(distance: Distance, value: Int) =
+	if (distance.isInfinite) {
+		distance
+	} else {
+		distance + value
+	}

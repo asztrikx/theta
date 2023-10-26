@@ -63,12 +63,11 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 	 * Kotlin can't create a reference of a function which is a member and is an extension
 	 */
 	fun findDistanceForAny(
-		startAstarNodes: List<AstarNode<S, A>>,
-		stopCriterion: StopCriterion<S, A>,
+		search: AstarSearch<S, A, P>,
 		visualizerState: String,
 		prec: P,
 	) {
-		var startAstarNodes = startAstarNodes
+		var startAstarNodes = search.startAstarNodes
 		val astarArg = startAstarNodes.first().astarArg
 		val arg = astarArg.arg
 //		val initAstarNodes = arg.initNodes().map { astarArg[it] }
@@ -86,7 +85,6 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 		logger.substepLine("|  |  Starting AstarArg: ${astarFileVisualizer.getTitle("", cegarHistoryStorage.indexOf(astarArg))}")
 		logger.substepLine("|  |  Building ARG...")
 
-		val search = AstarSearch(startAstarNodes, stopCriterion, heuristicFinder, this)
 		astarFileVisualizer.visualize("start $visualizerState", astarArg, search)
 		while (true) {
 			val (astarNode, depth) = search.removeFromWaitlist() ?: break
@@ -109,8 +107,6 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 		logger.substepLine("done")
 		logger.infoLine("|  |  Finished ARG: ${arg.nodes.count()} nodes, ${arg.incompleteNodes.count()} incomplete, ${arg.unsafeNodes.count()} unsafe")
 		logger.infoLine("|  |  Finished AstarArg: ${astarFileVisualizer.getTitle("", cegarHistoryStorage.indexOf(astarArg))}")
-
-		check(startAstarNodes.any { it.distance.isFinite } || startAstarNodes.all { it.distance.isInfinite })
 		// check(arg.unsafeNodes().map { astarArg[it] }.all { it.distance.isKnown })  // this hits however it works without failing here
 	}
 
@@ -140,18 +136,6 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 		}
 		if (argNode.isCovered) {
 			val coveringAstarNode = astarArg[argNode.coveringNode()!!]
-
-			// We are either covered into
-			// - completed node (was in waitlist => has heuristic)
-			// - completed node's child (in waitlist => has heuristic)
-			// - leftover from prune:
-			//   - decreasing: during copy we call [findHeuristic] => has heuristic
-			//   - non-decreasing: we can cover into a leftover node before it is visited (even when starting from init nodes) => may not have
-			if (DI.heuristicSearchType == HeuristicSearchType.DECREASING) {
-				check(coveringAstarNode.heuristic.isKnown)
-			}
-
-			// Covering edge has 0 weight therefore depth doesn't increase
 			search.addToWaitlist(coveringAstarNode, astarNode, depth)
 		} else if (argNode.isFeasible) {
 			if (!argNode.isExpanded) {
@@ -203,7 +187,8 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 			logger.substepLine("done")
 		}
 
-		findDistanceForAny(astarArg.astarInitNodes.values.toList(), initialStopCriterion, "init", prec)
+		val search = AstarSearch(astarArg.astarInitNodes.values.toList(), initialStopCriterion, Long.MAX_VALUE, heuristicFinder, this)
+		findDistanceForAny(search, "init", prec)
 
 //		if (logger !is NullLogger) {
 //			metrics.cover = arg.nodes().filter { it.isCovered }.size
@@ -224,7 +209,7 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 		nextAstarArg = astarArg
 
 		return if (arg.isSafe) {
-			require(astarArg.isAstarComplete) { "Returning incomplete ARG as safe" };
+			require(astarArgCopy.isAstarComplete) { "Returning incomplete ARG as safe" };
 			AbstractorResult.safe()
 		} else {
 			AbstractorResult.unsafe()

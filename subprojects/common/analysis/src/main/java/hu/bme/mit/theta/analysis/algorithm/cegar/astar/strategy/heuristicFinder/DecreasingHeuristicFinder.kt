@@ -10,7 +10,8 @@ class DecreasingHeuristicFinder<S: State, A: Action, P: Prec>: HeuristicFinder<S
 	override fun findHeuristicFromPrevious(
 		astarNode: AstarNode<S, A>,
 		astarAbstractor: AstarAbstractor<S, A, P>,
-		astarSearch: AstarSearch<S, A, P>?,
+		search: AstarSearch<S, A, P>?,
+		weightStopAfter: Long,
 	) {
 		val astarArg = astarNode.astarArg
 		val argNode = astarNode.argNode
@@ -22,7 +23,7 @@ class DecreasingHeuristicFinder<S: State, A: Action, P: Prec>: HeuristicFinder<S
 
 		// TODO proof that we can't use covered nodes provider as they can be more specific not always providing a lowerbound
 		astarNode.heuristic = if (treeParentAstarNode == null) {
-			Distance.ZERO
+			Distance.F0
 		} else {
 			Distance.finiteOf(
 				// 0 is always a known lower-bound, so it is more precise to use than negative numbers (which are wrong for targets)

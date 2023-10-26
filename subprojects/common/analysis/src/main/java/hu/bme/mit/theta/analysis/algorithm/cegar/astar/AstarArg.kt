@@ -121,7 +121,7 @@ class AstarArg<S: State, A: Action>(
 
 		// Make sure [treeParentAstarNodeProvider] has children
 		// TODO pattern
-		if (DI.heuristicSearchType == HeuristicSearchType.SEMI_ONDEMAND) {
+		if (DI.heuristicSearchType == HeuristicSearchType.SEMI_ONDEMAND || DI.heuristicSearchType == HeuristicSearchType.FULLY_ONDEMAND) {
 			// Recursive call
 			treeParentAstarNodeProvider.createChildren(null, argBuilder, heuristicFinder, abstractor, cegarHistoryStorage)
 		}
