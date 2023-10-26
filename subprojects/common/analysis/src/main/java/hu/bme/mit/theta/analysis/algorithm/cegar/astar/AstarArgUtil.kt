@@ -350,5 +350,29 @@ fun <S: State, A: Action, P: Prec> AstarArg<S, A>.createIterationReplacement(
 	return astarArgCopy
 }
 
+fun <S: State, A: Action> AstarArg<S, A>.checkDistanceProperty() = arg.nodes().map{ this[it] }.forEach {
+	if (it.distance.isUnknown) {
+		return@forEach
+	}
+
+	if (it.argNode.parent() != null) {
+		val parentAstarNode = it.argNode.parent()!!.astarNode
+		if (it.distance.isFinite && parentAstarNode.distance.isFinite) {
+			check((parentAstarNode.distance - it.distance).value <= 1)
+		} else if (parentAstarNode.distance.isKnown) {
+			check(!(parentAstarNode.distance.isInfinite && it.distance.isFinite))
+		}
+	}
+
+	if (it.argNode.coveringNode() != null) {
+		val coveringAstarNode = it.argNode.coveringNode()!!.astarNode
+		if (it.distance.isFinite && coveringAstarNode.distance.isFinite) {
+			check(coveringAstarNode.distance == it.distance)
+		} else if (coveringAstarNode.distance.isKnown) {
+			check(coveringAstarNode.distance.isInfinite && it.distance.isInfinite)
+		}
+	}
+}
+
 val <S: State, A: Action> AstarArg<S, A>.isAstarComplete
 	get() = arg.isInitialized && astarNodes.values.all { it.argNode.isComplete || it.heuristic == Distance.INFINITE }
