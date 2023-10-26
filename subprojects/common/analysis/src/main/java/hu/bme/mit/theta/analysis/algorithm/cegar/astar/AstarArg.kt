@@ -177,6 +177,7 @@ class AstarArg<S: State, A: Action>(
 	val ArgNode<S, A>.minSuccDistance: Distance?
 		get() {
 			require(!isCovered)
+			require(isExpanded)
 			require(allSuccDistanceKnown)
 			return minKnownSuccDistance
 		}
@@ -187,6 +188,7 @@ class AstarArg<S: State, A: Action>(
 	val ArgNode<S, A>.minKnownSuccDistance: Distance?
 		get() {
 			require(!isCovered)
+			require(isExpanded)
 			return succNodes()
 				.map { it.astarNode.distance }
 				.filter { it.isKnown }
