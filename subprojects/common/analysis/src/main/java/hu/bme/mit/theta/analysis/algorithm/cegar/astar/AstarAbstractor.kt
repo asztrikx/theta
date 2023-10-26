@@ -152,13 +152,7 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 				// There can be leftover nodes => newArgNodes != succNodes
 				val newArgNodes = argBuilder.expand(argNode, prec)
 				for (newArgNode in newArgNodes) {
-					val astarArgIndex = cegarHistoryStorage.indexOf(astarArg)
-					val previousPrec = if(astarArgIndex >= 1) {
-						cegarHistoryStorage[astarArgIndex - 1].second
-					} else  {
-						null
-					}
-					astarArg.createSuccAstarNode(newArgNode, argBuilder, previousPrec, heuristicFinder, this)
+					astarArg.createSuccAstarNode(newArgNode, argBuilder, cegarHistoryStorage, heuristicFinder, this)
 				}
 			}
 
@@ -198,8 +192,7 @@ class AstarAbstractor<S: State, A: Action, P: Prec> private constructor(
 		if (!arg.isInitialized) {
 			logger.substep("|  |  (Re)initializing ARG...")
 			argBuilder.init(arg, prec).forEach {
-				astarArg.createSuccAstarNode(it, argBuilder, prec, heuristicFinder, this)
-				// TODO later (currently there is only one init node): check if they can't cover each other as it is used // check if it even used anywhere
+				astarArg.createSuccAstarNode(it, argBuilder, cegarHistoryStorage, heuristicFinder, this)
 			}
 			logger.substepLine("done")
 		}

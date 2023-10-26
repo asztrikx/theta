@@ -5,6 +5,7 @@ import hu.bme.mit.theta.analysis.Prec
 import hu.bme.mit.theta.analysis.State
 import hu.bme.mit.theta.analysis.algorithm.ArgBuilder
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.strategy.HeuristicSearchType
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.strategy.cegarhistorystorage.CegarHistoryStorage
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.strategy.heuristicFinder.HeuristicFinder
 
 fun <S: State, A: Action> AstarNode<S, A>.checkConsistency(child: AstarNode<S, A>) {
@@ -157,11 +158,11 @@ fun <S: State, A: Action, P: Prec> AstarNode<S, A>.handleCloseRewire(search: Ast
  * [heuristicFinder] is not called during this.
  */
 fun <S: State, A: Action, P: Prec> AstarNode<S, A>.createChildren(
-    prec: P,
     search: AstarSearch<S, A, P>?,
     argBuilder: ArgBuilder<S, A, P>,
     heuristicFinder: HeuristicFinder<S, A, P>,
     abstractor: AstarAbstractor<S, A, P>,
+    cegarHistoryStorage: CegarHistoryStorage<S, A, P>,
 ) {
     require(DI.heuristicSearchType == HeuristicSearchType.SEMI_ONDEMAND || DI.disableOptimizations)
     // we could call expand on found target nodes after each search however
@@ -198,6 +199,7 @@ fun <S: State, A: Action, P: Prec> AstarNode<S, A>.createChildren(
     }
 
     // [createChildren] can be already called on this node through a different edge
+    val (_, prec) = cegarHistoryStorage.find(astarArg)
     while(!argNode.isExpanded) {
         astarNode.close(astarArg.reachedSet[astarNode], search, heuristicFinder, abstractor)?.let {}
         if (argNode.coveringNode() != null) {
@@ -214,12 +216,12 @@ fun <S: State, A: Action, P: Prec> AstarNode<S, A>.createChildren(
             continue
         }
         argBuilder.expand(argNode, prec).forEach {
-            val succAstarNode = astarArg.createSuccAstarNode(it, argBuilder, prec, heuristicFinder, abstractor)
+            val newAstarNode = astarArg.createSuccAstarNode(it, argBuilder, cegarHistoryStorage, heuristicFinder, abstractor)
             // optimization
-            if (succAstarNode.argNode.isTarget && DI.enableOptimizations) {
+            if (newAstarNode.argNode.isTarget && DI.enableOptimizations) {
                 // Heuristic has to be set (first) otherwise admissibility check fails
-                succAstarNode.heuristic = Distance.ZERO
-                succAstarNode.distance = Distance.ZERO
+                newAstarNode.heuristic = Distance.ZERO
+                newAstarNode.distance = Distance.ZERO
             }
         }
     }

@@ -8,6 +8,7 @@ import hu.bme.mit.theta.analysis.algorithm.ARG
 import hu.bme.mit.theta.analysis.algorithm.ArgBuilder
 import hu.bme.mit.theta.analysis.algorithm.ArgNode
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.strategy.HeuristicSearchType
+import hu.bme.mit.theta.analysis.algorithm.cegar.astar.strategy.cegarhistorystorage.CegarHistoryStorage
 import hu.bme.mit.theta.analysis.algorithm.cegar.astar.strategy.heuristicFinder.HeuristicFinder
 import hu.bme.mit.theta.analysis.reachedset.Partition
 
@@ -44,25 +45,26 @@ class AstarArg<S: State, A: Action>(
 	fun <P: Prec> createSuccAstarNode(
 		argNode: ArgNode<S, A>,
 		argBuilder: ArgBuilder<S, A, P>,
-		prec: P?,
+		cegarHistoryStorage: CegarHistoryStorage<S, A, P>,
 		heuristicFinder: HeuristicFinder<S, A, P>,
 		abstractor: AstarAbstractor<S, A, P>,
 	): AstarNode<S, A> {
-		val providerAstarNode = argNode.getProviderAstarNode(argBuilder, prec, heuristicFinder, abstractor)
-		val astarNode = AstarNode(argNode, providerAstarNode, this)
-		reachedSet.add(astarNode)
-		put(astarNode)
-		return astarNode
+		// TODO do not search provider for target?
+		val providerAstarNode = argNode.getProviderAstarNode(argBuilder, cegarHistoryStorage, heuristicFinder, abstractor)
+		return AstarNode(argNode, providerAstarNode, this).also {
+			reachedSet.add(it)
+			put(it)
+		}
 	}
 
 	private fun <P: Prec> ArgNode<S, A>.getProviderAstarNode(
 		argBuilder: ArgBuilder<S, A, P>,
-		prec: P?,
+		cegarHistoryStorage: CegarHistoryStorage<S, A, P>,
 		heuristicFinder: HeuristicFinder<S, A, P>,
 		abstractor: AstarAbstractor<S, A, P>,
 	): AstarNode<S, A>? {
-		val providerArg = provider ?: return null
-		var providerCandidates = this.getProviderCandidates(argBuilder, prec!!, heuristicFinder, abstractor) ?: return null
+		val provider = provider ?: return null
+		var providerCandidates = this.getProviderCandidates(argBuilder, cegarHistoryStorage, heuristicFinder, abstractor) ?: return null
 
 		providerCandidates = providerCandidates.filter { partialOrd.isLeq(state, it.state) }
 
@@ -70,9 +72,9 @@ class AstarArg<S: State, A: Action>(
 			// TODO when can this happen (see git history maybe it has been deleted) // e.g. provider is target&init
 
 			providerCandidates
-				.filter { providerArg[it].distance.isKnown }
+				.filter { provider[it].distance.isKnown }
 				// Largest one is the most precise lower bound
-				.maxByOrNull { providerArg[it].distance }!!
+				.maxByOrNull { provider[it].distance }!!
 		} else {
 			providerCandidates.firstOrNull()
 		} // TODO could check if covered
@@ -96,12 +98,12 @@ class AstarArg<S: State, A: Action>(
 		}
 
 		providerNode ?: return null
-		return providerArg[providerNode]
+		return provider[providerNode]
 	}
 
 	private fun <P: Prec> ArgNode<S, A>.getProviderCandidates(
 		argBuilder: ArgBuilder<S, A, P>,
-		prec: P,
+		cegarHistoryStorage: CegarHistoryStorage<S, A, P>,
 		heuristicFinder: HeuristicFinder<S, A, P>,
 		abstractor: AstarAbstractor<S, A, P>,
 	): Collection<ArgNode<S, A>>? {
@@ -120,7 +122,7 @@ class AstarArg<S: State, A: Action>(
 		// TODO pattern
 		if (DI.heuristicSearchType == HeuristicSearchType.SEMI_ONDEMAND) {
 			// Recursive call
-			treeParentAstarNodeProvider.createChildren(prec, null, argBuilder, heuristicFinder, abstractor)
+			treeParentAstarNodeProvider.createChildren(null, argBuilder, heuristicFinder, abstractor, cegarHistoryStorage)
 		}
 
 		// [treeParentAstarNodeProvider] can be covered.
