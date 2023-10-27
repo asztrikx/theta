@@ -76,7 +76,7 @@ inline fun <S: State, A: Action> Collection<ArgNode<S, A>>.walk(
 /**
  * Calls [walk] with a newVisitFunc that only visits children or the covering node.
  */
-inline fun <S: State, A: Action> Collection<ArgNode<S, A>>.walkSubtree(skip: Skip<S, A>): Parents<S, A> {
+inline fun <S: State, A: Action> Collection<ArgNode<S, A>>.walkSubgraph(skip: Skip<S, A>): Parents<S, A> {
 	return walk(skip) newVisits@ { (argNode, distance) ->
 		return@newVisits if (argNode.isCovered) {
 			listOf(Visit(argNode.coveringNode()!!, distance))
@@ -89,7 +89,7 @@ inline fun <S: State, A: Action> Collection<ArgNode<S, A>>.walkSubtree(skip: Ski
 /**
  * Calls [walk] with a newVisitFunc that only visits parent and covered nodes.
  */
-inline fun <S: State, A: Action> Collection<ArgNode<S, A>>.walkReverseSubtree(skip: Skip<S, A>): Parents<S, A> {
+inline fun <S: State, A: Action> Collection<ArgNode<S, A>>.walkReverseSubgraph(skip: Skip<S, A>): Parents<S, A> {
 	return walk(skip) newVisits@ { (argNode, distance) ->
 		val newVisits = mutableListOf<Visit<S, A>>()
 		if (!argNode.isInit) {

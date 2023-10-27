@@ -173,7 +173,7 @@ fun <S: State, A: Action> AstarArg<S, A>.propagateDownDistanceFromInfiniteDistan
 	val queue = ArrayDeque(nodes)
 	while (queue.isNotEmpty()) {
 		val node = queue.removeFirst()
-		listOf(node).walkSubtree { argNode, _ ->
+		listOf(node).walkSubgraph { argNode, _ ->
 			val astarNode = argNode.astarNode
 
 			check(!astarNode.distance.isFinite)
@@ -186,7 +186,7 @@ fun <S: State, A: Action> AstarArg<S, A>.propagateDownDistanceFromInfiniteDistan
 			conditionalNodes += argNode.coveredNodes()
 
 			astarNode.distance = Distance.INFINITE
-			return@walkSubtree false
+			return@walkSubgraph false
 		}
 	}
 
@@ -287,7 +287,7 @@ fun <S: State, A: Action> AstarArg<S, A>.setDistanceFromAllTargets(targetAstarNo
 	check(targets.all { it.isTarget })
 
 	// Set finite distances
-	targets.walkReverseSubtree skip@ { argNode, distance ->
+	targets.walkReverseSubgraph skip@ { argNode, distance ->
 		// An ancestor can be a target because targets are expanded
 		if (argNode.astarNode.distance.isKnown) {
 			return@skip true
@@ -307,7 +307,7 @@ fun <S: State, A: Action> AstarArg<S, A>.setDistanceFromAllTargets(targetAstarNo
 
 // TODO this only works for targets, have to be fixed before usage
 fun <S: State, A: Action> AstarArg<S, A>.checkShortestDistance(finites: Collection<AstarNode<S, A>>) {
-	finites.map { it.argNode }.walkReverseSubtree skip@ { argNode, distance ->
+	finites.map { it.argNode }.walkReverseSubgraph skip@ { argNode, distance ->
 		val astarNode = argNode.astarNode
 
 		// An ancestor can be a target because targets are expanded
