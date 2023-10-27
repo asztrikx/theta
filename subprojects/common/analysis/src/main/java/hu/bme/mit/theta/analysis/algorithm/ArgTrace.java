@@ -72,8 +72,16 @@ public final class ArgTrace<S extends State, A extends Action> implements Iterab
 
 			var wrapper = new Object(){ ArgNode<S, A> initNode = null; };
 			var parents = ARGUtilKt.walkReverseSubtree(List.of(node), (n, distance) -> {
-				if (n.isInit()) wrapper.initNode = n;
-				return wrapper.initNode != null;
+				if (wrapper.initNode != null) {
+					// Shortest path already found => skip other subgraphs
+					return true;
+				}
+				if (n.isInit()) {
+					// Shortest path found, save endpoint
+					wrapper.initNode = n;
+					return true;
+				}
+				return false;
 			});
 
 			ArgNode<S, A> running = wrapper.initNode;
